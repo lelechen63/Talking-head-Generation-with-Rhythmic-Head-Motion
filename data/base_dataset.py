@@ -13,6 +13,8 @@ import torch.utils.data as data
 import torchvision.transforms as transforms
 from util.distributed import master_only_print as print
 
+import pdb
+
 class BaseDataset(data.Dataset):
     def __init__(self):
         super(BaseDataset, self).__init__()
@@ -35,6 +37,8 @@ class BaseDataset(data.Dataset):
             img = Image.open(path)
         elif data_type == 'np':
             img = np.loadtxt(path, delimiter=',')
+        elif data_type == 'npy':
+            img = np.load(path)
         else:
             img = path
         return img
@@ -46,8 +50,10 @@ class BaseDataset(data.Dataset):
         else:
             return img.crop((min_x, min_y, max_x, max_y))
 
-    def concat_frame(self, A, Ai):
-        if not self.opt.isTrain:
+    def concat_frame(self, A, Ai, ref=False):
+        # if not self.opt.isTrain:
+        #     return Ai
+        if not ref and not self.opt.isTrain:
             return Ai
 
         if A is None:

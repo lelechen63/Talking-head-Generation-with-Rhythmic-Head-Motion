@@ -8,6 +8,8 @@ import torch.utils.data as data
 from PIL import Image
 import os
 
+import pdb
+
 IMG_EXTENSIONS = [
     '.jpg', '.JPG', '.jpeg', '.JPEG',
     '.png', '.PNG', '.ppm', '.PPM', '.bmp', '.BMP', '.tiff', '.webp',
@@ -74,6 +76,44 @@ def make_grouped_dataset(dir):
             images.append(paths)
     return images
 
+def make_grouped_dataset_self(dir):
+    images = []
+    assert os.path.isdir(dir), '%s is not a valid directory' % dir
+    for v_id in sorted(os.listdir(dir)):
+        paths = []
+        root = os.path.join(dir, v_id)
+        for img in sorted(os.listdir(root)):
+            if is_image_file(img):
+                paths.append(os.path.join(root, img))
+        if len(paths) > 0:
+            images.append(paths)
+    return images
+
+def make_grouped_dataset_video(video_dir, land_dir, train_split=800, train=True):
+    videos = []
+    lands = []
+
+    assert os.path.isdir(video_dir), '%s is not a valid directory' % video_dir
+    assert os.path.isdir(land_dir), '%s is not a valid directory' % land_dir
+
+    tot_videos = sorted(os.listdir(video_dir))
+    tot_lands = sorted(os.listdir(land_dir))
+    
+    for land in tot_lands:
+        v_id = land.split('.')[0]
+        if train and int(v_id) >= train_split:
+            break
+        elif not train and int(v_id) < train_split:
+            continue
+
+        if "{}.mp4".format(v_id) in tot_videos:
+            videos.append(os.path.join(video_dir, "{}.mp4".format(v_id)))
+            lands.append(os.path.join(land_dir, land))
+        else:
+            print("no paired video with {}".format(land))
+
+    return videos, lands
+
 def check_path_valid(A_paths, B_paths):
     if len(A_paths) != len(B_paths):
         print('%s not equal to %s' % (A_paths[0], B_paths[0]))
@@ -84,6 +124,7 @@ def check_path_valid(A_paths, B_paths):
             if len(a) != len(b):
                 print('%s not equal to %s' % (a[0], b[0]))
             assert(len(a) == len(b))                
+
 
 def default_loader(path):
     return Image.open(path).convert('RGB')

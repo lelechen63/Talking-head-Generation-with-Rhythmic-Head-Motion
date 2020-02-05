@@ -14,8 +14,10 @@ import numpy as np
 from skimage import feature
 
 from data.base_dataset import BaseDataset, get_img_params, get_video_params, get_transform
-from data.image_folder import make_dataset, make_grouped_dataset, check_path_valid
+from data.image_folder import make_dataset, make_grouped_dataset, check_path_valid, make_grouped_dataset_self
 from data.keypoint2img import interpPoints, drawEdge
+
+import pdb
 
 class FewshotFaceDataset(BaseDataset):
     @staticmethod
@@ -37,14 +39,14 @@ class FewshotFaceDataset(BaseDataset):
         root = opt.dataroot
 
         if opt.isTrain:            
-            self.L_paths = sorted(make_grouped_dataset(path.join(root, 'train_keypoints'))) 
-            self.I_paths = sorted(make_grouped_dataset(path.join(root, 'train_images')))
+            self.L_paths = sorted(make_grouped_dataset_self(path.join(root, 'train_keypoints'))) 
+            self.I_paths = sorted(make_grouped_dataset_self(path.join(root, 'train_images')))
             check_path_valid(self.L_paths, self.I_paths)
         else:
-            self.L_paths = sorted(make_dataset(opt.seq_path.replace('images', 'keypoints')))
+            self.L_paths = sorted(make_dataset(opt.seq_path.replace('images', 'landmarks')))
             self.I_paths = sorted(make_dataset(opt.seq_path))
 
-            self.ref_L_paths = sorted(make_dataset(opt.ref_img_path.replace('images', 'keypoints')))
+            self.ref_L_paths = sorted(make_dataset(opt.ref_img_path.replace('images', 'landmarks')))
             self.ref_I_paths = sorted(make_dataset(opt.ref_img_path))
 
         self.n_of_seqs = len(self.I_paths)                         # number of sequences to train 
@@ -102,8 +104,9 @@ class FewshotFaceDataset(BaseDataset):
                 ref_img = self.crop(self.read_data(ref_I_paths[idx]), ref_crop_coords)
                 Li = self.get_face_image(keypoints, transform_L, ref_img.size)
                 Ii = transform_I(ref_img)
-                Lr = self.concat_frame(Lr, Li.unsqueeze(0))
-                Ir = self.concat_frame(Ir, Ii.unsqueeze(0))
+                Lr = self.concat_frame(Lr, Li.unsqueeze(0), ref=True)
+                Ir = self.concat_frame(Ir, Ii.unsqueeze(0), ref=True)
+                
             if not opt.isTrain:
                 self.Lr, self.Ir = Lr, Ir        
 
@@ -139,8 +142,8 @@ class FewshotFaceDataset(BaseDataset):
             img = self.crop(self.read_data(I_path), crop_coords)
             Lt = self.get_face_image(keypoints, transform_L, img.size)
             It = transform_I(img)
-            L = self.concat_frame(L, Lt.unsqueeze(0))                                
-            I = self.concat_frame(I, It.unsqueeze(0))
+            L = self.concat_frame(L, Lt.unsqueeze(0), ref=False)                                
+            I = self.concat_frame(I, It.unsqueeze(0), ref=False)
         if not opt.isTrain:
             self.L, self.I = L, I        
         seq = path.basename(path.dirname(opt.ref_img_path)) + '-' + opt.ref_img_id + '_' + path.basename(path.dirname(opt.seq_path))

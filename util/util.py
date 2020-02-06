@@ -11,14 +11,7 @@ from PIL import Image
 import os
 import cv2
 
-from models.input_process import use_valid_labels
-
 def visualize_label(opt, label_tensor, model=None): 
-    if 'pose' in opt.dataset_mode:
-        if opt.add_face_D and model is not None:            
-            ys, ye, xs, xe = model.module.faceRefiner.get_face_region(label_tensor)            
-        label_tensor = use_valid_labels(opt, label_tensor)
-
     if label_tensor.dim() == 5:
         label_tensor = label_tensor[-1]
     if label_tensor.dim() == 4:        
@@ -28,13 +21,6 @@ def visualize_label(opt, label_tensor, model=None):
     else:
         visual_label = tensor2im(label_tensor[:3] if label_tensor.shape[0] >= 3 else label_tensor[:1])
 
-    if 'pose' in opt.dataset_mode:        
-        image2 = tensor2im(label_tensor[-3:])
-        visual_label[image2 != 0] = image2[image2 != 0]
-        if opt.add_face_D and model is not None and ys is not None:
-            visual_label[ys, xs:xe, :] = visual_label[ye-1, xs:xe, :] \
-                = visual_label[ys:ye, xs, :] = visual_label[ys:ye, xe-1, :] = 255
-            
     if len(visual_label.shape) == 2: visual_label = np.repeat(visual_label[:,:,np.newaxis], 3, axis=2)        
     return visual_label
 

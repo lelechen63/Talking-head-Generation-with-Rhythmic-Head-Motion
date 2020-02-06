@@ -108,12 +108,9 @@ def get_video_params(opt, n_frames_total, cur_seq_len, index):
         t_step = np.random.randint(max_t_step) + 1                    # spacing between neighboring sampled frames                
         
         offset_max = max(1, cur_seq_len - (n_frames_total-1)*t_step)  # maximum possible frame index for the first frame
-        if 'pose' in opt.dataset_mode:
-            start_idx = index % offset_max                            # offset for the first frame to load
-            max_range, min_range = 60, 14                             # range for possible reference frames
-        else:
-            start_idx = np.random.randint(offset_max)                 # offset for the first frame to load        
-            max_range, min_range = 300, 14                            # range for possible reference frames
+
+        start_idx = np.random.randint(offset_max)                 # offset for the first frame to load        
+        max_range, min_range = 300, 14                            # range for possible reference frames
         
         ref_range = list(range(max(0, start_idx - max_range), max(1, start_idx - min_range))) \
                   + list(range(min(start_idx + min_range, cur_seq_len - 1), min(start_idx + max_range, cur_seq_len)))

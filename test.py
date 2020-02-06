@@ -34,12 +34,16 @@ if opt.finetune: web_dir += '_finetune'
 webpage = html.HTML(web_dir, 'Experiment = %s, Phase = %s, Epoch = %s' % (opt.name, opt.phase, opt.which_epoch), infer=True)
 
 # test
+ref_idx_fix = None
 for i, data in enumerate(dataset):
     if i >= opt.how_many or i >= len(dataset): break
     img_path = data['path']   
     data_list = [data['tgt_label'], data['tgt_image'], None, None, data['ref_label'], data['ref_image'], None, None]
-    synthesized_image, _, _, _, _, _ = model(data_list)
-            
+    synthesized_image, _, _, _, _, _, ref_idx = model(data_list, ref_idx_fix=ref_idx_fix)
+    
+    if ref_idx_fix is None:
+        ref_idx_fix = ref_idx
+
     synthesized_image = util.tensor2im(synthesized_image)    
     tgt_image = util.tensor2im(data['tgt_image'])    
     ref_image = util.tensor2im(data['ref_image'], tile=True)    

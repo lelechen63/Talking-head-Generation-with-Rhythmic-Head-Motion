@@ -22,15 +22,9 @@ class BaseModel(torch.nn.Module):
         self.Tensor = torch.cuda.FloatTensor if self.gpu_ids else torch.Tensor
         self.save_dir = os.path.join(opt.checkpoints_dir, opt.name)        
         self.old_lr = opt.lr
-
-        self.pose = 'pose' in opt.dataset_mode        
-        self.face = 'face' in opt.dataset_mode        
-        self.street = 'street' in opt.dataset_mode
-        self.warp_ref = opt.warp_ref
-        self.has_fg = self.pose    
-        self.add_face_D = opt.add_face_D
-        self.concat_ref_for_D = (opt.isTrain or opt.finetune) and opt.netD_subarch == 'n_layers'
-        self.concat_fg_mask_for_D = self.has_fg                
+     
+        self.warp_ref = opt.warp_ref 
+        self.concat_ref_for_D = (opt.isTrain or opt.finetune) and opt.netD_subarch == 'n_layers'               
 
     def forward(self):
         pass
@@ -166,32 +160,18 @@ class BaseModel(torch.nn.Module):
     def define_networks(self, start_epoch):
         opt = self.opt        
         # Generator network        
-        input_nc = opt.label_nc if (opt.label_nc != 0 and not self.pose) else opt.input_nc
-        netG_input_nc = input_nc           
+        input_nc = opt.label_nc if opt.label_nc != 0 else opt.input_nc       
         opt.for_face = False        
         self.netG = networks.define_G(opt)        
-        if self.refine_face:            
-            opt_face = copy.deepcopy(opt)
-            opt_face.n_downsample_G -= 1
-            if opt_face.n_adaptive_layers > 0: opt_face.n_adaptive_layers -= 1
-            opt_face.input_nc = opt.output_nc
-            opt_face.fineSize = self.faceRefiner.face_size
-            opt_face.aspect_ratio = 1
-            opt_face.for_face = True
-            self.netGf = networks.define_G(opt_face)
 
         # Discriminator network
         if self.isTrain or opt.finetune:            
-            netD_input_nc = input_nc + opt.output_nc + (1 if self.concat_fg_mask_for_D else 0)
+            netD_input_nc = input_nc + opt.output_nc
             if self.concat_ref_for_D:
                 netD_input_nc *= 2
             self.netD = networks.define_D(opt, netD_input_nc, opt.ndf, opt.n_layers_D, opt.norm_D, opt.netD_subarch, 
                                           opt.num_D, not opt.no_ganFeat_loss, gpu_ids=self.gpu_ids)            
-            if self.add_face_D:
-                self.netDf = networks.define_D(opt, opt.output_nc * 2, opt.ndf, opt.n_layers_D, opt.norm_D, 'n_layers',
-                                               1, not opt.no_ganFeat_loss, gpu_ids=self.gpu_ids)
-            else:
-                self.netDf = None
+
         self.temporal = False
         self.netDT = None             
                     
@@ -201,12 +181,10 @@ class BaseModel(torch.nn.Module):
         if self.isTrain:            
             # optimizer G
             params = list(self.netG.parameters())           
-            if self.refine_face: params += list(self.netGf.parameters())
             self.optimizer_G = self.get_optimizer(params, for_discriminator=False)
 
             # optimizer D            
             params = list(self.netD.parameters())
-            if self.add_face_D: params += list(self.netDf.parameters())
             self.optimizer_D = self.get_optimizer(params, for_discriminator=True)           
 
         Visualizer.vis_print(self.opt, '---------- Optimizers initialized -------------')
@@ -216,14 +194,10 @@ class BaseModel(torch.nn.Module):
             self.make_temporal_model() 
 
     def save_networks(self, which_epoch):
-        self.save_network(self.netG, 'G', which_epoch, self.gpu_ids)        
-        if self.refine_face:
-            self.save_network(self.netGf, 'Gf', which_epoch, self.gpu_ids)
+        self.save_network(self.netG, 'G', which_epoch, self.gpu_ids)
         self.save_network(self.netD, 'D', which_epoch, self.gpu_ids)        
         if self.temporal:
-            self.save_network(self.netDT, 'DT', which_epoch, self.gpu_ids)        
-        if self.add_face_D:
-            self.save_network(self.netDf, 'Df', which_epoch, self.gpu_ids)                
+            self.save_network(self.netDT, 'DT', which_epoch, self.gpu_ids)                    
 
     def load_networks(self):
         opt = self.opt
@@ -232,14 +206,10 @@ class BaseModel(torch.nn.Module):
             self.load_network(self.netG, 'G', opt.which_epoch, pretrained_path)                  
             if self.temporal and opt.warp_ref and not self.netG.flow_temp_is_initalized:
                 self.netG.load_pretrained_net(self.netG.flow_network_ref, self.netG.flow_network_temp)
-            if self.refine_face:
-                self.load_network(self.netGf, 'Gf', opt.which_epoch, pretrained_path)  
             if self.isTrain:
                 self.load_network(self.netD, 'D', opt.which_epoch, pretrained_path)  
                 if self.temporal: 
                     self.load_network(self.netDT, 'DT', opt.which_epoch, pretrained_path)
-                if self.add_face_D: 
-                    self.load_network(self.netDf, 'Df', opt.which_epoch, pretrained_path) 
 
     def update_learning_rate(self, epoch):
         new_lr = self.opt.lr * (1 - (epoch - self.opt.niter) / (self.opt.niter_decay + 1))
@@ -264,7 +234,6 @@ class BaseModel(torch.nn.Module):
         if opt.isTrain:
             self.lossCollector.tD = min(opt.n_frames_D, opt.n_frames_G)              
             params = list(self.netG.parameters())            
-            if self.refine_face: params += list(self.netGf.parameters())
 
             new_lr = self.old_lr / 10
             self.opt.lr /= 10
@@ -277,7 +246,6 @@ class BaseModel(torch.nn.Module):
                                            1, not opt.no_ganFeat_loss, gpu_ids=self.gpu_ids)
             # optimizer D            
             params = list(self.netD.parameters()) + list(self.netDT.parameters())
-            if self.add_face_D: params += list(self.netDf.parameters())
             self.optimizer_D = self.get_optimizer(params, for_discriminator=True)           
 
             Visualizer.vis_print(self.opt, '---------- Now start training multiple frames -------------')

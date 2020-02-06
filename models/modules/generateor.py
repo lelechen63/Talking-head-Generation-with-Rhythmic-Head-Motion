@@ -122,72 +122,16 @@ class FewShotGenerator(BaseNetwork):
                 setattr(self, 'atn_key_%d' % i, SPADEConv2d(f_in, f_out, stride=2, norm=norm_ref))
                 setattr(self, 'atn_query_%d' % i, SPADEConv2d(f_in, f_out, stride=2, norm=norm_ref))
 
-        ### flow        
-        self.warp_prev = False                            # whether to warp prev image (set when starting training multiple frames)
-        self.warp_ref = opt.warp_ref     # whether to warp reference image and combine with the synthesized
-        if self.warp_ref:
-            self.flow_network_ref = FlowGenerator(opt, 2)
-            if self.spade_combine:            
-                self.img_ref_embedding = LabelEmbedder(opt, opt.output_nc + 1, opt.sc_arch)
 
-    ### when starting training multiple frames, initialize the flow network
-    def set_flow_prev(self):        
-        opt = self.opt
-        self.warp_prev = True
-        self.flow_network_temp = FlowGenerator(opt, opt.n_frames_G)
-        if self.spade_combine:
-            self.img_prev_embedding = LabelEmbedder(opt, opt.output_nc + 1, opt.sc_arch)
-        if self.warp_ref:
-            self.load_pretrained_net(self.flow_network_ref, self.flow_network_temp)
-            if self.spade_combine: self.load_pretrained_net(self.img_ref_embedding, self.img_prev_embedding)
-            self.flow_temp_is_initalized = True
-
-    def forward(self, label, label_refs, img_refs, prev=[None, None], t=0, ref_idx_fix = None):
-        ### SPADE weight generation
+    def forward(self, label, label_refs, img_refs, prev=[None, None], t=0):
+        # SPADE weight generation
         x, encoded_label, norm_weights, atn, ref_idx \
             = self.weight_generation(img_refs, label_refs, label, t=t)        
 
-        if ref_idx_fix is not None:
-            ref_idx = ref_idx_fix
+        # main branch convolution layers
+        fake_raw_img = self.img_generation(norm_weight, encoded_label)
 
-        ### flow estimation
-        has_prev = prev[0] is not None        
-        label_ref, img_ref = self.pick_ref([label_refs, img_refs], ref_idx)
-        label_prev, img_prev = prev
-        flow, weight, img_warp, ds_ref = self.flow_generation(label, label_ref, img_ref, label_prev, img_prev, has_prev)
-
-        weight_ref, weight_prev = weight
-        img_ref_warp, img_prev_warp = img_warp        
-        encoded_label = self.SPADE_combine(encoded_label, ds_ref)        
-        
-        ### main branch convolution layers
-        for i in range(self.n_downsample_G, -1, -1):            
-            conv_weight = None
-            norm_weight = norm_weights[i] if (self.adap_spade and i < self.n_adaptive_layers) else None                  
-            x = getattr(self, 'up_'+str(i))(x, encoded_label[i], conv_weights=conv_weight, norm_weights=norm_weight)            
-            if i != 0: x = self.up(x)
-
-        ### raw synthesized image
-        x = self.conv_img(actvn(x))
-        img_raw = torch.tanh(x)        
-
-        ### combine with reference / previous images
-        if not self.spade_combine:
-            ### combine raw result with reference image
-            if self.warp_ref:
-                img_final = img_raw * weight_ref + img_ref_warp * (1 - weight_ref)        
-            else:
-                img_final = img_raw
-                if not self.warp_prev: img_raw = None
-
-            ### combine generated frame with previous frame
-            if self.warp_prev and has_prev:
-                img_final = img_final * weight_prev + img_prev_warp * (1 - weight_prev)        
-        else:
-            img_final = img_raw
-            img_raw = None
-                
-        return img_final, flow, weight, img_raw, img_warp, atn, ref_idx
+        return fake_raw_img, atn, ref_idx
 
 
     ### adaptively generate weights for SPADE in layer i of generator
@@ -220,22 +164,6 @@ class FewShotGenerator(BaseNetwork):
         
         return embedding_weights, norm_weights
 
-    ### adaptively generate weights for layer i in main branch convolutions
-    def get_conv_weights(self, x, i):
-        if not self.mul_label_ref:            
-            x = nn.AdaptiveAvgPool2d((self.sh_fix, self.sw_fix))(x)
-        ch_in, ch_out = self.ch[i], self.ch[i+1]        
-        b = x.size()[0]
-        x = self.reshape_embed_input(x)           
-        
-        fc_0 = getattr(self, 'fc_conv_0_'+str(i))(x).view(b, -1)
-        fc_1 = getattr(self, 'fc_conv_1_'+str(i))(x).view(b, -1)
-        fc_s = getattr(self, 'fc_conv_s_'+str(i))(x).view(b, -1)
-        weight_0 = self.reshape_weight(fc_0, [ch_in, ch_out, 3, 3])
-        weight_1 = self.reshape_weight(fc_1, [ch_in, ch_in, 3, 3])
-        weight_s = self.reshape_weight(fc_s, [ch_in, ch_out, 1, 1])
-        return [weight_0, weight_1, weight_s]
-
     ### attention to combine in the case of multiple reference images
     def attention_module(self, x, label, label_ref, attention=None):
         b, c, h, w = x.size()
@@ -262,16 +190,6 @@ class FewShotGenerator(BaseNetwork):
         out = torch.sum(x * attention.unsqueeze(2).expand_as(x), dim=1).view(b, c, h, w)
         
         return out, attention.view(b, n, h, w)        
-
-    ### pick the reference image that is most similar to current frame
-    def pick_ref(self, refs, ref_idx):
-        if type(refs) == list:
-            return [self.pick_ref(r, ref_idx) for r in refs]
-        if ref_idx is None:
-            return refs[:,0]
-        ref_idx = ref_idx.long().view(-1, 1, 1, 1, 1)
-        ref = refs.gather(1, ref_idx.expand_as(refs)[:,0:1])[:,0]        
-        return ref
 
     ### encode the reference image to get features for weight generation
     def reference_encoding(self, img_ref, label_ref, label, n, t=0):
@@ -353,87 +271,20 @@ class FewShotGenerator(BaseNetwork):
 
         return x, encoded_label, norm_weights, atn, ref_idx
 
-    def flow_generation(self, label, label_ref, img_ref, label_prev, img_prev, has_prev):
-        flow, weight, img_warp, ds_ref = [None] * 2, [None] * 2, [None] * 2, [None] * 2
-        if self.warp_ref:
-            flow_ref, weight_ref = self.flow_network_ref(label, label_ref, img_ref, for_ref=True)
-            img_ref_warp = self.resample(img_ref, flow_ref)
-            flow[0], weight[0], img_warp[0] = flow_ref, weight_ref, img_ref_warp[:,:3]
+    # generate image
+    def img_generation(self, norm_weights, encoded_label):
+        # main branch convolution layers
+        for i in range(self.n_downsample_G, -1, -1):            
+            conv_weight = None
+            norm_weight = norm_weights[i] if (self.adap_spade and i < self.n_adaptive_layers) else None                  
+            x = getattr(self, 'up_'+str(i))(x, encoded_label[i], conv_weights=conv_weight, norm_weights=norm_weight)            
+            if i != 0: x = self.up(x)
 
-        if self.warp_prev and has_prev:
-            flow_prev, weight_prev = self.flow_network_temp(label, label_prev, img_prev)
-            img_prev_warp = self.resample(img_prev[:,-3:], flow_prev)            
-            flow[1], weight[1], img_warp[1] = flow_prev, weight_prev, img_prev_warp        
+        # raw synthesized image
+        x = self.conv_img(actvn(x))
+        fake_raw_img = torch.tanh(x)
 
-        if self.spade_combine:
-            if self.warp_ref:
-                ds_ref[0] = torch.cat([img_ref_warp, weight_ref], dim=1)
-            if self.warp_prev and has_prev: 
-                ds_ref[1] = torch.cat([img_prev_warp, weight_prev], dim=1)
-
-        return flow, weight, img_warp, ds_ref    
-
-    ### if using SPADE for combination
-    def SPADE_combine(self, encoded_label, ds_ref):        
-        if self.spade_combine:            
-            encoded_image_warp = [self.img_ref_embedding(ds_ref[0]), 
-                                  self.img_prev_embedding(ds_ref[1]) if ds_ref[1] is not None else None]
-            for i in range(self.n_sc_layers):
-                encoded_label[i] = [encoded_label[i]] + [w[i] if w is not None else None for w in encoded_image_warp]
-        return encoded_label
-
-class FlowGenerator(BaseNetwork):
-    def __init__(self, opt, n_frames_G):
-        super().__init__()
-        self.opt = opt                
-        input_nc = (opt.label_nc if opt.label_nc != 0 else opt.input_nc) * n_frames_G
-        input_nc += opt.output_nc * (n_frames_G - 1)        
-        nf = opt.nff
-        n_blocks = opt.n_blocks_F
-        n_downsample_F = opt.n_downsample_F
-        self.flow_multiplier = opt.flow_multiplier        
-        nf_max = 1024
-        ch = [min(nf_max, nf * (2 ** i)) for i in range(n_downsample_F + 1)]
-                
-        norm = opt.norm_F
-        norm_layer = get_nonspade_norm_layer(opt, norm)
-        activation = nn.LeakyReLU(0.2, True)
-        
-        down_flow = [norm_layer(nn.Conv2d(input_nc, nf, kernel_size=3, padding=1)), activation]        
-        for i in range(n_downsample_F):            
-            down_flow += [norm_layer(nn.Conv2d(ch[i], ch[i+1], kernel_size=3, padding=1, stride=2)), activation]            
-                   
-        ### resnet blocks
-        res_flow = []
-        ch_r = min(nf_max, nf * (2**n_downsample_F))        
-        for i in range(n_blocks):
-            res_flow += [SPADEResnetBlock(ch_r, ch_r, norm=norm)]
-    
-        ### upsample
-        up_flow = []                         
-        for i in reversed(range(n_downsample_F)):
-            if opt.flow_deconv:
-                up_flow += [norm_layer(nn.ConvTranspose2d(ch[i+1], ch[i], kernel_size=3, stride=2, padding=1, output_padding=1)), activation]
-            else:
-                up_flow += [nn.Upsample(scale_factor=2), norm_layer(nn.Conv2d(ch[i+1], ch[i], kernel_size=3, padding=1)), activation]
-                              
-        conv_flow = [nn.Conv2d(nf, 2, kernel_size=3, padding=1)]
-        conv_w = [nn.Conv2d(nf, 1, kernel_size=3, padding=1), nn.Sigmoid()] 
-      
-        self.down_flow = nn.Sequential(*down_flow)        
-        self.res_flow = nn.Sequential(*res_flow)                                            
-        self.up_flow = nn.Sequential(*up_flow)
-        self.conv_flow = nn.Sequential(*conv_flow)        
-        self.conv_w = nn.Sequential(*conv_w)
-
-    def forward(self, label, label_prev, img_prev, for_ref=False):
-        label = torch.cat([label, label_prev, img_prev], dim=1)        
-        downsample = self.down_flow(label)
-        res = self.res_flow(downsample)
-        flow_feat = self.up_flow(res)        
-        flow = self.conv_flow(flow_feat) * self.flow_multiplier
-        weight = self.conv_w(flow_feat)
-        return flow, weight
+        return fake_raw_img
 
 class LabelEmbedder(BaseNetwork):
     def __init__(self, opt, input_nc, netS=None, params_free_layers=0, first_layer_free=False):

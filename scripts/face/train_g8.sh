@@ -5,6 +5,12 @@
 # To view a copy of this license, visit
 # https://nvlabs.github.io/few-shot-vid2vid/License.txt
 
-python train.py --name face --dataset_mode fewshot_face \
---adaptive_spade --warp_ref --spade_combine \
---gpu_ids 0,1,2,3,4,5,6,7 --batchSize 60 --nThreads 16 --continue_train
+# python train.py --name face --dataset_mode fewshot_face \
+# --adaptive_spade --warp_ref --spade_combine \
+# --gpu_ids 0,1,2,3,4,5,6,7 --batchSize 60 --nThreads 16 --continue_train
+
+CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 python train.py --name face1_linear --dataset_mode fewshot_face_video \
+--adaptive_spade --warp_ref \
+--gpu_ids 0,1,2,3,4,5,6,7 --batchSize 2 --nThreads 0 --niter 50 \
+--n_shot 8 \
+--dataroot '/home/cxu-serve/p1/common/faceforensics/original_sequences/youtube/'

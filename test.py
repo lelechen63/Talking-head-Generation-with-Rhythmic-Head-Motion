@@ -41,8 +41,8 @@ for i, data in enumerate(dataset):
     data_list = [data['tgt_label'], data['tgt_image'], None, None, data['ref_label'], data['ref_image'], None, None]
     synthesized_image, _, _, _, _, _, ref_idx = model(data_list, ref_idx_fix=ref_idx_fix)
     
-    if ref_idx_fix is None:
-        ref_idx_fix = ref_idx
+    # if ref_idx_fix is None:
+    #     ref_idx_fix = ref_idx
 
     synthesized_image = util.tensor2im(synthesized_image)    
     tgt_image = util.tensor2im(data['tgt_image'])    

@@ -28,7 +28,7 @@ from data.keypoint2img import interpPoints, drawEdge
 
 import pdb
 
-class FaceForeDataset(BaseDataset):
+class VoxDataset(BaseDataset):
     @staticmethod
     def modify_commandline_options(parser, is_train):
         parser.add_argument('--label_nc', type=int, default=0, help='# of input label channels')
@@ -38,6 +38,7 @@ class FaceForeDataset(BaseDataset):
         parser.add_argument('--use_ft', action='store_true')
 
         return parser
+
 
     """ Dataset object used to access the pre-processed VoxCelebDataset """
     def initialize(self,opt):
@@ -76,6 +77,8 @@ class FaceForeDataset(BaseDataset):
             self.data = pkl.load(_file)
             _file.close()
 
+        self.data = self.get_files()
+
         print (len(self.data))
         
         img_params = self.get_img_params(self.output_shape)
@@ -92,6 +95,13 @@ class FaceForeDataset(BaseDataset):
             transforms.ToTensor()
         ])
 
+    def get_files(self):
+        files = []
+        for dirs in self.data:
+            video = os.path.join(self.root, "unzip/test_video", dirs[0], dirs[1], dirs[2]+"_aligned.mp4")
+            lmark = os.path.join(self.root, "unzip/test_video", dirs[0], dirs[1], dirs[2]+"_aligned.npy")
+        files.append([lmark, video])
+        return files
 
     def __len__(self):
         return len(self.data) 

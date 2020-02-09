@@ -54,10 +54,15 @@ for i, data in enumerate(dataset):
                             ('raw_image', util.tensor2im(fake_raw_img)),
                             ('warped_image', util.tensor2im(warped_img[0])),
                             ('flow', util.tensor2flow(flow[0])),
-                            ('weight', util.tensor2im(weight[0]))])
+                            ('weight', util.tensor2im(weight[0], normalize=False))])
 
     print('process image... %s' % img_path)
 
-    visualizer.save_images(webpage, visuals, img_path)
+    # for image save
+    img_path_base = os.path.join(img_path.split('/')[:-3])
+    img_save_name = img_save_name.split('/')[-3:]
+    img_save_name = "{}_{}_{}".format(img_save_name[0], img_save_name[1], img_save_name[2])
+
+    visualizer.save_images(webpage, visuals, os.path.join(img_path_base, img_save_name))
 
 webpage.save()

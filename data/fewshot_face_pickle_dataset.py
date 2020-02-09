@@ -38,7 +38,6 @@ class FewshotFacePickleDataset(BaseDataset):
         parser.add_argument('--seq_path', type=str, default='datasets/face/test_images/0001/', help='path to the driving sequence')        
         parser.add_argument('--ref_img_path', type=str, default='datasets/face/test_images/0002/', help='path to the reference image')
         parser.add_argument('--ref_img_id', type=str, default='0', help='indices of reference frames')
-        parser.add_argument('--example', action='store_true', help='get one frame from each video')
         return parser
 
     def initialize(self, opt):
@@ -51,10 +50,10 @@ class FewshotFacePickleDataset(BaseDataset):
             _file.close()
             self.I_paths, self.L_paths = [], []
             for paths in self.data:
-                # self.I_paths.append(paths[1])
-                # self.L_paths.append(paths[0])
-                self.I_paths.append(os.path.join(root, 'unzip/test_video', paths[0], paths[1], paths[2]+"_aligned.mp4"))
-                self.L_paths.append(os.path.join(root, 'unzip/test_video', paths[0], paths[1], paths[2]+"_aligned.npy"))
+                self.I_paths.append(paths[1])
+                self.L_paths.append(paths[0])
+                # self.I_paths.append(os.path.join(root, 'unzip/test_video', paths[0], paths[1], paths[2]+"_aligned.mp4"))
+                # self.L_paths.append(os.path.join(root, 'unzip/test_video', paths[0], paths[1], paths[2]+"_aligned.npy"))
             self.I_paths, self.L_paths = sorted(self.I_paths), sorted(self.L_paths)
         elif opt.example:
             _file = open(path.join(root, 'pickle','test_lmark2img.pkl'), "rb")
@@ -62,19 +61,20 @@ class FewshotFacePickleDataset(BaseDataset):
             _file.close()
             self.I_paths, self.L_paths = [], []
             for paths in self.data:
-                # self.I_paths.append(paths[1])
-                # self.L_paths.append(paths[0])
-                self.I_paths.append(os.path.join(root, 'unzip/test_video', paths[0], paths[1], paths[2]+"_aligned.mp4"))
-                self.L_paths.append(os.path.join(root, 'unzip/test_video', paths[0], paths[1], paths[2]+"_aligned.npy"))
+                self.I_paths.append(paths[1])
+                self.L_paths.append(paths[0])
+                # self.I_paths.append(os.path.join(root, 'unzip/test_video', paths[0], paths[1], paths[2]+"_aligned.mp4"))
+                # self.L_paths.append(os.path.join(root, 'unzip/test_video', paths[0], paths[1], paths[2]+"_aligned.npy"))
             self.I_paths, self.L_paths = sorted(self.I_paths), sorted(self.L_paths)
         else:
-            self.L_paths = sorted(make_dataset(opt.seq_path.replace('images', 'landmarks')))
-            self.I_paths = sorted(make_dataset(opt.seq_path))
+            self.I_paths = opt.seq_path
+            self.L_paths = opt.ref_img_path
 
-            self.ref_L_paths = sorted(make_dataset(opt.ref_img_path.replace('images', 'landmarks')))
-            self.ref_I_paths = sorted(make_dataset(opt.ref_img_path))
+            self.I_videos = cv2.VideoCapture(self.I_paths)
+            self.ref_I_videos = self.I_videos
+            self.ref_I_paths = self.I_paths
+            self.ref_L_paths = self.L_paths
 
-        pdb.set_trace()
 
         self.n_of_seqs = len(self.I_paths)                         # number of sequences to train 
         if opt.isTrain: print('%d sequences' % self.n_of_seqs)        
@@ -120,9 +120,10 @@ class FewshotFacePickleDataset(BaseDataset):
             L_paths, I_paths = self.L_paths, self.I_paths
             ref_L_paths, ref_I_paths = self.ref_L_paths, self.ref_I_paths
 
-            # read in videos
-            I_videos = cv2.VideoCapture(I_paths)
-            ref_I_videos = cv2.VideoCapture(ref_L_paths)
+            I_videos = self.I_videos
+            ref_I_videos = self.ref_I_videos
+
+        # opt.example = False
 
         n_frames_total, start_idx, t_step, ref_indices = get_video_params(opt, self.n_frames_total, int(I_videos.get(cv2.CAP_PROP_FRAME_COUNT)), index)
         w, h = opt.fineSize, int(opt.fineSize / opt.aspect_ratio)
@@ -131,6 +132,8 @@ class FewshotFacePickleDataset(BaseDataset):
         
         transform_L = get_transform(opt, img_params, method=Image.BILINEAR, normalize=False)        
         transform_I = get_transform(opt, img_params, color_aug=opt.isTrain)
+
+        # pdb.set_trace()
 
         ### read in reference images
         Lr, Ir = self.Lr, self.Ir
@@ -151,9 +154,9 @@ class FewshotFacePickleDataset(BaseDataset):
                 ref_img = self.crop(self.get_specific_frame(idx, ref_I_videos), ref_crop_coords)
                 Li = self.get_face_image(keypoints, transform_L, ref_img.size)
                 Ii = transform_I(ref_img)
-                Lr = self.concat_frame(Lr, Li.unsqueeze(0))
-                Ir = self.concat_frame(Ir, Ii.unsqueeze(0))
-            if not opt.isTrain:
+                Lr = self.concat_frame(Lr, Li.unsqueeze(0), ref=True)
+                Ir = self.concat_frame(Ir, Ii.unsqueeze(0), ref=True)
+            if not opt.isTrain and not opt.example:
                 self.Lr, self.Ir = Lr, Ir    
 
         ### read in target images  
@@ -168,7 +171,7 @@ class FewshotFacePickleDataset(BaseDataset):
             self.bw = max(1, (crop_coords[1]-crop_coords[0]) // 256)
 
             # get keypoints for all frames
-            end_idx = (start_idx + n_frames_total * t_step) if opt.isTrain else (start_idx + opt.how_many)
+            end_idx = (start_idx + n_frames_total * t_step) if (opt.isTrain or opt.example) else (start_idx + opt.how_many)
             L_points = tot_points[start_idx : end_idx : t_step]
             crop_coords = crop_coords if self.fix_crop_pos else None
             all_keypoints = self.get_all_key_points(L_points, crop_coords, is_ref=False)
@@ -184,14 +187,14 @@ class FewshotFacePickleDataset(BaseDataset):
 
         L, I = self.L, self.I
         for t in range(n_frames_total):
-            ti = t if opt.isTrain else start_idx + t
+            ti = t if (opt.isTrain or opt.example) else start_idx + t
             keypoints = all_keypoints[ti]           
             img = self.crop(self.get_specific_frame(start_idx + t * t_step, I_videos), crop_coords)
             Lt = self.get_face_image(keypoints, transform_L, img.size)
             It = transform_I(img)
-            L = self.concat_frame(L, Lt.unsqueeze(0))                                
-            I = self.concat_frame(I, It.unsqueeze(0))
-        if not opt.isTrain:
+            L = self.concat_frame(L, Lt.unsqueeze(0), ref=False)                                
+            I = self.concat_frame(I, It.unsqueeze(0), ref=False)
+        if not opt.isTrain and not opt.example:
             self.L, self.I = L, I        
         seq = path.basename(path.dirname(opt.ref_img_path)) + '-' + opt.ref_img_id + '_' + path.basename(path.dirname(opt.seq_path))
 
@@ -321,6 +324,8 @@ class FewshotFacePickleDataset(BaseDataset):
         return frame
 
     def __len__(self):        
+        # if not self.opt.isTrain: return len(self.L_paths)
+        if not self.opt.isTrain and not self.opt.example: return int(self.I_videos.get(cv2.CAP_PROP_FRAME_COUNT))
         if not self.opt.isTrain: return len(self.L_paths)
         return max(10000, max([len(A) for A in self.L_paths]))  # max number of frames in the training sequences
 

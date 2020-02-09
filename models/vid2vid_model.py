@@ -171,7 +171,7 @@ class Vid2VidModel(BaseModel):
             self.finetune(ref_labels, ref_images)
 
         with torch.no_grad():            
-            fake_image, flow, weight, fake_raw_image, warped_image, _, _, atn_score, ref_idx = self.netG(tgt_label_valid, 
+            fake_image, flow, weight, fake_raw_image, warped_image, atn_score, ref_idx = self.netG(tgt_label_valid, 
                 ref_labels_valid, ref_images, prevs, t=self.t, ref_idx_fix=ref_idx_fix)
 
             ref_label_valid, ref_label, ref_image = self.netG.pick_ref([ref_labels_valid, ref_labels, ref_images], ref_idx)        

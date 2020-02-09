@@ -89,6 +89,7 @@ class FaceForeDataset(BaseDataset):
 
         self.transform_L = transforms.Compose([
             transforms.Lambda(lambda img: self.__scale_image(img, img_params['new_size'], Image.BILINEAR)),
+            transforms.Lambda(lambda img: self.__flip(img, img_params['flip'])),
             transforms.ToTensor()
         ])
 
@@ -239,11 +240,12 @@ class FaceForeDataset(BaseDataset):
         # crop
         img = mmcv.bgr2rgb(image)
         img = self.crop(Image.fromarray(img), crop_coords)
+        crop_size = img.size
 
         # transform
         img = transform_I(img)
 
-        return img
+        return img, crop_size
 
     # get scale for random crop
     def define_scale(self, scale_max = 0.2):
@@ -261,8 +263,8 @@ class FaceForeDataset(BaseDataset):
         result_lmarks = []
         result_images = []
         for choice in choice_ids:
-            lmark = self.get_keypoints(lmarks[choice], self.transform_L, self.output_shape, crop_coords, bw)
-            image = self.get_image(images[choice], self.transform, self.output_shape, crop_coords)
+            image, crop_size = self.get_image(images[choice], self.transform, self.output_shape, crop_coords)
+            lmark = self.get_keypoints(lmarks[choice], self.transform_L, crop_size, crop_coords, bw)
 
             result_lmarks.append(lmark)
             result_images.append(image)

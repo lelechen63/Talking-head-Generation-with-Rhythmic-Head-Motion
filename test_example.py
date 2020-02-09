@@ -41,21 +41,23 @@ for i, data in enumerate(dataset):
     if i >= opt.how_many or i >= len(dataset): break
     img_path = data['path']   
     data_list = [data['tgt_label'], data['tgt_image'], None, None, data['ref_label'], data['ref_image'], None, None]
-    synthesized_image, _, _, _, _, _, ref_idx = model(data_list, ref_idx_fix=ref_idx_fix)
+    synthesized_image, fake_raw_img, warped_img, flow, weight, _, ref_idx = model(data_list, ref_idx_fix=ref_idx_fix)
     
-    # if ref_idx_fix is None:
-    #     ref_idx_fix = ref_idx
+    # synthesized_image = util.tensor2im(synthesized_image)    
+    # tgt_image = util.tensor2im(data['tgt_image'])    
+    # ref_image = util.tensor2im(data['ref_image'], tile=True)
+    # pdb.set_trace()
+    visuals = OrderedDict([ ('target_label', util.tensor2im(data['tgt_label'])),
+                            ('synthesized_image', util.tensor2im(synthesized_image)),
+                            ('target_image', util.tensor2im(data['tgt_image'])),
+                            ('ref_image', util.tensor2im(data['ref_image'])),
+                            ('raw_image', util.tensor2im(fake_raw_img)),
+                            ('warped_image', util.tensor2im(warped_img[0])),
+                            ('flow', util.tensor2flow(flow[0])),
+                            ('weight', util.tensor2im(weight[0]))])
 
-    pdb.set_trace()
-
-    synthesized_image = util.tensor2im(synthesized_image)    
-    tgt_image = util.tensor2im(data['tgt_image'])    
-    ref_image = util.tensor2im(data['ref_image'], tile=True)    
-    seq = data['seq'][0]
-    visual_list = [ref_image, tgt_image, synthesized_image]        
-    visuals = OrderedDict([(seq, np.hstack(visual_list)),    					   
-                           (seq + '/synthesized', synthesized_image),
-                           (seq + '/ref_image', ref_image if i == 0 else None),
-                          ])
     print('process image... %s' % img_path)
+
     visualizer.save_images(webpage, visuals, img_path)
+
+webpage.save()

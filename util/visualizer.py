@@ -15,6 +15,8 @@ from util import util
 from util import html
 from util.distributed import master_only_print as print
 
+import pdb
+
 class Visualizer():
     def __init__(self, opt):
         # self.opt = opt
@@ -161,6 +163,7 @@ class Visualizer():
                     webpage.add_images(ims[:num], txts[:num], links[:num], width=self.win_size)
                     webpage.add_images(ims[num:], txts[num:], links[num:], width=self.win_size)
             webpage.save()
+
 
     # errors: dictionary of error labels and values
     def plot_current_errors(self, errors, step):

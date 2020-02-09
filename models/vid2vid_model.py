@@ -157,7 +157,11 @@ class Vid2VidModel(BaseModel):
     ########################################### inference ###########################################
     def inference(self, tgt_label, ref_labels, ref_images, ref_idx_fix):
         opt = self.opt
-        if not hasattr(self, 'prevs') or self.prevs is None:
+        if not self.temporal:
+            print('first image')
+            self.prevs = prevs = [None, None]
+            self.t = 0  
+        elif not hasattr(self, 'prevs') or self.prevs is None:
             print('first image')            
             self.prevs = prevs = [None, None]
             self.t = 0

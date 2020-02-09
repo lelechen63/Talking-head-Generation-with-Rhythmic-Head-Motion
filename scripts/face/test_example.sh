@@ -19,4 +19,4 @@ test_model(){
     --n_shot 8
 }
 
-test_model 0 50 400
+test_model 0 165 400

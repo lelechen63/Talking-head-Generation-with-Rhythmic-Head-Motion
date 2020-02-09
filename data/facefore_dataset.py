@@ -36,6 +36,10 @@ class FaceForeDataset(BaseDataset):
         parser.add_argument('--aspect_ratio', type=float, default=1)        
         parser.add_argument('--no_upper_face', action='store_true', help='do not add upper face')
         parser.add_argument('--use_ft', action='store_true')
+        parser.add_argument('--dataset_name', type='str', help='face or vox')
+
+        # for reference
+        parser.add_argument('--ref_img_id', type=str)
 
         return parser
 
@@ -78,14 +82,23 @@ class FaceForeDataset(BaseDataset):
 
         print (len(self.data))
         
+        # get transform for image and landmark
         img_params = self.get_img_params(self.output_shape)
-        self.transform = transforms.Compose([
-            transforms.Lambda(lambda img: self.__scale_image(img, img_params['new_size'], Image.BICUBIC)),
-            transforms.Lambda(lambda img: self.__color_aug(img, img_params['color_aug'])),
-            transforms.Lambda(lambda img: self.__flip(img, img_params['flip'])),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
-        ])
+        if opt.isTrain:
+            self.transform = transforms.Compose([
+                transforms.Lambda(lambda img: self.__scale_image(img, img_params['new_size'], Image.BICUBIC)),
+                transforms.Lambda(lambda img: self.__color_aug(img, img_params['color_aug'])),
+                transforms.Lambda(lambda img: self.__flip(img, img_params['flip'])),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
+            ])
+        else:
+            self.transform = transforms.Compose([
+                transforms.Lambda(lambda img: self.__scale_image(img, img_params['new_size'], Image.BICUBIC)),
+                transforms.Lambda(lambda img: self.__flip(img, img_params['flip'])),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
+            ])
 
         self.transform_L = transforms.Compose([
             transforms.Lambda(lambda img: self.__scale_image(img, img_params['new_size'], Image.BILINEAR)),
@@ -118,8 +131,15 @@ class FaceForeDataset(BaseDataset):
         return 'FaceForensicsLmark2rgbDataset'
 
     def __getitem__(self, index):
-        video_path = self.data[index][1] #os.path.join(self.root, 'pretrain', v_id[0] , v_id[1][:5] + '_crop.mp4'  )
-        lmark_path  = self.data[index][0]  #= os.path.join(self.root, 'pretrain', v_id[0] , v_id[1]  )
+        if self.opt.dataset_name == 'face':
+            video_path = self.data[index][1] #os.path.join(self.root, 'pretrain', v_id[0] , v_id[1][:5] + '_crop.mp4'  )
+            lmark_path = self.data[index][0]  #= os.path.join(self.root, 'pretrain', v_id[0] , v_id[1]  )
+        elif self.opt.dataset_name == 'vox':
+            paths = self.data[index]
+            video_path = os.path.join(self.root, 'unzip/test_video', paths[0], paths[1], paths[2]+"_aligned.mp4")
+            lmark_path = os.path.join(self.root, 'unzip/test_video', paths[0], paths[1], paths[2]+"_aligned.mp4")
+                # self.I_paths.append(os.path.join(root, 'unzip/test_video', paths[0], paths[1], paths[2]+"_aligned.mp4"))
+                # self.L_paths.append(os.path.join(root, 'unzip/test_video', paths[0], paths[1], paths[2]+"_aligned.npy"))
 
         # read in data
         lmarks = np.load(lmark_path)#[:,:,:-1]
@@ -152,36 +172,29 @@ class FaceForeDataset(BaseDataset):
 
 
     # get index for target and reference
-    def get_image_index(self, n_frames_total, cur_seq_len, max_t_step=4):
-        if self.opt.isTrain:                
-            n_frames_total = min(cur_seq_len, n_frames_total)             # total number of frames to load
-            max_t_step = min(max_t_step, (cur_seq_len-1) // max(1, (n_frames_total-1)))        
-            t_step = np.random.randint(max_t_step) + 1                    # spacing between neighboring sampled frames                
-            
-            offset_max = max(1, cur_seq_len - (n_frames_total-1)*t_step)  # maximum possible frame index for the first frame
+    def get_image_index(self, n_frames_total, cur_seq_len, max_t_step=4):            
+        n_frames_total = min(cur_seq_len, n_frames_total)             # total number of frames to load
+        max_t_step = min(max_t_step, (cur_seq_len-1) // max(1, (n_frames_total-1)))        
+        t_step = np.random.randint(max_t_step) + 1                    # spacing between neighboring sampled frames                
+        
+        offset_max = max(1, cur_seq_len - (n_frames_total-1)*t_step)  # maximum possible frame index for the first frame
 
-            start_idx = np.random.randint(offset_max)                 # offset for the first frame to load        
+        start_idx = np.random.randint(offset_max)                 # offset for the first frame to load    
+
+        # indices for target
+        target_ids = [start_idx + step * t_step for step in range(self.n_frames_total)]
+        if type(target_ids) == list:
+            target_ids = target_ids[0]
+
+        # indices for reference frames
+        if self.opt.isTrain:
             max_range, min_range = 300, 14                            # range for possible reference frames
-            
-            # indices for reference frames
             ref_range = list(range(max(0, start_idx - max_range), max(1, start_idx - min_range))) \
                     + list(range(min(start_idx + min_range, cur_seq_len - 1), min(start_idx + max_range, cur_seq_len)))
             ref_indices = np.random.choice(ref_range, size=self.num_frames)   
-
-            # indices for target
-            target_ids = [start_idx + step * t_step for step in range(self.n_frames_total)]
-
         else:
-            n_frames_total = 1
-            t_step = 1        
             ref_indices = self.opt.ref_img_id.split(',')
             ref_indices = [int(i) for i in ref_indices]
-            target_ids = np.random.randint(cur_seq_len)
-            while target_ids in ref_indices:
-                target_ids = np.random.randint(cur_seq_len)
-
-        if type(target_ids) == list:
-            target_ids = target_ids[0]
 
         return ref_indices, target_ids
 

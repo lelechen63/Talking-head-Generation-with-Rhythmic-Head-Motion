@@ -26,13 +26,11 @@ import pdb
 class FewshotFacePickleDataset(BaseDataset):
     @staticmethod
     def modify_commandline_options(parser, is_train):
-        # parser.set_defaults(dataroot='datasets/face/')
-        # parser.set_defaults(dataroot='/home/cxu-serve/p1/common/faceforensics/original_sequences/youtube/cropped/train_file')
         parser.add_argument('--train_split', type=int, default=800, help='split point of training and testing')
         parser.add_argument('--label_nc', type=int, default=0, help='# of input label channels')
         parser.add_argument('--input_nc', type=int, default=1, help='# of input image channels')
         parser.add_argument('--aspect_ratio', type=float, default=1)        
-        parser.add_argument('--no_upper_face', action='store_true', help='do not add upper face')        
+        parser.add_argument('--no_upper_face', action='store_true', help='do not add upper face')
 
         ### for inference        
         parser.add_argument('--seq_path', type=str, default='datasets/face/test_images/0001/', help='path to the driving sequence')        

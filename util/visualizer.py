@@ -198,7 +198,7 @@ class Visualizer():
             if image_numpy is None: continue
             ext = 'png' if 'label' in label else 'jpg'
             image_name = os.path.join(label, '%s.%s' % (name, ext))
-            save_path = os.path.join(image_dir, image_name)
+            save_path = os.path.join(image_dir, 'images', image_name)
             util.save_image(image_numpy, save_path, create_dir=True)
 
             ims.append(image_name)

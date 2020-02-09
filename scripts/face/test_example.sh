@@ -11,6 +11,7 @@ test_model(){
     --adaptive_spade \
     --warp_ref \
     --example \
+    --n_frames_G 1 \
     --which_epoch $2 \
     --how_many $3 \
     --nThreads 0 \

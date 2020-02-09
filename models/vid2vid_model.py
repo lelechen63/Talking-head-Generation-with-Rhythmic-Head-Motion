@@ -170,13 +170,16 @@ class Vid2VidModel(BaseModel):
         if opt.finetune and self.t == 0:
             self.finetune(ref_labels, ref_images)
 
-        with torch.no_grad():            
+        with torch.no_grad():
+            assert self.t == 0
+
             fake_image, flow, weight, fake_raw_image, warped_image, atn_score, ref_idx = self.netG(tgt_label_valid, 
                 ref_labels_valid, ref_images, prevs, t=self.t, ref_idx_fix=ref_idx_fix)
 
             ref_label_valid, ref_label, ref_image = self.netG.pick_ref([ref_labels_valid, ref_labels, ref_images], ref_idx)        
             
-            self.prevs = self.concat_prev(self.prevs, [tgt_label_valid, fake_image])            
+            if not self.temporal:
+                self.prevs = self.concat_prev(self.prevs, [tgt_label_valid, fake_image])            
             
         return fake_image, fake_raw_image, warped_image, flow, weight, atn_score, ref_idx
 

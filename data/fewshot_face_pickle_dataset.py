@@ -48,22 +48,20 @@ class FewshotFacePickleDataset(BaseDataset):
             _file.close()
             self.I_paths, self.L_paths = [], []
             for paths in self.data:
-                self.I_paths.append(paths[1])
-                self.L_paths.append(paths[0])
-                # self.I_paths.append(os.path.join(root, 'unzip/test_video', paths[0], paths[1], paths[2]+"_aligned.mp4"))
-                # self.L_paths.append(os.path.join(root, 'unzip/test_video', paths[0], paths[1], paths[2]+"_aligned.npy"))
-            self.I_paths, self.L_paths = sorted(self.I_paths), sorted(self.L_paths)
+                # self.I_paths.append(paths[1])
+                # self.L_paths.append(paths[0])
+                self.I_paths.append(os.path.join(root, 'unzip/test_video', paths[0], paths[1], paths[2]+"_aligned.mp4"))
+                self.L_paths.append(os.path.join(root, 'unzip/test_video', paths[0], paths[1], paths[2]+"_aligned.npy"))
         elif opt.example:
             _file = open(path.join(root, 'pickle','test_lmark2img.pkl'), "rb")
             self.data = pkl.load(_file)
             _file.close()
             self.I_paths, self.L_paths = [], []
             for paths in self.data:
-                self.I_paths.append(paths[1])
-                self.L_paths.append(paths[0])
-                # self.I_paths.append(os.path.join(root, 'unzip/test_video', paths[0], paths[1], paths[2]+"_aligned.mp4"))
-                # self.L_paths.append(os.path.join(root, 'unzip/test_video', paths[0], paths[1], paths[2]+"_aligned.npy"))
-            self.I_paths, self.L_paths = sorted(self.I_paths), sorted(self.L_paths)
+                # self.I_paths.append(paths[1])
+                # self.L_paths.append(paths[0])
+                self.I_paths.append(os.path.join(root, 'unzip/test_video', paths[0], paths[1], paths[2]+"_aligned.mp4"))
+                self.L_paths.append(os.path.join(root, 'unzip/test_video', paths[0], paths[1], paths[2]+"_aligned.npy"))
         else:
             self.I_paths = opt.seq_path
             self.L_paths = opt.ref_img_path

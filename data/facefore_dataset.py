@@ -36,7 +36,7 @@ class FaceForeDataset(BaseDataset):
         parser.add_argument('--aspect_ratio', type=float, default=1)        
         parser.add_argument('--no_upper_face', action='store_true', help='do not add upper face')
         parser.add_argument('--use_ft', action='store_true')
-        parser.add_argument('--dataset_name', type='str', help='face or vox')
+        parser.add_argument('--dataset_name', type=str, help='face or vox')
 
         # for reference
         parser.add_argument('--ref_img_id', type=str)
@@ -55,7 +55,7 @@ class FaceForeDataset(BaseDataset):
         """
         self.output_shape = tuple([opt.loadSize, opt.loadSize])
         self.num_frames = opt.n_shot
-        self.n_frames_total = opt.n_frames_G - 1
+        self.n_frames_total = opt.n_frames_G
         self.opt = opt
         self.root  = opt.dataroot
         self.fix_crop_pos = True
@@ -72,7 +72,7 @@ class FaceForeDataset(BaseDataset):
                     ]
        
         if opt.isTrain:
-            _file = open(os.path.join(self.root, 'pickle','train_lmark2img.pkl'), "rb")
+            _file = open(os.path.join(self.root, 'pickle','dev_lmark2img.pkl'), "rb")
             self.data = pkl.load(_file)
             _file.close()
         else :
@@ -137,9 +137,7 @@ class FaceForeDataset(BaseDataset):
         elif self.opt.dataset_name == 'vox':
             paths = self.data[index]
             video_path = os.path.join(self.root, 'unzip/test_video', paths[0], paths[1], paths[2]+"_aligned.mp4")
-            lmark_path = os.path.join(self.root, 'unzip/test_video', paths[0], paths[1], paths[2]+"_aligned.mp4")
-                # self.I_paths.append(os.path.join(root, 'unzip/test_video', paths[0], paths[1], paths[2]+"_aligned.mp4"))
-                # self.L_paths.append(os.path.join(root, 'unzip/test_video', paths[0], paths[1], paths[2]+"_aligned.npy"))
+            lmark_path = os.path.join(self.root, 'unzip/test_video', paths[0], paths[1], paths[2]+"_aligned.npy")
 
         # read in data
         lmarks = np.load(lmark_path)#[:,:,:-1]
@@ -156,9 +154,9 @@ class FaceForeDataset(BaseDataset):
         ref_images, ref_lmarks = self.prepare_datas(real_video, lmarks, input_indexs)
 
         # get target
-        tgt_images, tgt_lmarks = self.prepare_datas(real_video, lmarks, [target_id])
+        tgt_images, tgt_lmarks = self.prepare_datas(real_video, lmarks, target_id)
 
-        target_img_path  = os.path.join(video_path[:-4] , '%05d.png'%target_id  )
+        target_img_path  = [os.path.join(video_path[:-4] , '%05d.png'%t_id) for t_id in target_id]
 
         ref_images = torch.cat([ref_img.unsqueeze(0) for ref_img in ref_images], axis=0)
         ref_lmarks = torch.cat([ref_lmark.unsqueeze(0) for ref_lmark in ref_lmarks], axis=0)
@@ -183,8 +181,6 @@ class FaceForeDataset(BaseDataset):
 
         # indices for target
         target_ids = [start_idx + step * t_step for step in range(self.n_frames_total)]
-        if type(target_ids) == list:
-            target_ids = target_ids[0]
 
         # indices for reference frames
         if self.opt.isTrain:

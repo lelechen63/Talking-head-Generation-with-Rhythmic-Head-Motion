@@ -42,6 +42,9 @@ class FewshotFacePickleDataset(BaseDataset):
         self.opt = opt
         root = opt.dataroot        
 
+        # debug
+        opt.no_upper_face = True
+
         if opt.isTrain:
             _file = open(path.join(root, 'pickle','train_lmark2img.pkl'), "rb")
             self.data = pkl.load(_file)
@@ -106,6 +109,11 @@ class FewshotFacePickleDataset(BaseDataset):
         elif opt.example:
             L_paths = self.L_paths[index]
             I_paths = self.I_paths[index]
+
+            # debug
+            L_paths = os.path.join(opt.dataroot, 'unzip/test_video', 'id00017/lZf1RB6l5Gs/00152_aligned.npy')
+            I_paths = os.path.join(opt.dataroot, 'unzip/test_video', 'id00017/lZf1RB6l5Gs/00152_aligned.mp4')
+
             ref_L_paths, ref_I_paths = L_paths, I_paths
 
             # read in videos
@@ -121,7 +129,8 @@ class FewshotFacePickleDataset(BaseDataset):
 
         # opt.example = False
 
-        n_frames_total, start_idx, t_step, ref_indices = get_video_params(opt, self.n_frames_total, int(I_videos.get(cv2.CAP_PROP_FRAME_COUNT)), index)
+        n_frames_total, start_idx, t_step, ref_indices = get_video_params(opt, self.n_frames_total, int(I_videos.get(cv2.CAP_PROP_FRAME_COUNT))-1, index)
+
         w, h = opt.fineSize, int(opt.fineSize / opt.aspect_ratio)
         img_params = get_img_params(opt, (w, h))        
         is_first_frame = opt.isTrain or index == 0 or opt.example
@@ -166,11 +175,12 @@ class FewshotFacePickleDataset(BaseDataset):
                 else: self.crop_size = crop_coords[1] - crop_coords[0], crop_coords[3] - crop_coords[2]
             self.bw = max(1, (crop_coords[1]-crop_coords[0]) // 256)
 
-            # get keypoints for all frames
+            # get keypoints for all framess
             end_idx = (start_idx + n_frames_total * t_step) if (opt.isTrain or opt.example) else (start_idx + opt.how_many)
             L_points = tot_points[start_idx : end_idx : t_step]
+
             crop_coords = crop_coords if self.fix_crop_pos else None
-            all_keypoints = self.get_all_key_points(L_points, crop_coords, is_ref=False)
+            all_keypoints = self.get_all_key_points(L_points, crop_coords, is_ref=False)        # 1
             if not opt.isTrain: self.all_keypoints = all_keypoints
         else:
             # use same crop coordinates as previous frames
@@ -182,10 +192,10 @@ class FewshotFacePickleDataset(BaseDataset):
             all_keypoints = self.all_keypoints
 
         L, I = self.L, self.I
-        for t in range(n_frames_total):
-            ti = t if (opt.isTrain or opt.example) else start_idx + t
+        for t in range(n_frames_total):         # 1
+            ti = t if (opt.isTrain or opt.example) else start_idx + t           # 0
             keypoints = all_keypoints[ti]           
-            img = self.crop(self.get_specific_frame(start_idx + t * t_step, I_videos), crop_coords)
+            img = self.crop(self.get_specific_frame(start_idx + t * t_step, I_videos), crop_coords)         # 52
             Lt = self.get_face_image(keypoints, transform_L, img.size)
             It = transform_I(img)
             L = self.concat_frame(L, Lt.unsqueeze(0), ref=False)                                
@@ -199,7 +209,7 @@ class FewshotFacePickleDataset(BaseDataset):
         return return_list
 
     def get_all_key_points(self, keypoints, crop_coords, is_ref):
-        all_keypoints = [self.get_keypoints(points, crop_coords) for points in keypoints]  
+        all_keypoints = [self.get_keypoints(points, crop_coords) for points in keypoints]
         if not self.opt.isTrain or self.n_frames_total > 4:
             self.normalize_faces(all_keypoints, is_ref=is_ref)
         return all_keypoints
@@ -321,7 +331,7 @@ class FewshotFacePickleDataset(BaseDataset):
 
     def __len__(self):        
         # if not self.opt.isTrain: return len(self.L_paths)
-        if not self.opt.isTrain and not self.opt.example: return int(self.I_videos.get(cv2.CAP_PROP_FRAME_COUNT))
+        if not self.opt.isTrain and not self.opt.example: return int(self.I_videos.get(cv2.CAP_PROP_FRAME_COUNT))-1
         if not self.opt.isTrain: return len(self.L_paths)
         return max(10000, max([len(A) for A in self.L_paths]))  # max number of frames in the training sequences
 

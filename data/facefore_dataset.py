@@ -80,6 +80,10 @@ class FaceForeDataset(BaseDataset):
             self.data = pkl.load(_file)
             _file.close()
 
+        if opt.isTrain:
+            self.video_bag = 'unzip/dev_video'
+        else:
+            self.video_bag = 'unzip/test_video'
         print (len(self.data))
         
         # get transform for image and landmark
@@ -136,8 +140,8 @@ class FaceForeDataset(BaseDataset):
             lmark_path = self.data[index][0]  #= os.path.join(self.root, 'pretrain', v_id[0] , v_id[1]  )
         elif self.opt.dataset_name == 'vox':
             paths = self.data[index]
-            video_path = os.path.join(self.root, 'unzip/test_video', paths[0], paths[1], paths[2]+"_aligned.mp4")
-            lmark_path = os.path.join(self.root, 'unzip/test_video', paths[0], paths[1], paths[2]+"_aligned.npy")
+            video_path = os.path.join(self.root, self.video_bag, paths[0], paths[1], paths[2]+"_aligned.mp4")
+            lmark_path = os.path.join(self.root, self.video_bag, paths[0], paths[1], paths[2]+"_aligned.npy")
 
         # read in data
         lmarks = np.load(lmark_path)#[:,:,:-1]

@@ -143,9 +143,6 @@ class FaceForeDataset(BaseDataset):
             video_path = os.path.join(self.root, self.video_bag, paths[0], paths[1], paths[2]+"_aligned.mp4")
             lmark_path = os.path.join(self.root, self.video_bag, paths[0], paths[1], paths[2]+"_aligned.npy")
 
-        video_path = os.path.join(self.root, self.video_bag, "id01224/NDUOaWdMVbs/00147_aligned.mp4")
-        lmark_path = os.path.join(self.root, self.video_bag, "id01224/NDUOaWdMVbs/00147_aligned.npy")
-
         # read in data
         lmarks = np.load(lmark_path)#[:,:,:-1]
         real_video = self.read_videos(video_path)

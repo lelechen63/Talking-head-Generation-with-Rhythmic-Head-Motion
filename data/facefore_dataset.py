@@ -72,7 +72,7 @@ class FaceForeDataset(BaseDataset):
                     ]
        
         if opt.isTrain:
-            _file = open(os.path.join(self.root, 'pickle','dev_lmark2img.pkl'), "rb")
+            _file = open(os.path.join(self.root, 'pickle','test_lmark2img.pkl'), "rb")
             self.data = pkl.load(_file)
             _file.close()
         else :
@@ -81,7 +81,7 @@ class FaceForeDataset(BaseDataset):
             _file.close()
 
         if opt.isTrain:
-            self.video_bag = 'unzip/dev_video'
+            self.video_bag = 'unzip/test_video'
         else:
             self.video_bag = 'unzip/test_video'
         print (len(self.data))
@@ -143,14 +143,23 @@ class FaceForeDataset(BaseDataset):
             video_path = os.path.join(self.root, self.video_bag, paths[0], paths[1], paths[2]+"_aligned.mp4")
             lmark_path = os.path.join(self.root, self.video_bag, paths[0], paths[1], paths[2]+"_aligned.npy")
 
+        video_path = os.path.join(self.root, self.video_bag, "id01224/NDUOaWdMVbs/00147_aligned.mp4")
+        lmark_path = os.path.join(self.root, self.video_bag, "id01224/NDUOaWdMVbs/00147_aligned.npy")
+
         # read in data
         lmarks = np.load(lmark_path)#[:,:,:-1]
         real_video = self.read_videos(video_path)
+
+        # clean data
+        cor_num = self.clean_lmarks(lmarks)
+        lmarks = lmarks[cor_num]
+        real_video = np.asarray(real_video)[cor_num]
+
         v_length = len(real_video)
 
         # sample index of frames for embedding network
         input_indexs, target_id = self.get_image_index(self.n_frames_total, v_length)
-
+    
         # define scale
         self.define_scale()
 
@@ -171,6 +180,17 @@ class FaceForeDataset(BaseDataset):
         'tgt_image': tgt_images,  'target_id': target_id}
 
         return input_dic
+
+    # clean landmarks and images
+    def clean_lmarks(self, lmarks):
+        min_x, max_x = lmarks[:,:,0].min(axis=1).astype(int), lmarks[:,:,0].max(axis=1).astype(int)
+        min_y, max_y = lmarks[:,:,1].min(axis=1).astype(int), lmarks[:,:,1].max(axis=1).astype(int)
+
+        check_lmarks = np.logical_and((min_x != max_x), (min_y != max_y))
+
+        correct_nums = np.where(check_lmarks)[0]
+
+        return correct_nums
 
 
     # get index for target and reference
@@ -214,6 +234,7 @@ class FaceForeDataset(BaseDataset):
     # plot landmarks
     def get_face_image(self, keypoints, transform_L, size, bw):   
         w, h = size
+
         edge_len = 3  # interpolate 3 keypoints to form a curve when drawing edges
         # edge map for face region from keypoints
         im_edges = np.zeros((h, w), np.uint8) # edge map for all edges
@@ -295,7 +316,8 @@ class FaceForeDataset(BaseDataset):
         if self.opt.isTrain and self.fix_crop_pos:
             offset_max = 0.2
             offset = [np.random.uniform(-offset_max, offset_max), 
-                      np.random.uniform(-offset_max, offset_max)]             
+                      np.random.uniform(-offset_max, offset_max)]
+
             w *= self.scale[0]
             h *= self.scale[1]
             x_cen += int(offset[0]*w)

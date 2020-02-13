@@ -9,6 +9,8 @@ import torch.distributed as dist
 from data.base_data_loader import BaseDataLoader
 import data
 
+import pdb
+
 class CustomDatasetDataLoader(BaseDataLoader):
     def name(self):
         return 'CustomDatasetDataLoader'
@@ -24,8 +26,8 @@ class CustomDatasetDataLoader(BaseDataLoader):
         self.dataloader = torch.utils.data.DataLoader(
             self.dataset,
             batch_size=opt.batchSize,
-            # shuffle=(sampler is None) and not opt.serial_batches,
-            shuffle=False,
+            shuffle=(sampler is None) and not opt.serial_batches,
+            # shuffle=True,
             sampler=sampler,
             pin_memory=True,
             num_workers=int(opt.nThreads),

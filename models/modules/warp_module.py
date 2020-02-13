@@ -1,10 +1,13 @@
-from models.networks.flow_generator import FlowGenerator
+from models.modules.flow_generator import FlowGenerator
 from models.networks.base_network import BaseNetwork
+
+import pdb
 
 class WarpModule(BaseNetwork):
     def __init__(self, opt, n_frames_G):
+        super().__init__()
         self.opt = opt
-        self.warp_ref = opt.opt.warp_ref
+        self.warp_ref = opt.warp_ref
         self.warp_prev = False
 
         # warp reference
@@ -38,13 +41,13 @@ class WarpModule(BaseNetwork):
             # select most similar reference image index by ref_idx
             ref_lmark, ref_img = self.pick_ref([ref_lmarks, ref_imgs], ref_idx)
             
-            flow_ref, weight_ref = self.flow_network_ref(label, label_ref, img_ref, for_ref=True)
-            img_ref_warp = self.resample(img_ref, flow_ref)
+            flow_ref, weight_ref = self.flow_network_ref(tgt_lmark, ref_lmark, ref_img, for_ref=True)
+            img_ref_warp = self.resample(ref_img, flow_ref)
             flow[0], weight[0], img_warp[0] = flow_ref, weight_ref, img_ref_warp[:,:3]
 
         if self.warp_prev and has_prev:
-            flow_prev, weight_prev = self.flow_network_temp(label, label_prev, img_prev)
-            img_prev_warp = self.resample(img_prev[:,-3:], flow_prev)            
+            flow_prev, weight_prev = self.flow_network_temp(tgt_lmark, prev_lmark, prev_img)
+            img_prev_warp = self.resample(prev_img[:,-3:], flow_prev)            
             flow[1], weight[1], img_warp[1] = flow_prev, weight_prev, img_prev_warp        
 
         return flow, weight, img_warp    

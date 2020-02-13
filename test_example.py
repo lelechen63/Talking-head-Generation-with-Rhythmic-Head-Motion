@@ -41,16 +41,13 @@ for i, data in enumerate(dataset):
     if i >= opt.how_many or i >= len(dataset): break
     img_path = data['path']   
     data_list = [data['tgt_label'], data['tgt_image'], None, None, data['ref_label'], data['ref_image'], None, None]
-    synthesized_image, fake_raw_img, warped_img, flow, weight, _, ref_idx = model(data_list, ref_idx_fix=ref_idx_fix)
+    synthesized_image, fake_raw_img, warped_img, flow, weight, _, _, ref_label, ref_image = model(data_list, ref_idx_fix=ref_idx_fix)
     
-    # synthesized_image = util.tensor2im(synthesized_image)    
-    # tgt_image = util.tensor2im(data['tgt_image'])    
-    # ref_image = util.tensor2im(data['ref_image'], tile=True)
-    # pdb.set_trace()
-    visuals = OrderedDict([ ('target_label', util.tensor2im(data['tgt_label'])),
+    visuals = OrderedDict([ ('target_lmark', util.tensor2im(data['tgt_label'])),
                             ('synthesized_image', util.tensor2im(synthesized_image)),
                             ('target_image', util.tensor2im(data['tgt_image'])),
-                            ('ref_image', util.tensor2im(data['ref_image'])),
+                            ('ref_lmark', util.tensor2im(ref_label)),
+                            ('ref_image', util.tensor2im(ref_image)),
                             ('raw_image', util.tensor2im(fake_raw_img)),
                             ('warped_image', util.tensor2im(warped_img[0])),
                             ('flow', util.tensor2flow(flow[0])),
@@ -59,10 +56,10 @@ for i, data in enumerate(dataset):
     print('process image... %s' % img_path)
 
     # for image save
-    img_path_base = os.path.join(img_path.split('/')[:-3])
-    img_save_name = img_save_name.split('/')[-3:]
-    img_save_name = "{}_{}_{}".format(img_save_name[0], img_save_name[1], img_save_name[2])
+    img_path_base = os.path.join(*(img_path[0].split('/')[:-3]))
+    img_save_name = img_path[0].split('/')[-3:]
+    img_save_name = "{}_{}_{}_{}".format(img_save_name[0], img_save_name[1], data['index'][0].tolist(), img_save_name[2])
 
-    visualizer.save_images(webpage, visuals, os.path.join(img_path_base, img_save_name))
+    visualizer.save_images(webpage, visuals, [os.path.join(img_path_base, img_save_name)])
 
 webpage.save()

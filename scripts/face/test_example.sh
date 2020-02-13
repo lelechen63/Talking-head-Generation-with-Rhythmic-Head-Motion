@@ -6,8 +6,8 @@
 # https://nvlabs.github.io/few-shot-vid2vid/License.txt
 
 test_model(){
-    CUDA_VISIBLE_DEVICES=$1 python test_example.py --name face8_linear \
-    --dataset_mode fewshot_face_pickle \
+    CUDA_VISIBLE_DEVICES=$1 python test_example.py --name face8_vox_newloader \
+    --dataset_mode facefore \
     --adaptive_spade \
     --warp_ref \
     --example \
@@ -17,7 +17,8 @@ test_model(){
     --nThreads 0 \
     --dataroot '/home/cxu-serve/p1/common/voxceleb2' \
     --ref_img_id "0,10,20,30,40,50,60,70" \
-    --n_shot 8
+    --n_shot 8 \
+    --dataset_name vox
 }
 
-test_model 0 165 400
+test_model 3 latest 400

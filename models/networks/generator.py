@@ -148,7 +148,8 @@ class FewShotGenerator(BaseNetwork):
             = self.weight_generation(img_refs, label_refs, label, t=t)        
 
         if ref_idx_fix is not None:
-            ref_idx = ref_idx_fix
+            device_id = ref_idx.device
+            ref_idx = ref_idx_fix.cuda(device_id)
 
         ### flow estimation
         has_prev = prev[0] is not None        
@@ -195,6 +196,8 @@ class FewShotGenerator(BaseNetwork):
         if not self.mul_label_ref:
             # get fixed output size for fc layers
             x = nn.AdaptiveAvgPool2d((self.sh_fix, self.sw_fix))(x)
+
+        pdb.set_trace()
 
         ch_in, ch_out = self.ch[i], self.ch[i+1]
         ch_h = self.ch_hidden[i][0]

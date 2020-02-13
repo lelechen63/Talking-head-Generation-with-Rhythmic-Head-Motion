@@ -158,11 +158,9 @@ class Vid2VidModel(BaseModel):
     def inference(self, tgt_label, ref_labels, ref_images, ref_idx_fix):
         opt = self.opt
         if not self.temporal:
-            print('first image')
             self.prevs = prevs = [None, None]
             self.t = 0  
         elif not hasattr(self, 'prevs') or self.prevs is None:
-            print('first image')            
             self.prevs = prevs = [None, None]
             self.t = 0
         else:            
@@ -185,7 +183,7 @@ class Vid2VidModel(BaseModel):
             if not self.temporal:
                 self.prevs = self.concat_prev(self.prevs, [tgt_label_valid, fake_image])            
             
-        return fake_image, fake_raw_image, warped_image, flow, weight, atn_score, ref_idx
+        return fake_image, fake_raw_image, warped_image, flow, weight, atn_score, ref_idx, ref_label, ref_image
 
     def finetune(self, ref_labels, ref_images):
         train_names = ['fc', 'conv_img', 'up']        

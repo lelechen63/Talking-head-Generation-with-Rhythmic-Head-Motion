@@ -12,6 +12,7 @@ import torch.nn.functional as F
 from models.networks.loss import *
 from models.networks.discriminator import *
 from models.networks.generator import *
+from models.modules.linear_combine import LinearCombineModule
 
 
 def modify_commandline_options(parser, is_train):
@@ -28,7 +29,8 @@ def modify_commandline_options(parser, is_train):
     
 def define_G(opt):    
     if 'fewshot' in opt.netG:
-        netG = FewShotGenerator(opt)
+        # netG = FewShotGenerator(opt)
+        netG = LinearCombineModule(opt)
     else:
         raise('generator not implemented!')
     if opt.isTrain and opt.print_G: netG.print_network()

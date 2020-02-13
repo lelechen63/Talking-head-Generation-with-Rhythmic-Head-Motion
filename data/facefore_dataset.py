@@ -70,20 +70,31 @@ class FaceForeDataset(BaseDataset):
                      [[42,43,44,45], [45,46,47,42]],                   # left eye
                      [range(48, 55), [54,55,56,57,58,59,48], range(60, 65), [64,65,66,67,60]], # mouth and tongue
                     ]
-       
-        if opt.isTrain:
-            _file = open(os.path.join(self.root, 'pickle','test_lmark2img.pkl'), "rb")
-            self.data = pkl.load(_file)
-            _file.close()
-        else :
-            _file = open(os.path.join(self.root, 'pickle','test_lmark2img.pkl'), "rb")
-            self.data = pkl.load(_file)
-            _file.close()
+        
+        if self.opt.dataset_name == 'face':
+            if opt.isTrain:
+                _file = open(os.path.join(self.root, 'pickle','train_lmark2img.pkl'), "rb")
+                self.data = pkl.load(_file)
+                _file.close()
+            else :
+                _file = open(os.path.join(self.root, 'pickle','test_lmark2img.pkl'), "rb")
+                self.data = pkl.load(_file)
+                _file.close()
 
-        if opt.isTrain:
-            self.video_bag = 'unzip/test_video'
-        else:
-            self.video_bag = 'unzip/test_video'
+        elif self.opt.dataset_name == 'vox':
+            if opt.isTrain:
+                _file = open(os.path.join(self.root, 'pickle','dev_lmark2img.pkl'), "rb")
+                self.data = pkl.load(_file)
+                _file.close()
+            else :
+                _file = open(os.path.join(self.root, 'pickle','test_lmark2img.pkl'), "rb")
+                self.data = pkl.load(_file)
+                _file.close()
+
+            if opt.isTrain:
+                self.video_bag = 'unzip/dev_video'
+            else:
+                self.video_bag = 'unzip/test_video'
         print (len(self.data))
         
         # get transform for image and landmark
@@ -147,6 +158,9 @@ class FaceForeDataset(BaseDataset):
         lmarks = np.load(lmark_path)#[:,:,:-1]
         real_video = self.read_videos(video_path)
 
+        if self.opt.dataset_name == 'face':
+            lmarks = lmarks[:-1]
+
         # clean data
         cor_num = self.clean_lmarks(lmarks)
         lmarks = lmarks[cor_num]
@@ -173,7 +187,7 @@ class FaceForeDataset(BaseDataset):
         tgt_images = torch.cat([tgt_img.unsqueeze(0) for tgt_img in tgt_images], axis=0)
         tgt_lmarks = torch.cat([tgt_lmark.unsqueeze(0) for tgt_lmark in tgt_lmarks], axis=0)
 
-        input_dic = {'v_id' : target_img_path, 'tgt_label': tgt_lmarks, 'ref_image':ref_images , 'ref_label': ref_lmarks, \
+        input_dic = {'path': video_path, 'v_id' : target_img_path, 'index':target_id, 'tgt_label': tgt_lmarks, 'ref_image':ref_images , 'ref_label': ref_lmarks, \
         'tgt_image': tgt_images,  'target_id': target_id}
 
         return input_dic

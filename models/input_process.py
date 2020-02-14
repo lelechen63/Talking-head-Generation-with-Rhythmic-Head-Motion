@@ -18,6 +18,10 @@ def encode_input(opt, data_list, dummy_bs):
     tgt_label = encode_label(opt, tgt_label)
     tgt_image = tgt_image.cuda()            
              
+    # flownet ground truth
+    # flow_gt = [flow.cuda() if flow is not None else None for flow in flow_gt]
+    # conf_gt = [conf.cuda() if conf is not None else None for conf in conf_gt]
+
     # reference label and image
     ref_label = encode_label(opt, ref_label)        
     ref_image = ref_image.cuda()

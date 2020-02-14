@@ -156,15 +156,19 @@ class FaceForeDataset(BaseDataset):
             lmark_path = os.path.join(self.root, self.video_bag, paths[0], paths[1], paths[2]+"_aligned.npy")
             ani_path = os.path.join(self.root, self.video_bag, paths[0], paths[1], paths[2]+"_aligned_ani.mp4")
             rt_path = os.path.join(self.root, self.video_bag, paths[0], paths[1], paths[2]+"_aligned_rt.npy")
+            front_path = os.path.join(self.root, self.video_bag, paths[0], paths[1], paths[2]+"_aligned_front.npy")
+
             ani_id = paths[3]
 
         # read in data
         lmarks = np.load(lmark_path)#[:,:,:-1]
         real_video = self.read_videos(video_path)
+        
 
         if self.opt.dataset_name == 'face':
             lmarks = lmarks[:-1]
-
+        else:
+            front = np.load(front_path)
         # clean data
         cor_num = self.clean_lmarks(lmarks)
         lmarks = lmarks[cor_num]
@@ -191,7 +195,7 @@ class FaceForeDataset(BaseDataset):
         ani_lmarks = []
         ani_images = []
         for gg in target_id:
-            ani_lmarks.append(self.reverse_rt(lmarks[int(ani_id)], rt[gg]))
+            ani_lmarks.append(self.reverse_rt(front[int(ani_id)], rt[gg]))
             ani_lmarks[-1] = np.array(ani_lmarks[-1])
             ani_images.append(ani_video[gg])
 

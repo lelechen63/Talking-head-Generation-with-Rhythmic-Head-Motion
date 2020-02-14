@@ -47,15 +47,17 @@ def train():
             trainer.start_of_iter()            
 
             if not opt.no_flow_gt: 
-                data_list = [data['tgt_image'], data['ref_image']]
+                data_list = [data['tgt_image'], data['warping_ref'], data['ani_image']]
                 flow_gt, conf_gt = flowNet(data_list, epoch)
             data_list = [data['tgt_label'], data['tgt_image'], flow_gt, conf_gt]
             data_ref_list = [data['ref_label'], data['ref_image']]
-            data_prev = [None, None]  
+            data_prev = [None, None]
+            data_ani = [data['warping_ref_lmark'], data['warping_ref'], data['ani_lmark'], data['ani_image']]
 
             ############## Forward Pass ######################
             for t in range(0, n_frames_total, n_frames_load):
-                data_list_t = get_data_t(data_list, n_frames_load, t) + data_ref_list + data_prev
+                data_list_t = get_data_t(data_list, n_frames_load, t) + data_ref_list + \
+                              get_data_t(data_ani, n_frames_load, t) + data_prev
                                 
                 g_losses, generated, data_prev, ref_idx = model(data_list_t, save_images=trainer.save, mode='generator', ref_idx_fix=ref_idx_fix)
                 g_losses = loss_backward(opt, g_losses, model.module.optimizer_G)
@@ -65,7 +67,9 @@ def train():
                         
             loss_dict = dict(zip(model.module.lossCollector.loss_names, g_losses + d_losses))     
 
-            if trainer.end_of_iter(loss_dict, generated + data_list + [data['ref_label'][:, :1], data['ref_image'][:, :1]], model):
+            output_data_list = generated + data_list + [data['ref_label'], data['ref_image']] + data_ani
+
+            if trainer.end_of_iter(loss_dict, output_data_list, model):
                 break        
         trainer.end_of_epoch(model)
 

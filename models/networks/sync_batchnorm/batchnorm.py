@@ -18,6 +18,8 @@ from torch.nn.parallel._functions import ReduceAddCoalesced, Broadcast
 
 from .comm import SyncMaster
 
+import pdb
+
 __all__ = ['SynchronizedBatchNorm1d', 'SynchronizedBatchNorm2d', 'SynchronizedBatchNorm3d']
 
 
@@ -46,6 +48,7 @@ class _SynchronizedBatchNorm(_BatchNorm):
         self._slave_pipe = None
 
     def forward(self, input):
+
         # If it is not parallel computation or is in evaluation mode, use PyTorch's implementation.
         if not (self._is_parallel and self.training):
             return F.batch_norm(

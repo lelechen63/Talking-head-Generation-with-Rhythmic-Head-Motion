@@ -18,6 +18,7 @@ from models.models import save_models, update_models
 from util.distributed import master_only, is_master
 from util.distributed import master_only_print as print
 
+import pdb
 class Trainer():    
     def __init__(self, opt, data_loader):
         iter_path = os.path.join(opt.checkpoints_dir, opt.name, 'iter.txt')
@@ -88,17 +89,29 @@ class Trainer():
         save_models(opt, self.epoch, self.epoch_iter, self.total_steps, self.visualizer, self.iter_path, model, end_of_epoch=True)        
         self.epoch_iter = 0        
     
-def save_all_tensors(opt, output_list, model):    
-    fake_image, fake_raw_image, warped_image, flow, weight, atn_score, \
-        target_label, target_image, flow_gt, conf_gt, ref_label, ref_image = output_list
+def save_all_tensors(opt, output_list, model):
+    fake_image, fake_raw_image, img_ani, warped_image, flow, weight, atn_score, \
+        target_label, target_image, flow_gt, conf_gt, \
+        ref_label, ref_image, \
+        warping_ref_lmark, warping_ref, ani_lmark, ani_image = output_list
 
-    visual_list = [('target_label', util.visualize_label(opt, target_label, model)),                   
-                   ('synthesized_image', util.tensor2im(fake_image)),
-                   ('target_image', util.tensor2im(target_image)),
-                   ('ref_image', util.tensor2im(ref_image)),
-                   ('raw_image', util.tensor2im(fake_raw_image)),
-                   ('warped_images', util.tensor2im(warped_image, tile=True)),
-                   ('flows', util.tensor2flow(flow, tile=True)),
-                   ('weights', util.tensor2im(weight, normalize=False, tile=True))]
+    visual_list = []
+    for i in range(opt.n_shot):
+        visual_list += [('ref_img_{}'.format(i), util.tensor2im(ref_image[:, i:i+1]))]
+    visual_list += [('warping_ref_lmark', util.tensor2im(warping_ref_lmark)),
+                    ('warping_ref_img', util.tensor2im(warping_ref)),
+                    ('target_label', util.visualize_label(opt, target_label, model)),
+                    ('target_image', util.tensor2im(target_image)),
+                    ('synthesized_image', util.tensor2im(fake_image)),
+                    ('ani_syn_image', util.tensor2im(img_ani)),
+                    ('ref_warped_images', util.tensor2im(warped_image[0][-1], tile=True)),
+                    ('ref_weights', util.tensor2im(weight[0][-1], normalize=False, tile=True)),
+                    ('raw_image', util.tensor2im(fake_raw_image)),
+                    ('ani_warped_images', util.tensor2im(warped_image[2][-1], tile=True)),
+                    ('ani_weights', util.tensor2im(weight[2][-1], normalize=False, tile=True)),
+                    ('ani_flow', util.tensor2flow(flow[2][-1], tile=True)),
+                    ('ref_flow', util.tensor2flow(flow[0][-1], tile=True)),
+                    ('ani_image', util.tensor2im(ani_image)),
+                    ('ani_lmark', util.tensor2im(ani_lmark))]
     visuals = OrderedDict(visual_list)
     return visuals

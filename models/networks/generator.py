@@ -197,8 +197,6 @@ class FewShotGenerator(BaseNetwork):
             # get fixed output size for fc layers
             x = nn.AdaptiveAvgPool2d((self.sh_fix, self.sw_fix))(x)
 
-        pdb.set_trace()
-
         ch_in, ch_out = self.ch[i], self.ch[i+1]
         ch_h = self.ch_hidden[i][0]
         eks, sks = self.embed_ks, self.spade_ks

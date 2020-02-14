@@ -89,6 +89,7 @@ class BaseOptions():
         parser.add_argument('--n_shot', type=int, default=1, help='how many reference images')
         parser.add_argument('--n_downsample_A', type=int, default=2, help='# of downsamplings in attention network')
         parser.add_argument('--warp_ref', action='store_true', help='if specified, warp the reference image and combine with the synthesized image')
+        parser.add_argument('--warp_ani', action='store_true', help='if specified, warp the animation image and combine with the synthesized image')
 
         # for discriminators        
         parser.add_argument('--which_model_netD', type=str, default='multiscale', help='(n_layers|multiscale|image)')

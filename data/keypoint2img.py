@@ -12,6 +12,8 @@ import glob
 from scipy.optimize import curve_fit
 import warnings
 
+import pdb
+
 def read_keypoints(opt, json_input, size, random_drop_prob=0, distort_points=False, basic_point_only=False, remove_face_labels=False, 
                    ppl_idx=None, ref_pts=None):
     if type(json_input) == str:
@@ -300,7 +302,7 @@ def interpPoints(x, y):
             if len(x) < 3:
                 popt, _ = curve_fit(linear, x, y)
             else:
-                popt, _ = curve_fit(func, x, y)                
+                popt, _ = curve_fit(func, x, y)
                 if abs(popt[0]) > 1:
                     return None, None
         if x[0] > x[-1]:

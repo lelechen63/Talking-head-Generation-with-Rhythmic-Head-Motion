@@ -37,7 +37,7 @@ _file = open(os.path.join(root, 'pickle','test_lmark2img.pkl'), "rb")
 pickle_data = pkl.load(_file)
 _file.close()
 
-save_root = 'evaluation_store_nopick'
+save_root = 'evaluation_store'
 # pick_ids = np.random.choice(list(range(len(pickle_data))), size=opt.how_many)
 pick_ids = range(0, len(pickle_data), int(len(pickle_data))//opt.how_many)
 
@@ -55,7 +55,8 @@ for pick_id in tqdm(pick_ids):
     dataset = data_loader.load_data()
 
     # test
-    ref_idx_fix = torch.zeros([opt.batchSize])
+    # ref_idx_fix = torch.zeros([opt.batchSize])
+    ref_idx_fix = None
     for i, data in enumerate(dataset):
         if i >= len(dataset): break
         img_path = data['path']   

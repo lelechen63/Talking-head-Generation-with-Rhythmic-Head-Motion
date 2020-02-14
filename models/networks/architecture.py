@@ -13,6 +13,8 @@ from models.networks.base_network import BaseNetwork, batch_conv
 from models.networks.normalization import SPADE
 import torch.nn.utils.spectral_norm as sn
 
+import pdb
+
 def actvn(x):
     out = F.leaky_relu(x, 2e-1)
     return out
@@ -92,7 +94,7 @@ class SPADEResnetBlock(nn.Module):
 
     def forward(self, x, label=None, conv_weights=[], norm_weights=[]):
         if not conv_weights: conv_weights = [None]*3
-        if not norm_weights: norm_weights = [None]*3        
+        if not norm_weights: norm_weights = [None]*3
         x_s = self._shortcut(x, label, conv_weights[2], norm_weights[2])        
         dx = self.conv_0(actvn(self.bn_0(x, label, norm_weights[0])), conv_weights[0])
         dx = self.conv_1(actvn(self.bn_1(dx, label, norm_weights[1])), conv_weights[1])

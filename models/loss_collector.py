@@ -107,8 +107,9 @@ class LossCollector(BaseModel):
     def compute_flow_losses(self, flow, warped_image, tgt_image, flow_gt, conf_gt):                    
         loss_F_Flow_r, loss_F_Warp_r = self.compute_flow_loss(flow[0], warped_image[0], tgt_image, flow_gt[0], conf_gt[0])
         loss_F_Flow_p, loss_F_Warp_p = self.compute_flow_loss(flow[1], warped_image[1], tgt_image, flow_gt[1], conf_gt[1])
-        loss_F_Flow = loss_F_Flow_p + loss_F_Flow_r
-        loss_F_Warp = loss_F_Warp_p + loss_F_Warp_r
+        loss_F_Flow_a, loss_F_Warp_a = self.compute_flow_loss(flow[2], warped_image[2], tgt_image, flow_gt[2], conf_gt[2])
+        loss_F_Flow = loss_F_Flow_p + loss_F_Flow_r + loss_F_Flow_a
+        loss_F_Warp = loss_F_Warp_p + loss_F_Warp_r + loss_F_Warp_a
         
         return loss_F_Flow, loss_F_Warp
 
@@ -125,6 +126,7 @@ class LossCollector(BaseModel):
         loss_W = self.Tensor(1).fill_(0)
         loss_W += self.compute_weight_loss(weight[0], warped_image[0], tgt_image)        
         loss_W += self.compute_weight_loss(weight[1], warped_image[1], tgt_image)
+        loss_W += self.compute_weight_loss(weight[2], warped_image[2], tgt_image)
         
         return loss_W
 

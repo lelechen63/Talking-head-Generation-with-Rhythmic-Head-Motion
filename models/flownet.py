@@ -12,6 +12,8 @@ import sys
 
 from .base_model import BaseModel
 
+import pdb
+
 class FlowNet(BaseModel):
     def name(self):
         return 'FlowNet'
@@ -35,8 +37,10 @@ class FlowNet(BaseModel):
     def forward(self, data_list, epoch=0, dummy_bs=0):
         if data_list[0].get_device() == 0:                
             data_list = self.remove_dummy_from_tensor(data_list, dummy_bs) 
-        image_now, image_ref = data_list
-        image_now, image_ref = image_now[:,:,:3], image_ref[:,0:1,:3]
+        image_now, image_ref, image_ani = data_list
+        image_now, image_ref = image_now[:,:,:3], image_ref[:,:,:3]
+        if image_ani is not None:
+            image_ani = image_ani[:, :, :3]
 
         flow_gt_prev = flow_gt_ref = conf_gt_prev = conf_gt_ref = None
         with torch.no_grad():                         
@@ -45,9 +49,12 @@ class FlowNet(BaseModel):
                 flow_gt_prev, conf_gt_prev = self.flowNet_forward(image_now, image_prev)
 
             if self.opt.warp_ref:
-                flow_gt_ref, conf_gt_ref = self.flowNet_forward(image_now, image_ref.expand_as(image_now))              
+                flow_gt_ref, conf_gt_ref = self.flowNet_forward(image_now, image_ref)              
 
-            flow_gt, conf_gt = [flow_gt_ref, flow_gt_prev], [conf_gt_ref, conf_gt_prev]
+            if self.opt.warp_ani:
+                flow_gt_ani, conf_gt_ani = self.flowNet_forward(image_now, image_ani)    
+
+            flow_gt, conf_gt = [flow_gt_ref, flow_gt_prev, flow_gt_ani], [conf_gt_ref, conf_gt_prev, conf_gt_ani]
             return flow_gt, conf_gt
 
     def flowNet_forward(self, input_A, input_B):        

@@ -25,6 +25,7 @@ from torch.utils.data import DataLoader
 
 from data.base_dataset import BaseDataset, get_transform
 from data.keypoint2img import interpPoints, drawEdge
+from scipy.spatial.transform import Rotation as R
 
 import pdb
 
@@ -153,6 +154,9 @@ class FaceForeDataset(BaseDataset):
             paths = self.data[index]
             video_path = os.path.join(self.root, self.video_bag, paths[0], paths[1], paths[2]+"_aligned.mp4")
             lmark_path = os.path.join(self.root, self.video_bag, paths[0], paths[1], paths[2]+"_aligned.npy")
+            ani_path = os.path.join(self.root, self.video_bag, paths[0], paths[1], paths[2]+"_aligned_ani.mp4")
+            rt_path = os.path.join(self.root, self.video_bag, paths[0], paths[1], paths[2]+"_aligned_rt.npy")
+            ani_id = paths[3]
 
         # read in data
         lmarks = np.load(lmark_path)#[:,:,:-1]
@@ -165,8 +169,11 @@ class FaceForeDataset(BaseDataset):
         cor_num = self.clean_lmarks(lmarks)
         lmarks = lmarks[cor_num]
         real_video = np.asarray(real_video)[cor_num]
-
         v_length = len(real_video)
+
+        # animation
+        ani_video = self.read_videos(ani_path)
+        rt = np.load(rt_path)
 
         # sample index of frames for embedding network
         input_indexs, target_id = self.get_image_index(self.n_frames_total, v_length)
@@ -177,8 +184,29 @@ class FaceForeDataset(BaseDataset):
         # get reference
         ref_images, ref_lmarks = self.prepare_datas(real_video, lmarks, input_indexs)
 
-        # get target
+        # # get target
         tgt_images, tgt_lmarks = self.prepare_datas(real_video, lmarks, target_id)
+
+        # get animation
+        ani_lmarks = []
+        ani_images = []
+        for gg in target_id:
+            ani_lmarks.append(self.reverse_rt(lmarks[int(ani_id)], rt[gg]))
+            ani_lmarks[-1] = np.array(ani_lmarks[-1])
+            ani_images.append(ani_video[gg])
+
+        ani_images, ani_lmarks = self.prepare_datas(ani_images, ani_lmarks, list(range(len(target_id))))
+
+        # get warping reference
+        rt = rt[:, :3]
+        reference_rt_diffs = []
+        target_rt = rt[target_id]
+        for t in input_indexs:
+            reference_rt_diffs.append( rt[t] - target_rt )
+        reference_rt_diffs = np.mean(np.absolute(reference_rt_diffs), axis =1)
+        similar_id  = np.argmin(reference_rt_diffs)
+
+        warping_refs, warping_ref_lmarks = self.prepare_datas(real_video, lmarks, [similar_id])
 
         target_img_path  = [os.path.join(video_path[:-4] , '%05d.png'%t_id) for t_id in target_id]
 
@@ -186,9 +214,15 @@ class FaceForeDataset(BaseDataset):
         ref_lmarks = torch.cat([ref_lmark.unsqueeze(0) for ref_lmark in ref_lmarks], axis=0)
         tgt_images = torch.cat([tgt_img.unsqueeze(0) for tgt_img in tgt_images], axis=0)
         tgt_lmarks = torch.cat([tgt_lmark.unsqueeze(0) for tgt_lmark in tgt_lmarks], axis=0)
+        
+        # similar reference frame
+        warping_refs = torch.cat([warping_ref.unsqueeze(0) for warping_ref in warping_refs], 0)
+        warping_ref_lmarks = torch.cat([warping_ref_lmark.unsqueeze(0) for warping_ref_lmark in warping_ref_lmarks], 0)
+        ani_images = torch.cat([ani_image.unsqueeze(0) for ani_image in ani_images], 0)
+        ani_lmarks = torch.cat([ani_lmark.unsqueeze(0) for ani_lmark in ani_lmarks], 0)
 
-        input_dic = {'path': video_path, 'v_id' : target_img_path, 'index':target_id, 'tgt_label': tgt_lmarks, 'ref_image':ref_images , 'ref_label': ref_lmarks, \
-        'tgt_image': tgt_images,  'target_id': target_id}
+        input_dic = {'v_id' : target_img_path, 'tgt_label': tgt_lmarks, 'ref_image':ref_images , 'ref_label': ref_lmarks, \
+        'tgt_image': tgt_images,  'target_id': target_id , 'warping_ref': warping_refs , 'warping_ref_lmark': warping_ref_lmarks , 'ani_image': ani_images, 'ani_lmark': ani_lmarks}
 
         return input_dic
 
@@ -354,3 +388,21 @@ class FaceForeDataset(BaseDataset):
         flip = random.random() > 0.5
         return {'new_size': (w, h), 'flip': flip, 
                 'color_aug': (h_b, s_a, s_b, v_a, v_b)}
+
+    def reverse_rt(self, source, RT):
+        #source (68,3) , RT (6,)
+        source =  np.mat(source)
+        RT = np.mat(RT)
+        # recover the transformation
+        rec = RT[0,:3]
+        r = R.from_rotvec(rec)
+        ret_R = r.as_dcm()
+        ret_R2 = ret_R[0].T
+        ret_t = RT[0,3:]
+        ret_t = ret_t.reshape(3,1)
+        ret_t2 = - ret_R2 * ret_t
+        ret_t2 = ret_t2.reshape(3,1)
+        A3 = ret_R2 *   source.T +  np.tile(ret_t2, (1,68))
+        A3 = A3.T
+        
+        return A3

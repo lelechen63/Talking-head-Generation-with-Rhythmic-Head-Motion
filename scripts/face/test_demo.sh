@@ -14,4 +14,4 @@ test_model(){
     --serial_batches
 }
 
-test_model 3 latest 2
+test_model 3 latest 5

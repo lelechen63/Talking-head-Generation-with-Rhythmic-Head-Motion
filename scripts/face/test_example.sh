@@ -18,7 +18,8 @@ test_model(){
     --dataroot '/home/cxu-serve/p1/common/voxceleb2' \
     --ref_img_id "0,10,20,30,40,50,60,70" \
     --n_shot 8 \
-    --dataset_name vox
+    --dataset_name vox \
+    --serial_batches
 }
 
-test_model 3 latest 400
+test_model 3 latest 50

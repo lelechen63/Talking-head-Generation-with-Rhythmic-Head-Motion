@@ -6,11 +6,13 @@
 # https://nvlabs.github.io/few-shot-vid2vid/License.txt
 import torch
 
+import pdb
+
 ############################# input processing ###################################
 def encode_input(opt, data_list, dummy_bs):
     if opt.isTrain and data_list[0].get_device() == 0:
         data_list = remove_dummy_from_tensor(opt, data_list, dummy_bs)
-    tgt_label, tgt_image, flow_gt, conf_gt, ref_label, ref_image, prev_label, prev_image = data_list
+    tgt_label, tgt_image, flow_gt, conf_gt, ref_label, ref_image, warp_ref_lmark, warp_ref_img, ani_lmark, ani_img, prev_label, prev_image = data_list
 
     # target label and image
     tgt_label = encode_label(opt, tgt_label)
@@ -19,8 +21,16 @@ def encode_input(opt, data_list, dummy_bs):
     # reference label and image
     ref_label = encode_label(opt, ref_label)        
     ref_image = ref_image.cuda()
+
+    # animation label and image
+    ani_lmark = encode_label(opt, ani_lmark)        
+    ani_img = ani_img.cuda()
+
+    # warp reference label and image
+    warp_ref_lmark = encode_label(opt, warp_ref_lmark)        
+    warp_ref_img = warp_ref_img.cuda()
         
-    return tgt_label, tgt_image, flow_gt, conf_gt, ref_label, ref_image, prev_label, prev_image
+    return tgt_label, tgt_image, flow_gt, conf_gt, ref_label, ref_image, warp_ref_lmark, warp_ref_img, ani_lmark, ani_img, prev_label, prev_image
 
 def encode_label(opt, label_map):
     size = label_map.size()

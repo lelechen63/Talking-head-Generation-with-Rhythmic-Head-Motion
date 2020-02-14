@@ -15,9 +15,16 @@
 # --n_shot 8 --n_frames_G 1 \
 # --dataroot '/mnt/Data/lchen63/voxceleb2' --dataset_name vox
 
-CUDA_VISIBLE_DEVICES=0,1,2 python train.py --name face8_face_linear --dataset_mode facefore \
---adaptive_spade --warp_ref \
---gpu_ids 0,1,2 --batchSize 9 --nThreads 8 --niter 500 --niter_single 501 \
---n_shot 8 \
---dataroot '/home/cxu-serve/p1/common/faceforensics/original_sequences/youtube' \
---dataset_name face --continue_train
+# CUDA_VISIBLE_DEVICES=0,1,2 python train.py --name face8_face_linear --dataset_mode facefore \
+# --adaptive_spade --warp_ref \
+# --gpu_ids 0,1,2 --batchSize 9 --nThreads 8 --niter 500 --niter_single 501 \
+# --n_shot 8 \
+# --dataroot '/home/cxu-serve/p1/common/faceforensics/original_sequences/youtube' \
+# --dataset_name face --continue_train
+
+CUDA_VISIBLE_DEVICES=0,1,2,3 python train.py --name face8_vox_ani --dataset_mode facefore \
+--adaptive_spade --warp_ref --warp_ani \
+--gpu_ids 0,1,2,3 --batchSize 8 --nThreads 16 --niter 1000 --niter_single 1001 \
+--n_shot 8 --save_epoch_freq 50 \
+--n_frames_G 1 \
+--dataroot '/home/cxu-serve/p1/common/voxceleb2' --dataset_name vox

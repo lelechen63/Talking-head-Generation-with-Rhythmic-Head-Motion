@@ -58,6 +58,25 @@ class FlowNet(BaseModel):
 
             return flow_gt, conf_gt
 
+    def forward_each(self, data_list, epoch):
+        image_now, image_p, image_ref, image_ani = data_list
+
+        flow_gt_prev = flow_gt_ref = conf_gt_prev = conf_gt_ref = None
+        with torch.no_grad():                         
+            if not self.opt.isTrain or epoch > self.opt.niter_single:
+                image_prev = torch.cat([image_p, image_now[:,:-1]], dim=1)
+                flow_gt_prev, conf_gt_prev = self.flowNet_forward(image_now, image_prev)
+
+            if self.opt.warp_ref:
+                flow_gt_ref, conf_gt_ref = self.flowNet_forward(image_now, image_ref)              
+
+            if self.opt.warp_ani:
+                flow_gt_ani, conf_gt_ani = self.flowNet_forward(image_now, image_ani)    
+
+            flow_gt, conf_gt = [flow_gt_ref, flow_gt_prev, flow_gt_ani], [conf_gt_ref, conf_gt_prev, conf_gt_ani]
+
+            return flow_gt, conf_gt
+
     def flowNet_forward(self, input_A, input_B):        
         size = input_A.size()
         assert(len(size) == 4 or len(size) == 5)

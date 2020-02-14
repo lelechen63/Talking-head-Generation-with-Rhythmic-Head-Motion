@@ -27,6 +27,7 @@ def create_model(opt, epoch=0):
             flowNet.initialize(opt)
             flowNet = WrapModel(opt, flowNet)
         return model, flowNet
+
     return model
 
 def WrapModel(opt, model):

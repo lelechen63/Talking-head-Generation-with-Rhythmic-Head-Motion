@@ -148,7 +148,7 @@ class Vid2VidModel(BaseModel):
             # concatenate current output with previous outputs
             generated_images = self.concat([generated_images, [fake_image, fake_raw_image, img_ani, warped_image, flow, weight]], dim=1)          
             prevs = self.concat_prev(prevs, [tgt_label_valid, fake_image])
-                
+
         return generated_images, [ref_label_valid, ref_image_t], prevs, atn_score, ref_idx
 
     def get_input_t(self, tgt_labels, warp_ref_img, warp_ref_lmark, ani_img, ani_lmark, prevs, t):

@@ -13,6 +13,8 @@ import torch.nn.utils.spectral_norm as sn
 from models.networks.base_network import batch_conv
 from models.networks.sync_batchnorm import SynchronizedBatchNorm2d
 
+import pdb
+
 class SPADE(nn.Module):
     def __init__(self, norm_nc, hidden_nc=0, norm='batch', ks=3, params_free=False):
         super().__init__()
@@ -33,6 +35,9 @@ class SPADE(nn.Module):
             self.batch_norm = nn.InstanceNorm2d(norm_nc, affine=False)
 
     def forward(self, x, maps, weights=None):
+
+        pdb.set_trace()
+
         if not isinstance(maps, list): maps = [maps]
         out = self.batch_norm(x)
         for i in range(len(maps)):

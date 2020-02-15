@@ -22,3 +22,6 @@ class LinearCombineModule(BaseNetwork):
 
     def pick_ref(self, refs, ref_idx):
         return self.warp.pick_ref(refs, ref_idx)
+
+    def set_flow_prev(self):
+        self.warp.set_temporal()

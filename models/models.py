@@ -13,6 +13,8 @@ from models.vid2vid_model import Vid2VidModel
 from util.distributed import master_only
 from util.distributed import master_only_print as print
 
+import pdb
+
 def create_model(opt, epoch=0):            
     model = Vid2VidModel()
     model.initialize(opt, epoch)

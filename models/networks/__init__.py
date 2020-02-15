@@ -29,8 +29,8 @@ def modify_commandline_options(parser, is_train):
     
 def define_G(opt):    
     if 'fewshot' in opt.netG:
-        # netG = FewShotGenerator(opt)
-        netG = LinearCombineModule(opt)
+        netG = FewShotGenerator(opt)
+        # netG = LinearCombineModule(opt)
     else:
         raise('generator not implemented!')
     if opt.isTrain and opt.print_G: netG.print_network()

@@ -164,7 +164,8 @@ class FewShotGenerator(BaseNetwork):
         ### main branch convolution layers
         for i in range(self.n_downsample_G, -1, -1):            
             conv_weight = None
-            norm_weight = norm_weights[i] if (self.adap_spade and i < self.n_adaptive_layers) else None                  
+            norm_weight = norm_weights[i] if (self.adap_spade and i < self.n_adaptive_layers) else None
+            pdb.set_trace()                  
             x = getattr(self, 'up_'+str(i))(x, encoded_label[i], conv_weights=conv_weight, norm_weights=norm_weight)            
             if i != 0: x = self.up(x)
 

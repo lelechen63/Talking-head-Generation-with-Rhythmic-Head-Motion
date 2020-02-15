@@ -85,7 +85,7 @@ class FaceForeDataset(BaseDataset):
         elif self.opt.dataset_name == 'vox':
             if opt.isTrain:
                 _file = open(os.path.join(self.root, 'pickle','dev_lmark2img.pkl'), "rb")
-                self.data = pkl.load(_file)
+                self.data = pkl.load(_file)[:2]
                 _file.close()
             else :
                 _file = open(os.path.join(self.root, 'pickle','test_lmark2img.pkl'), "rb")

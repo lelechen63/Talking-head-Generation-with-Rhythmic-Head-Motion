@@ -56,6 +56,7 @@ def train():
 
             ############## Forward Pass ######################
             for t in range(0, n_frames_total, n_frames_load):
+                
                 data_list_t = get_data_t(data_list, n_frames_load, t) + data_ref_list + \
                               get_data_t(data_ani, n_frames_load, t) + data_prev
                                 

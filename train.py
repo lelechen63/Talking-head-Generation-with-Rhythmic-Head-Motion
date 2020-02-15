@@ -47,7 +47,7 @@ def train():
             trainer.start_of_iter()            
 
             if not opt.no_flow_gt: 
-                data_list = [data['tgt_image'], data['warping_ref'], data['ani_image']]
+                data_list = [data['tgt_image'], data['cropped_images'], data['warping_ref'], data['ani_image']]
                 flow_gt, conf_gt = flowNet(data_list, epoch)
             data_list = [data['tgt_label'], data['tgt_image'], flow_gt, conf_gt]
             data_ref_list = [data['ref_label'], data['ref_image']]
@@ -68,10 +68,11 @@ def train():
                         
             loss_dict = dict(zip(model.module.lossCollector.loss_names, g_losses + d_losses))     
 
-            output_data_list = generated + data_list + [data['ref_label'], data['ref_image']] + data_ani
+            output_data_list = generated + data_list + [data['ref_label'], data['ref_image']] + data_ani + [data['cropped_lmarks'], data['cropped_images']]
 
             if trainer.end_of_iter(loss_dict, output_data_list, model):
                 break        
+
         trainer.end_of_epoch(model)
 
 def get_data_t(data, n_frames_load, t):

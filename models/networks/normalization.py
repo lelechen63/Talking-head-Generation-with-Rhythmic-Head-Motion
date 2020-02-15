@@ -36,7 +36,7 @@ class SPADE(nn.Module):
 
     def forward(self, x, maps, weights=None):
 
-        pdb.set_trace()
+        # pdb.set_trace()
 
         if not isinstance(maps, list): maps = [maps]
         out = self.batch_norm(x)

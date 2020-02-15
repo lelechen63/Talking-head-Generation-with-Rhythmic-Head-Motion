@@ -85,7 +85,7 @@ class FaceForeDataset(BaseDataset):
         elif self.opt.dataset_name == 'vox':
             if opt.isTrain:
                 _file = open(os.path.join(self.root, 'pickle','dev_lmark2img.pkl'), "rb")
-                self.data = pkl.load(_file)[:2]
+                self.data = pkl.load(_file)
                 _file.close()
             else :
                 _file = open(os.path.join(self.root, 'pickle','test_lmark2img.pkl'), "rb")
@@ -188,12 +188,11 @@ class FaceForeDataset(BaseDataset):
         # define scale
         self.define_scale()
 
-
         # get reference
-        ref_images, ref_lmarks = self.prepare_datas(real_video, lmarks, input_indexs)
+        ref_images, ref_lmarks, _ = self.prepare_datas(real_video, lmarks, input_indexs)
 
         # # get target
-        tgt_images, tgt_lmarks = self.prepare_datas(real_video, lmarks, target_id)
+        tgt_images, tgt_lmarks, tgt_crop_coords = self.prepare_datas(real_video, lmarks, target_id)
 
         # get animation & get cropped ground truth
         ani_lmarks = []
@@ -202,19 +201,19 @@ class FaceForeDataset(BaseDataset):
         cropped_lmarks = []
 
         for gg in target_id:
-            cropped_gt = real_video[gg].clone()
+            cropped_gt = real_video[gg].copy()
             ani_lmarks.append(self.reverse_rt(front[int(ani_id)], rt[gg]))
             ani_lmarks[-1] = np.array(ani_lmarks[-1])
             ani_images.append(ani_video[gg])
             mask = ani_video[gg] < 10
             # mask = scipy.ndimage.morphology.binary_dilation(mask.numpy(),iterations = 5).astype(np.bool)
-            cropped_gt[torch.tensor(mask)] = 0
+            cropped_gt[mask] = 0
             cropped_images.append(cropped_gt)
             cropped_lmarks.append(lmarks[gg])
             
 
-        ani_images, ani_lmarks = self.prepare_datas(ani_images, ani_lmarks, list(range(len(target_id))))
-        croped_images, cropped_lmarks = self.prepare_datas(croped_images, cropped_lmarks, list(range(len(target_id))))
+        ani_images, ani_lmarks, _ = self.prepare_datas(ani_images, ani_lmarks, list(range(len(target_id))))
+        cropped_images, cropped_lmarks, _ = self.prepare_datas(cropped_images, cropped_lmarks, list(range(len(target_id))), crop_coords=tgt_crop_coords)
         # get warping reference
         rt = rt[:, :3]
         warping_refs, warping_ref_lmarks = [], []
@@ -242,10 +241,12 @@ class FaceForeDataset(BaseDataset):
         warping_ref_lmarks = torch.cat([warping_ref_lmark.unsqueeze(0) for warping_ref_lmark in warping_ref_lmarks], 0)
         ani_images = torch.cat([ani_image.unsqueeze(0) for ani_image in ani_images], 0)
         ani_lmarks = torch.cat([ani_lmark.unsqueeze(0) for ani_lmark in ani_lmarks], 0)
+        cropped_images = torch.cat([cropped_image.unsqueeze(0) for cropped_image in cropped_images], 0)
+        cropped_lmarks = torch.cat([cropped_lmark.unsqueeze(0) for cropped_lmark in cropped_lmarks], 0)
 
         input_dic = {'v_id' : target_img_path, 'tgt_label': tgt_lmarks, 'ref_image':ref_images , 'ref_label': ref_lmarks, \
         'tgt_image': tgt_images,  'target_id': target_id , 'warping_ref': warping_refs , 'warping_ref_lmark': warping_ref_lmarks , \
-        'ani_image': ani_images, 'ani_lmark': ani_lmarks, 'croped_images': croped_images, 'cropped_lmarks' :cropped_lmarks }
+        'ani_image': ani_images, 'ani_lmark': ani_lmarks, 'cropped_images': cropped_images, 'cropped_lmarks' :cropped_lmarks }
 
         return input_dic
 
@@ -355,10 +356,11 @@ class FaceForeDataset(BaseDataset):
                         np.random.uniform(1 - scale_max, 1 + scale_max)]    
 
     # get image and landmarks
-    def prepare_datas(self, images, lmarks, choice_ids):
+    def prepare_datas(self, images, lmarks, choice_ids, crop_coords=None):
         # get cropped coordinates
-        crop_lmark = lmarks[choice_ids[0]]
-        crop_coords = self.get_crop_coords(crop_lmark)
+        if crop_coords is None:
+            crop_lmark = lmarks[choice_ids[0]]
+            crop_coords = self.get_crop_coords(crop_lmark)
         bw = max(1, (crop_coords[1]-crop_coords[0]) // 256)
 
         # get images and landmarks
@@ -371,7 +373,7 @@ class FaceForeDataset(BaseDataset):
             result_lmarks.append(lmark)
             result_images.append(image)
 
-        return result_images, result_lmarks
+        return result_images, result_lmarks, crop_coords
 
     # get crop standard from one landmark
     def get_crop_coords(self, keypoints, crop_size=None):           

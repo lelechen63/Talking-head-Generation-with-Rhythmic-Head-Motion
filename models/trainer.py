@@ -57,6 +57,10 @@ class Trainer():
             self.visualizer.print_current_errors(epoch, epoch_iter, errors, t)
             self.visualizer.plot_current_errors(errors, total_steps)
 
+        # debug
+        visuals = save_all_tensors(opt, output_list, model)
+        self.visualizer.display_current_results(visuals, epoch, total_steps)
+
         ### display output images        
         if is_master() and self.save:
             visuals = save_all_tensors(opt, output_list, model)
@@ -93,7 +97,7 @@ def save_all_tensors(opt, output_list, model):
     fake_image, fake_raw_image, img_ani, warped_image, flow, weight, atn_score, \
         target_label, target_image, flow_gt, conf_gt, \
         ref_label, ref_image, \
-        warping_ref_lmark, warping_ref, ani_lmark, ani_image = output_list
+        warping_ref_lmark, warping_ref, ani_lmark, ani_image, cropped_lmarks, cropped_images = output_list
 
     visual_list = []
     for i in range(opt.n_shot):
@@ -112,6 +116,8 @@ def save_all_tensors(opt, output_list, model):
                     ('ani_flow', util.tensor2flow(flow[2][-1], tile=True)),
                     ('ref_flow', util.tensor2flow(flow[0][-1], tile=True)),
                     ('ani_image', util.tensor2im(ani_image)),
-                    ('ani_lmark', util.tensor2im(ani_lmark))]
+                    ('ani_lmark', util.tensor2im(ani_lmark)),
+                    ('cropped_image', util.tensor2im(cropped_images)),
+                    ('cropped_lmark', util.tensor2im(cropped_lmarks)),]
     visuals = OrderedDict(visual_list)
     return visuals

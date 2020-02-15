@@ -181,11 +181,13 @@ class FaceForeDataset(BaseDataset):
         rt = rt[cor_num]
         v_length = len(real_video)
 
+
         # sample index of frames for embedding network
         input_indexs, target_id = self.get_image_index(self.n_frames_total, v_length)
     
         # define scale
         self.define_scale()
+
 
         # get reference
         ref_images, ref_lmarks = self.prepare_datas(real_video, lmarks, input_indexs)
@@ -193,16 +195,26 @@ class FaceForeDataset(BaseDataset):
         # # get target
         tgt_images, tgt_lmarks = self.prepare_datas(real_video, lmarks, target_id)
 
-        # get animation
+        # get animation & get cropped ground truth
         ani_lmarks = []
         ani_images = []
+        cropped_images  = []
+        cropped_lmarks = []
+
         for gg in target_id:
+            cropped_gt = real_video[gg].clone()
             ani_lmarks.append(self.reverse_rt(front[int(ani_id)], rt[gg]))
             ani_lmarks[-1] = np.array(ani_lmarks[-1])
             ani_images.append(ani_video[gg])
+            mask = ani_video[gg] < 10
+            # mask = scipy.ndimage.morphology.binary_dilation(mask.numpy(),iterations = 5).astype(np.bool)
+            cropped_gt[torch.tensor(mask)] = 0
+            cropped_images.append(cropped_gt)
+            cropped_lmarks.append(lmarks[gg])
+            
 
         ani_images, ani_lmarks = self.prepare_datas(ani_images, ani_lmarks, list(range(len(target_id))))
-
+        croped_images, cropped_lmarks = self.prepare_datas(croped_images, cropped_lmarks, list(range(len(target_id))))
         # get warping reference
         rt = rt[:, :3]
         warping_refs, warping_ref_lmarks = [], []
@@ -233,7 +245,7 @@ class FaceForeDataset(BaseDataset):
 
         input_dic = {'v_id' : target_img_path, 'tgt_label': tgt_lmarks, 'ref_image':ref_images , 'ref_label': ref_lmarks, \
         'tgt_image': tgt_images,  'target_id': target_id , 'warping_ref': warping_refs , 'warping_ref_lmark': warping_ref_lmarks , \
-        'ani_image': ani_images, 'ani_lmark': ani_lmarks}
+        'ani_image': ani_images, 'ani_lmark': ani_lmarks, 'croped_images': croped_images, 'cropped_lmarks' :cropped_lmarks }
 
         return input_dic
 

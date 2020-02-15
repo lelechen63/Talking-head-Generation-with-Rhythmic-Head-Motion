@@ -12,8 +12,8 @@
 # --dataroot '/home/cxu-serve/p1/common/faceforensics/original_sequences/youtube/cropped/train_file' \
 
 CUDA_VISIBLE_DEVICES=3 python train.py --name face8_face_newloader --dataset_mode facefore \
---adaptive_spade --warp_ref --warp_ani \
---gpu_ids 0 --batchSize 1 --nThreads 0 --niter 500 --niter_single 0 --niter_step 1 \
+--adaptive_spade --warp_ref --warp_ani --spade_combine \
+--gpu_ids 0 --batchSize 1 --nThreads 0 --niter 500 --niter_single 1 --niter_step 1 \
 --n_shot 8 --save_epoch_freq 50 \
 --n_frames_G 2 \
 --dataroot '/home/cxu-serve/p1/common/voxceleb2' --dataset_name vox

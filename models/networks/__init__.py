@@ -13,6 +13,7 @@ from models.networks.loss import *
 from models.networks.discriminator import *
 from models.networks.generator import *
 from models.modules.linear_combine import LinearCombineModule
+from models.modules.spade_combine import SpadeCombineModule
 
 
 def modify_commandline_options(parser, is_train):
@@ -29,8 +30,11 @@ def modify_commandline_options(parser, is_train):
     
 def define_G(opt):    
     if 'fewshot' in opt.netG:
-        netG = FewShotGenerator(opt)
-        # netG = LinearCombineModule(opt)
+        # netG = FewShotGenerator(opt)
+        if opt.spade_combine:
+            netG = SpadeCombineModule(opt)
+        else:
+            netG = LinearCombineModule(opt)
     else:
         raise('generator not implemented!')
     if opt.isTrain and opt.print_G: netG.print_network()

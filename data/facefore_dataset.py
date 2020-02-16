@@ -96,6 +96,20 @@ class FaceForeDataset(BaseDataset):
                 self.video_bag = 'unzip/dev_video'
             else:
                 self.video_bag = 'unzip/test_video'
+        elif self.opt.dataset_name == 'grid':
+            if opt.isTrain:
+                 _file = open(os.path.join(self.root, 'pickle','train_audio2lmark_grid.pkl'), "rb
+                self.data = pkl.load(_file)
+                _file.close()
+            else :
+                _file = open(os.path.join(self.root, 'pickle','test_audio2lmark_grid.pkl'), "rb")
+                self.data = pkl.load(_file)
+                _file.close()
+
+            if opt.isTrain:
+                self.video_bag = 'align'
+            else:
+                self.video_bag = 'align'
         print (len(self.data))
         
         # get transform for image and landmark
@@ -159,7 +173,13 @@ class FaceForeDataset(BaseDataset):
             front_path = os.path.join(self.root, self.video_bag, paths[0], paths[1], paths[2]+"_aligned_front.npy")
 
             ani_id = paths[3]
-
+        elif self.opt.dataset_name == 'grid':
+            paths = self.data[index]
+            video_path = os.path.join(self.root, self.video_bag, paths[0], paths[1] + '_crop.mp4')
+            lmark_path = os.path.join(self.root, self.video_bag, paths[0], paths[1]+ '_original.npy') 
+            rt_path = os.path.join(self.root, self.video_bag, paths[0], paths[1]+ '_rt.npy') 
+            front_path = os.path.join(self.root, self.video_bag, paths[0], paths[1]+ '_front.npy') 
+            
         # read in data
         lmarks = np.load(lmark_path)#[:,:,:-1]
         real_video = self.read_videos(video_path)
@@ -168,19 +188,18 @@ class FaceForeDataset(BaseDataset):
             lmarks = lmarks[:-1]
         else:
             front = np.load(front_path)
-
-        # animation
-        ani_video = self.read_videos(ani_path)
-        rt = np.load(rt_path)
-
-        # clean data
+            rt = np.load(rt_path)
         cor_num = self.clean_lmarks(lmarks)
         lmarks = lmarks[cor_num]
         real_video = np.asarray(real_video)[cor_num]
-        ani_video = np.asarray(ani_video)[cor_num]
         rt = rt[cor_num]
+        
+        if self.opt.warp_ani:
+            # animation
+            ani_video = self.read_videos(ani_path)
+            # clean data
+            ani_video = np.asarray(ani_video)[cor_num]
         v_length = len(real_video)
-
 
         # sample index of frames for embedding network
         input_indexs, target_id = self.get_image_index(self.n_frames_total, v_length)
@@ -194,29 +213,30 @@ class FaceForeDataset(BaseDataset):
         # # get target
         tgt_images, tgt_lmarks, tgt_crop_coords = self.prepare_datas(real_video, lmarks, target_id)
 
+        if self.opt.warp_ani:
         # get animation & get cropped ground truth
-        ani_lmarks = []
-        ani_images = []
-        cropped_images  = []
-        cropped_lmarks = []
+            ani_lmarks = []
+            ani_images = []
+            cropped_images  = []
+            cropped_lmarks = []
 
-        for gg in target_id:
-            cropped_gt = real_video[gg].copy()
-            ani_lmarks.append(self.reverse_rt(front[int(ani_id)], rt[gg]))
-            ani_lmarks[-1] = np.array(ani_lmarks[-1])
-            ani_images.append(ani_video[gg])
-            mask = ani_video[gg] < 10
-            # mask = scipy.ndimage.morphology.binary_dilation(mask.numpy(),iterations = 5).astype(np.bool)
-            cropped_gt[mask] = 0
-            cropped_images.append(cropped_gt)
-            cropped_lmarks.append(lmarks[gg])
-            
-
-        ani_images, ani_lmarks, _ = self.prepare_datas(ani_images, ani_lmarks, list(range(len(target_id))))
-        cropped_images, cropped_lmarks, _ = self.prepare_datas(cropped_images, cropped_lmarks, list(range(len(target_id))), crop_coords=tgt_crop_coords)
+            for gg in target_id:
+                cropped_gt = real_video[gg].copy()
+                ani_lmarks.append(self.reverse_rt(front[int(ani_id)], rt[gg]))
+                ani_lmarks[-1] = np.array(ani_lmarks[-1])
+                ani_images.append(ani_video[gg])
+                mask = ani_video[gg] < 10
+                # mask = scipy.ndimage.morphology.binary_dilation(mask.numpy(),iterations = 5).astype(np.bool)
+                cropped_gt[mask] = 0
+                cropped_images.append(cropped_gt)
+                cropped_lmarks.append(lmarks[gg].copy())
+            ani_images, ani_lmarks, _ = self.prepare_datas(ani_images, ani_lmarks, list(range(len(target_id))))
+            cropped_images, cropped_lmarks, _ = self.prepare_datas(cropped_images, cropped_lmarks, list(range(len(target_id))), crop_coords=tgt_crop_coords)
+        
         # get warping reference
         rt = rt[:, :3]
         warping_refs, warping_ref_lmarks = [], []
+        
         for gg in target_id:
             reference_rt_diffs = []
             target_rt = rt[gg]
@@ -235,18 +255,19 @@ class FaceForeDataset(BaseDataset):
         ref_lmarks = torch.cat([ref_lmark.unsqueeze(0) for ref_lmark in ref_lmarks], axis=0)
         tgt_images = torch.cat([tgt_img.unsqueeze(0) for tgt_img in tgt_images], axis=0)
         tgt_lmarks = torch.cat([tgt_lmark.unsqueeze(0) for tgt_lmark in tgt_lmarks], axis=0)
-        
         # similar reference frame
         warping_refs = torch.cat([warping_ref.unsqueeze(0) for warping_ref in warping_refs], 0)
         warping_ref_lmarks = torch.cat([warping_ref_lmark.unsqueeze(0) for warping_ref_lmark in warping_ref_lmarks], 0)
-        ani_images = torch.cat([ani_image.unsqueeze(0) for ani_image in ani_images], 0)
-        ani_lmarks = torch.cat([ani_lmark.unsqueeze(0) for ani_lmark in ani_lmarks], 0)
-        cropped_images = torch.cat([cropped_image.unsqueeze(0) for cropped_image in cropped_images], 0)
-        cropped_lmarks = torch.cat([cropped_lmark.unsqueeze(0) for cropped_lmark in cropped_lmarks], 0)
+        if self.opt.warp_ani:
+            ani_images = torch.cat([ani_image.unsqueeze(0) for ani_image in ani_images], 0)
+            ani_lmarks = torch.cat([ani_lmark.unsqueeze(0) for ani_lmark in ani_lmarks], 0)
+            cropped_images = torch.cat([cropped_image.unsqueeze(0) for cropped_image in cropped_images], 0)
+            cropped_lmarks = torch.cat([cropped_lmark.unsqueeze(0) for cropped_lmark in cropped_lmarks], 0)
 
         input_dic = {'v_id' : target_img_path, 'tgt_label': tgt_lmarks, 'ref_image':ref_images , 'ref_label': ref_lmarks, \
-        'tgt_image': tgt_images,  'target_id': target_id , 'warping_ref': warping_refs , 'warping_ref_lmark': warping_ref_lmarks , \
-        'ani_image': ani_images, 'ani_lmark': ani_lmarks, 'cropped_images': cropped_images, 'cropped_lmarks' :cropped_lmarks }
+        'tgt_image': tgt_images,  'target_id': target_id , 'warping_ref': warping_refs , 'warping_ref_lmark': warping_ref_lmarks }
+        if self.opt.warp_ani:
+            input_dic.update {'ani_image': ani_images, 'ani_lmark': ani_lmarks, 'cropped_images': cropped_images, 'cropped_lmarks' :cropped_lmarks }
 
         return input_dic
 
@@ -431,3 +452,6 @@ class FaceForeDataset(BaseDataset):
         A3 = A3.T
         
         return A3
+
+
+

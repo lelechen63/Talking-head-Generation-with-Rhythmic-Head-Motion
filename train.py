@@ -46,6 +46,9 @@ def train():
         for idx, data in enumerate(tqdm(dataset), start=trainer.epoch_iter):
             trainer.start_of_iter()            
 
+            if not opt.warp_ani:
+                data.update({'ani_image':None, 'ani_lmark':None, 'cropped_images':None, 'cropped_lmarks':None })
+
             if not opt.no_flow_gt: 
                 data_list = [data['tgt_image'], data['cropped_images'], data['warping_ref'], data['ani_image']]
                 flow_gt, conf_gt = flowNet(data_list, epoch)

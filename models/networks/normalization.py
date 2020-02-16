@@ -33,6 +33,8 @@ class SPADE(nn.Module):
             self.batch_norm = SynchronizedBatchNorm2d(norm_nc, affine=False)
         else:
             self.batch_norm = nn.InstanceNorm2d(norm_nc, affine=False)
+        
+        self.params_free = params_free
 
     def forward(self, x, maps, weights=None):
 

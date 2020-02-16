@@ -43,7 +43,7 @@ class FlowNet(BaseModel):
             cropped_image_now = cropped_image_now[:, :, :3]
             image_ani = image_ani[:, :, :3]
 
-        flow_gt_prev = flow_gt_ref = conf_gt_prev = conf_gt_ref = None
+        flow_gt_prev = flow_gt_ref = conf_gt_prev = conf_gt_ref = flow_gt_ani = conf_gt_ani = None
         with torch.no_grad():                         
             if not self.opt.isTrain or epoch > self.opt.niter_single:
                 image_prev = torch.cat([image_now[:,0:1], image_now[:,:-1]], dim=1)

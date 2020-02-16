@@ -31,7 +31,7 @@ class Vid2VidModel(BaseModel):
         self.define_networks(epoch)
 
         # load networks        
-        self.load_networks()        
+        self.load_networks()      
 
     def forward(self, data_list, save_images=False, mode='inference', dummy_bs=0, ref_idx_fix=None, epoch=0):            
         tgt_label, tgt_image, flow_gt, conf_gt, ref_labels, ref_images, \
@@ -91,7 +91,7 @@ class Vid2VidModel(BaseModel):
                      loss_GT_GAN, loss_GT_GAN_Feat,           # temporal GAN loss
                      loss_F_Flow, loss_F_Warp, loss_W]        # flow loss
         loss_list = [loss.view(1, 1) for loss in loss_list]
-            
+        
         return loss_list, \
                [fake_image, fake_raw_image, img_ani, warped_image, flow, weight, atn_score], \
                [prev_label, prev_image], \
@@ -157,9 +157,10 @@ class Vid2VidModel(BaseModel):
         tgt_label_valid = tgt_label
         warp_ref_img_t = warp_ref_img[:, t]
         warp_ref_lmark_t = warp_ref_lmark[:, t]
-        ani_img_t = ani_img[:, t]
-        ani_lmark_t = ani_lmark[:, t]
-        prevs = [prev.contiguous().view(b, -1, h, w) if prev is not None else None for prev in prevs]        
+        prevs = [prev.contiguous().view(b, -1, h, w) if prev is not None else None for prev in prevs]
+        ani_img_t = ani_img[:, t] if self.opt.warp_ani else None
+        ani_lmark_t = ani_lmark[:, t] if self.opt.warp_ani else None
+
         return tgt_label, tgt_label_valid, warp_ref_img_t, warp_ref_lmark_t, ani_img_t, ani_lmark_t, prevs
 
     def concat_prev(self, prev, now):

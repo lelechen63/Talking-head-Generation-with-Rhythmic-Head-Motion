@@ -27,8 +27,9 @@ def encode_input(opt, data_list, dummy_bs):
     ref_image = ref_image.cuda()
 
     # animation label and image
-    ani_lmark = encode_label(opt, ani_lmark)        
-    ani_img = ani_img.cuda()
+    if opt.warp_ani:
+        ani_lmark = encode_label(opt, ani_lmark)        
+        ani_img = ani_img.cuda()
 
     # warp reference label and image
     warp_ref_lmark = encode_label(opt, warp_ref_lmark)        

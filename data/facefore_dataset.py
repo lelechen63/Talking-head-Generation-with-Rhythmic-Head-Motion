@@ -98,7 +98,7 @@ class FaceForeDataset(BaseDataset):
                 self.video_bag = 'unzip/test_video'
         elif self.opt.dataset_name == 'grid':
             if opt.isTrain:
-                 _file = open(os.path.join(self.root, 'pickle','train_audio2lmark_grid.pkl'), "rb
+                _file = open(os.path.join(self.root, 'pickle', 'train_audio2lmark_grid.pkl'), "rb")
                 self.data = pkl.load(_file)
                 _file.close()
             else :
@@ -267,7 +267,7 @@ class FaceForeDataset(BaseDataset):
         input_dic = {'v_id' : target_img_path, 'tgt_label': tgt_lmarks, 'ref_image':ref_images , 'ref_label': ref_lmarks, \
         'tgt_image': tgt_images,  'target_id': target_id , 'warping_ref': warping_refs , 'warping_ref_lmark': warping_ref_lmarks }
         if self.opt.warp_ani:
-            input_dic.update {'ani_image': ani_images, 'ani_lmark': ani_lmarks, 'cropped_images': cropped_images, 'cropped_lmarks' :cropped_lmarks }
+            input_dic.update({'ani_image': ani_images, 'ani_lmark': ani_lmarks, 'cropped_images': cropped_images, 'cropped_lmarks' :cropped_lmarks })
 
         return input_dic
 

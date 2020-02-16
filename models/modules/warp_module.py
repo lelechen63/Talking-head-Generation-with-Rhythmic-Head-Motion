@@ -73,6 +73,7 @@ class WarpModule(BaseNetwork):
         has_ani = weight_ani is not None and img_ani_warp is not None
 
         # combine raw result with animation image
+        img_ani = None
         img_final = img_raw
         if self.warp_ani and has_ani:
             img_final = img_final * weight_ani + img_ani_warp * (1 - weight_ani)

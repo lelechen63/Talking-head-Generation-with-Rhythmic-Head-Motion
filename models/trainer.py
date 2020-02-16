@@ -57,10 +57,6 @@ class Trainer():
             self.visualizer.print_current_errors(epoch, epoch_iter, errors, t)
             self.visualizer.plot_current_errors(errors, total_steps)
 
-        # debug
-        visuals = save_all_tensors(opt, output_list, model)
-        self.visualizer.display_current_results(visuals, epoch, total_steps)
-
         ### display output images        
         if is_master() and self.save:
             visuals = save_all_tensors(opt, output_list, model)

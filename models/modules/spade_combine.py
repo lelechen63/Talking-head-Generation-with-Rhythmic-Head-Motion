@@ -2,6 +2,8 @@ from .generator import FewShotGenerator, LabelEmbedder
 from .warp_module import WarpModule
 from models.networks.base_network import BaseNetwork
 
+import pdb
+
 class SpadeCombineModule(BaseNetwork):
     def __init__(self, opt):
         self.netG = FewShotGenerator(opt)

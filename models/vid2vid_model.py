@@ -34,11 +34,11 @@ class Vid2VidModel(BaseModel):
         self.load_networks()      
 
     def forward(self, data_list, save_images=False, mode='inference', dummy_bs=0, ref_idx_fix=None, epoch=0):            
-        tgt_label, tgt_image, flow_gt, conf_gt, ref_labels, ref_images, \
+        tgt_label, tgt_image, tgt_crop_image, flow_gt, conf_gt, ref_labels, ref_images, \
             warp_ref_lmark, warp_ref_img, ani_lmark, ani_img, prev_label, prev_image = encode_input(self.opt, data_list, dummy_bs)
         
         if mode == 'generator':            
-            g_loss, generated, prev, ref_idx = self.forward_generator(tgt_label, tgt_image, flow_gt, conf_gt, ref_labels, ref_images,
+            g_loss, generated, prev, ref_idx = self.forward_generator(tgt_label, tgt_image, tgt_crop_image, flow_gt, conf_gt, ref_labels, ref_images,
                 warp_ref_lmark, warp_ref_img, ani_lmark, ani_img,
                 prev_label, prev_image, ref_idx_fix, epoch)
             # return g_loss, generated if save_images else [], prev, ref_idx
@@ -53,7 +53,7 @@ class Vid2VidModel(BaseModel):
         else:
             return self.inference(tgt_label, ref_labels, ref_images, warp_ref_lmark, warp_ref_img, ani_lmark, ani_img, ref_idx_fix)
    
-    def forward_generator(self, tgt_label, tgt_image, flow_gt, conf_gt, ref_labels, ref_images, 
+    def forward_generator(self, tgt_label, tgt_image, tgt_crop_image, flow_gt, conf_gt, ref_labels, ref_images, 
                           warp_ref_lmark=None, warp_ref_img=None, ani_lmark=None, ani_img=None, 
                           prev_label=None, prev_image=None, ref_idx_fix=None, epoch=0):
 
@@ -81,11 +81,11 @@ class Vid2VidModel(BaseModel):
         # VGG loss        
         loss_G_VGG = self.lossCollector.compute_VGG_losses(fake_image, fake_raw_image, tgt_image)
 
-        flow, weight, flow_gt, conf_gt, warped_image, tgt_image = \
-            self.reshape([flow, weight, flow_gt, conf_gt, warped_image, tgt_image])             
-        loss_F_Flow, loss_F_Warp = self.lossCollector.compute_flow_losses(flow, warped_image, tgt_image, 
+        flow, weight, flow_gt, conf_gt, warped_image, tgt_image, tgt_crop_image = \
+            self.reshape([flow, weight, flow_gt, conf_gt, warped_image, tgt_image, tgt_crop_image])             
+        loss_F_Flow, loss_F_Warp = self.lossCollector.compute_flow_losses(flow, warped_image, tgt_image, tgt_crop_image,
             flow_gt, conf_gt)
-        loss_W = self.lossCollector.compute_weight_losses(weight, warped_image, tgt_image)
+        loss_W = self.lossCollector.compute_weight_losses(weight, warped_image, tgt_image, tgt_crop_image)
         
         loss_list = [loss_G_GAN, loss_G_GAN_Feat, loss_G_VGG, # GAN + VGG loss
                      loss_GT_GAN, loss_GT_GAN_Feat,           # temporal GAN loss

@@ -42,7 +42,7 @@ class SpadeCombineModule(BaseNetwork):
         # generate image
         img_final = self.netG.img_generation(x, norm_weights, encoded_label)
 
-        return img_final, flow, weight, None, img_warp, atn, ref_idx
+        return img_final, flow, weight, None, img_warp, atn, ref_idx, None
 
     # set spade module
     def get_SPADE_embed(self, opt):

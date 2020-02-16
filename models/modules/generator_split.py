@@ -38,7 +38,7 @@ class FewShotGenerator(BaseNetwork):
         self.n_sc_layers = opt.n_sc_layers      # number of layers to perform spade combine        
         ch_hidden = []                          # hidden channel size in SPADE module
         for i in range(n_downsample_G + 1):
-            ch_hidden += [[ch[i]]] if not self.spade_combine or i >= self.n_sc_layers else [[ch[i]]*3]
+            ch_hidden += [[ch[i]]] if not self.spade_combine or i >= self.n_sc_layers else [[ch[i]]*4]
         self.ch_hidden = ch_hidden
 
         ### adaptive SPADE / Convolution
@@ -116,8 +116,7 @@ class FewShotGenerator(BaseNetwork):
         # main branch convolution layers
         for i in range(self.n_downsample_G, -1, -1):            
             conv_weight = None
-            norm_weight = norm_weights[i] if (self.adap_spade and i < self.n_adaptive_layers) else None
-            # pdb.set_trace()             
+            norm_weight = norm_weights[i] if (self.adap_spade and i < self.n_adaptive_layers) else None    
             x = getattr(self, 'up_'+str(i))(x, encoded_label[i], conv_weights=conv_weight, norm_weights=norm_weight)            
             if i != 0: x = self.up(x)
 

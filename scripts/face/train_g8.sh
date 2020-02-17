@@ -28,12 +28,12 @@ train_grid_linear(){
 }
 
 train_vox_nonlinear(){
-    CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 python train.py --name face8_vox_ani_nonlinear --dataset_mode facefore \
-    --adaptive_spade --warp_ref --warp_ani --spade_combine \                         
-    --gpu_ids 0,1,2,3,4,5,6,7 --batchSize 72 --nThreads 64 --niter 1000 --niter_single 1001 \
+    CUDA_VISIBLE_DEVICES=0,3,4,5,6,7 python train.py --name face8_vox_ani_nonlinear --dataset_mode facefore \
+    --adaptive_spade --warp_ref --warp_ani --spade_combine \
+    --gpu_ids 0,1,2,3,4,5 --batchSize 36 --nThreads 64 --niter 1000 --niter_single 1001 \
     --n_shot 8 --n_frames_G 1 \
-    --dataroot '/mnt/Data/lchen63/voxceleb2' --dataset_name vox --save_epoch_freq 50 --display_freq 5000 \
+    --dataroot '/data2/lchen63/voxceleb' --dataset_name vox --save_epoch_freq 50 --display_freq 5000 \
     --continue_train 
 }
 
-train_vox_linear
+train_vox_nonlinear

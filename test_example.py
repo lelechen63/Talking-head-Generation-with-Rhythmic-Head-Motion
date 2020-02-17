@@ -40,7 +40,7 @@ ref_idx_fix = None
 for i, data in enumerate(dataset):
     if i >= opt.how_many or i >= len(dataset): break
     img_path = data['path']   
-    data_list = [data['tgt_label'], data['tgt_image'], None, None, data['ref_label'], data['ref_image'], None, None]
+    data_list = [data['tgt_label'], data['tgt_image'], None, None, data['ref_label'], data['ref_image'], None, None, None]
     synthesized_image, fake_raw_img, warped_img, flow, weight, _, _, ref_label, ref_image = model(data_list, ref_idx_fix=ref_idx_fix)
     
     visuals = OrderedDict([ ('target_lmark', util.tensor2im(data['tgt_label'])),

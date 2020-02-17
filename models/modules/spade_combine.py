@@ -13,6 +13,7 @@ class SpadeCombineModule(BaseNetwork):
         self.warp = WarpModule(opt, opt.n_frames_G)
         self.get_SPADE_embed(opt)
         self.opt = opt
+        self.add_raw_loss = self.opt.add_raw_loss
 
     def forward(self, tgt_lmark, ref_lmarks, ref_imgs, prev, warp_ref_img, warp_ref_lmark, ani_img, ani_lmark, t=0, ref_idx_fix=None):
         # SPADE weight generation
@@ -37,12 +38,14 @@ class SpadeCombineModule(BaseNetwork):
         if self.warp.warp_ani and has_ani: 
             ds_ref[2] = torch.cat([warp_ani, weight_ani], dim=1)
 
+        if self.add_raw_loss: encoded_label_raw = [encoded_label[i] for i in range(self.netG.n_sc_layers)]
+        else: encoded_label_raw = None
         encoded_label = self.SPADE_combine(encoded_label, ds_ref)
 
         # generate image
-        img_final = self.netG.img_generation(x, norm_weights, encoded_label)
+        img_final, img_raw = self.netG.img_generation(x, norm_weights, encoded_label, encoded_label_raw)
 
-        return img_final, flow, weight, None, img_warp, atn, ref_idx, None
+        return img_final, flow, weight, img_raw, img_warp, atn, ref_idx, None
 
     # set spade module
     def get_SPADE_embed(self, opt):

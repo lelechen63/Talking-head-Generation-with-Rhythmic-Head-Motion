@@ -21,7 +21,8 @@ class FewShotGenerator(BaseNetwork):
     def __init__(self, opt):
         super().__init__()
         ########################### define params ##########################
-        self.opt = opt                      
+        self.opt = opt
+        self.add_raw_loss = opt.add_raw_loss and opt.spade_combine
         self.n_downsample_G = n_downsample_G = opt.n_downsample_G # number of downsamplings in generator
         self.n_downsample_A = opt.n_downsample_A # number of downsamplings in attention module        
         self.nf = nf = opt.ngf                                    # base channel size
@@ -107,24 +108,30 @@ class FewShotGenerator(BaseNetwork):
             = self.weight_generation(img_refs, label_refs, label, t=t)        
 
         # main branch convolution layers
-        fake_raw_img = self.img_generation(x, norm_weights, encoded_label)
+        fake_raw_img, _ = self.img_generation(x, norm_weights, encoded_label)
 
         return fake_raw_img, atn, ref_idx
 
     # generate image
-    def img_generation(self, x, norm_weights, encoded_label):
+    def img_generation(self, x, norm_weights, encoded_label, encoded_label_raw=None):
         # main branch convolution layers
         for i in range(self.n_downsample_G, -1, -1):            
             conv_weight = None
-            norm_weight = norm_weights[i] if (self.adap_spade and i < self.n_adaptive_layers) else None    
+            norm_weight = norm_weights[i] if (self.adap_spade and i < self.n_adaptive_layers) else None
+            # if require loss for raw image
+            if self.add_raw_loss and i < self.n_sc_layers:
+                if i == self.n_sc_layers - 1: x_raw = x
+                x_raw = getattr(self, 'up_'+str(i))(x_raw, encoded_label_raw[i], conv_weights=conv_weight, norm_weights=norm_weight)    
+                if i != 0: x_raw = self.up(x_raw)
             x = getattr(self, 'up_'+str(i))(x, encoded_label[i], conv_weights=conv_weight, norm_weights=norm_weight)            
             if i != 0: x = self.up(x)
 
         # raw synthesized image
         x = self.conv_img(actvn(x))
         fake_raw_img = torch.tanh(x)
+        x_raw = None if not self.add_raw_loss else torch.tanh(self.conv_img(actvn(x_raw)))
 
-        return fake_raw_img
+        return fake_raw_img, x_raw
 
     ### generate weights based on the encoded features
     def weight_generation(self, img_ref, label_ref, label, t=0):
@@ -202,8 +209,9 @@ class Encoder(BaseNetwork):
             # attention
             if n > 1 and i == self.n_downsample_A-1:
                 b, c, h, w = x.shape
-                x = x.view(b//n, n, c, h*w)
-                x = torch.sum(x * atten.unsqueeze(2).expand_as(x), dim=1).view(b//n, c, h, w)
+                x = x.view(b//n, n, c, h*w).permute(0, 2, 1, 3).contiguous().view(b//n, c, -1)  # B X C X NHW
+
+                x = torch.bmm(x, atten).view(b//n, c, h, w)
 
         return x
 
@@ -281,17 +289,18 @@ class AttenGen(BaseNetwork):
             atn_query = getattr(self, 'atn_query_'+str(i))(atn_query)
         
         b, c, h, w = atn_key.size()
-        atn_key = atn_key.view(b//n, n, c, -1)
-        atn_query = atn_query.view(b//n, 1, c, -1).expand_as(atn_key)            
-                    
-        energy = torch.sum(atn_key * atn_query, dim=2)
-        attention = nn.Softmax(dim=1)(energy) # b X n X hw
+        b_n = b//n
+        atn_key = atn_key.view(b_n, n, c, -1).permute(0, 1, 3, 2).contiguous().view(b_n, -1, c)  # B X NHW X C
+        atn_query = atn_query.view(b_n, c, -1)  # B X C X HW
+        energy = torch.bmm(atn_key, atn_query)  # B X NHW X HW
+        attention = nn.Softmax(dim=1)(energy)
 
         # get most similar reference index
-        atn_sum = attention.view(b//n, n, -1).sum(2)
+        atn_sum = attention.view(b_n, n, -1).sum(2)
         ref_idx = torch.argmax(atn_sum, dim=1)
 
         return attention, ref_idx
+
 
 # generate weight for model
 class WeightGen(BaseNetwork):

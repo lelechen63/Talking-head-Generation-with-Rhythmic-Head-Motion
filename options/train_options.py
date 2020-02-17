@@ -28,7 +28,8 @@ class TrainOptions(BaseOptions):
         parser.add_argument('--niter_decay', type=int, default=0, help='# of iter to linearly decay learning rate to zero')    
         parser.add_argument('--niter_single', type=int, default=50, help='# of iter for single frame training')
         parser.add_argument('--niter_step', type=int, default=10, help='# of iter to double the length of training sequence')   
-        parser.add_argument('--finetune_all', action='store_true', help='also finetune the single generator when training temporal') 
+        parser.add_argument('--finetune_all', action='store_true', help='also finetune the single generator when training temporal')
+        parser.add_argument('--add_raw_loss', action='store_true', help='loss for raw image in spade combine')
 
         # for temporal
         parser.add_argument('--n_frames_D', type=int, default=2, help='number of frames to feed into temporal discriminator')

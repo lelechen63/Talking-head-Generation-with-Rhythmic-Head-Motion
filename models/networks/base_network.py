@@ -10,6 +10,8 @@ from torch.nn import init
 import torch.nn.functional as F
 import numpy as np
 
+import pdb
+
 def get_grid(batchsize, rows, cols, gpu_id=0):
     hor = torch.linspace(-1.0, 1.0, cols)
     hor.requires_grad = False
@@ -40,12 +42,12 @@ def batch_conv(x, weight, bias=None, stride=1, group_size=-1):
     groups = group_size//weight.size()[2] if group_size != -1 else 1    
     if bias is None: bias = [None] * x.size()[0]
     y = None
-    for i in range(x.size()[0]):            
+    for i in range(x.size()[0]):
         if stride >= 1:
             yi = F.conv2d(x[i:i+1], weight=weight[i], bias=bias[i], padding=padding, stride=stride, groups=groups)
         else:
             yi = F.conv_transpose2d(x[i:i+1], weight=weight[i], bias=bias[i,:weight.size(2)], padding=padding, stride=int(1/stride),
-                output_padding=padding, groups=groups)
+                output_padding=1, groups=groups)
         y = concat(y, yi)
     return y
 

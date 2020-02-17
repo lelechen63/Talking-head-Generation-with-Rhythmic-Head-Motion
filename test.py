@@ -40,7 +40,7 @@ ref_idx_fix = None
 for i, data in enumerate(dataset):
     if i >= opt.how_many or i >= len(dataset): break
     img_path = data['path']   
-    data_list = [data['tgt_label'], data['tgt_image'], None, None, data['ref_label'], data['ref_image'], None, None]
+    data_list = [data['tgt_label'], data['tgt_image'], None, None, data['ref_label'], data['ref_image'], None, None, None]
     synthesized_image, _, _, _, _, _, ref_idx = model(data_list, ref_idx_fix=ref_idx_fix)
     
     # if ref_idx_fix is None:

@@ -154,7 +154,7 @@ class BaseModel(torch.nn.Module):
                     module = getattr(module, k)
                 params += [module]
                 train_list.add('.'.join(key_list[:1]))
-        Visualizer.vis_print(self.opt, 'training layers: ', train_list)
+        Visualizer.vis_print(self.opt, ('training layers: ', train_list))
         return params, train_list
 
     def define_networks(self, start_epoch):
@@ -206,9 +206,9 @@ class BaseModel(torch.nn.Module):
             self.load_network(self.netG, 'G', opt.which_epoch, pretrained_path)                  
             if self.temporal and opt.warp_ref and not self.netG.flow_temp_is_initalized:
                 self.netG.load_pretrained_net(self.netG.flow_network_ref, self.netG.flow_network_temp)
-            if self.isTrain:
+            if (self.isTrain and not opt.load_pretrain) or opt.finetune:
                 self.load_network(self.netD, 'D', opt.which_epoch, pretrained_path)  
-                if self.temporal: 
+                if self.isTrain and self.temporal: 
                     self.load_network(self.netDT, 'DT', opt.which_epoch, pretrained_path)
 
     def update_learning_rate(self, epoch):

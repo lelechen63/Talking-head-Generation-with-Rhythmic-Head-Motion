@@ -35,19 +35,20 @@ class Vid2VidModel(BaseModel):
 
     def forward(self, data_list, save_images=False, mode='inference', dummy_bs=0, ref_idx_fix=None, epoch=0):            
         tgt_label, tgt_image, tgt_crop_image, flow_gt, conf_gt, ref_labels, ref_images, \
-            warp_ref_lmark, warp_ref_img, ani_lmark, ani_img, prev_label, prev_image = encode_input(self.opt, data_list, dummy_bs)
+            warp_ref_lmark, warp_ref_img, ani_lmark, ani_img, prev_label, prev_real_image, prev_image \
+        = encode_input(self.opt, data_list, dummy_bs)
         
         if mode == 'generator':            
             g_loss, generated, prev, ref_idx = self.forward_generator(tgt_label, tgt_image, tgt_crop_image, flow_gt, conf_gt, ref_labels, ref_images,
                 warp_ref_lmark, warp_ref_img, ani_lmark, ani_img,
-                prev_label, prev_image, ref_idx_fix, epoch)
+                prev_label, prev_real_image, prev_image, ref_idx_fix, epoch)
             # return g_loss, generated if save_images else [], prev, ref_idx
             return g_loss, generated, prev, ref_idx
 
         elif mode == 'discriminator':            
             d_loss, ref_idx = self.forward_discriminator(tgt_label, tgt_image, ref_labels, ref_images, 
                 warp_ref_lmark, warp_ref_img, ani_lmark, ani_img, 
-                prev_label, prev_image, ref_idx_fix)
+                prev_label, prev_real_image, prev_image, ref_idx_fix)
             return d_loss, ref_idx
 
         else:
@@ -55,18 +56,18 @@ class Vid2VidModel(BaseModel):
    
     def forward_generator(self, tgt_label, tgt_image, tgt_crop_image, flow_gt, conf_gt, ref_labels, ref_images, 
                           warp_ref_lmark=None, warp_ref_img=None, ani_lmark=None, ani_img=None, 
-                          prev_label=None, prev_image=None, ref_idx_fix=None, epoch=0):
+                          prev_label=None, prev_real_image=None, prev_image=None, ref_idx_fix=None, epoch=0):
 
         ### fake generation
         [fake_image, fake_raw_image, img_ani, warped_image, flow, weight], \
-            [ref_label, ref_image], [prev_label, prev_image], atn_score, ref_idx = \
-            self.generate_images(tgt_label, ref_labels, ref_images, warp_ref_lmark, warp_ref_img, ani_lmark, ani_img, [prev_label, prev_image], ref_idx_fix)
+            [ref_label, ref_image], [prev_label, prev_real_image, prev_image], atn_score, ref_idx = \
+            self.generate_images(tgt_label, tgt_image, ref_labels, ref_images, warp_ref_lmark, warp_ref_img, ani_lmark, ani_img, [prev_label, prev_real_image, prev_image], ref_idx_fix)
 
         ### temporal losses
         nets = self.netD, self.netDT
         loss_GT_GAN, loss_GT_GAN_Feat = self.Tensor(1).fill_(0), self.Tensor(1).fill_(0)
-        if self.isTrain:                        
-            tgt_image_all = torch.cat([prev_image, tgt_image], dim=1)
+        if self.isTrain and prev_label is not None:
+            tgt_image_all = torch.cat([prev_real_image, tgt_image], dim=1)
             fake_image_all = torch.cat([prev_image, fake_image], dim=1)
             data_list = [None, tgt_image_all, fake_image_all, None, None]
             loss_GT_GAN, loss_GT_GAN_Feat = self.lossCollector.compute_GAN_losses(nets, data_list, 
@@ -94,16 +95,17 @@ class Vid2VidModel(BaseModel):
         
         return loss_list, \
                [fake_image, fake_raw_image, img_ani, warped_image, flow, weight, atn_score], \
-               [prev_label, prev_image], \
+               [prev_label, prev_real_image, prev_image], \
                ref_idx
     
     def forward_discriminator(self, tgt_label, tgt_image, ref_labels, ref_images, 
                               warp_ref_lmark=None, warp_ref_img=None, ani_lmark=None, ani_img=None, 
-                              prev_label=None, prev_image=None, ref_idx_fix=None):
+                              prev_label=None, prev_real_image=None, prev_image=None, ref_idx_fix=None):
         ### Fake Generation
         with torch.no_grad():
             [fake_image, fake_raw_image, _, _, _, _], [ref_label, ref_image], _, _, ref_idx = \
-                self.generate_images(tgt_label, ref_labels, ref_images, warp_ref_lmark, warp_ref_img, ani_lmark, ani_img, [prev_label, prev_image], ref_idx_fix)
+                self.generate_images(tgt_label, tgt_image, ref_labels, ref_images, warp_ref_lmark, \
+                    warp_ref_img, ani_lmark, ani_img, [prev_label, prev_real_image, prev_image], ref_idx_fix)
 
         ### temporal losses
         nets = self.netD, self.netDT
@@ -123,17 +125,17 @@ class Vid2VidModel(BaseModel):
         loss_list = [loss.view(1, 1) for loss in loss_list]
         return loss_list, ref_idx              
 
-    def generate_images(self, tgt_labels, ref_labels, ref_images, 
+    def generate_images(self, tgt_labels, tgt_images, ref_labels, ref_images, 
                         warp_ref_lmark=None, warp_ref_img=None, ani_lmark=None, ani_img=None,
-                        prevs=[None, None], ref_idx_fix=None):
+                        prevs=[None, None, None], ref_idx_fix=None):
         opt = self.opt      
         generated_images, atn_score = [None] * 6, None 
         ref_labels_valid = ref_labels
         
         for t in range(opt.n_frames_per_gpu):
             # get inputs for time t            
-            tgt_label_t, tgt_label_valid, warp_ref_img_t, warp_ref_lmark_t, \
-                    ani_img_t, ani_lmark_t, prev_t = self.get_input_t(tgt_labels, warp_ref_img, 
+            tgt_label_t, tgt_label_valid, tgt_images, warp_ref_img_t, warp_ref_lmark_t, \
+                    ani_img_t, ani_lmark_t, prev_t = self.get_input_t(tgt_labels, tgt_images, warp_ref_img, 
                                                                     warp_ref_lmark, ani_img, 
                                                                     ani_lmark, prevs, t)
 
@@ -146,22 +148,24 @@ class Vid2VidModel(BaseModel):
             ref_label_valid, ref_image_t = warp_ref_lmark_t, warp_ref_img_t
                         
             # concatenate current output with previous outputs
-            generated_images = self.concat([generated_images, [fake_image, fake_raw_image, img_ani, warped_image, flow, weight]], dim=1)          
-            prevs = self.concat_prev(prevs, [tgt_label_valid, fake_image])
+            generated_images = self.concat([generated_images, [fake_image, fake_raw_image, img_ani, warped_image, flow, weight]], dim=1)
+            prevs = self.concat_prev(prevs, [tgt_label_valid, tgt_images, fake_image])
 
         return generated_images, [ref_label_valid, ref_image_t], prevs, atn_score, ref_idx
 
-    def get_input_t(self, tgt_labels, warp_ref_img, warp_ref_lmark, ani_img, ani_lmark, prevs, t):
+    def get_input_t(self, tgt_labels, tgt_images, warp_ref_img, warp_ref_lmark, ani_img, ani_lmark, prevs, t):
         b, _, _, h, w = tgt_labels.shape        
         tgt_label = tgt_labels[:,t]
+        tgt_image = tgt_images[:,t]
         tgt_label_valid = tgt_label
         warp_ref_img_t = warp_ref_img[:, t]
         warp_ref_lmark_t = warp_ref_lmark[:, t]
+        prevs = [prevs[0], prevs[2]] # prev_label and prev_fake_image
         prevs = [prev.contiguous().view(b, -1, h, w) if prev is not None else None for prev in prevs]
         ani_img_t = ani_img[:, t] if self.opt.warp_ani else None
         ani_lmark_t = ani_lmark[:, t] if self.opt.warp_ani else None
 
-        return tgt_label, tgt_label_valid, warp_ref_img_t, warp_ref_lmark_t, ani_img_t, ani_lmark_t, prevs
+        return tgt_label, tgt_label_valid, tgt_image, warp_ref_img_t, warp_ref_lmark_t, ani_img_t, ani_lmark_t, prevs
 
     def concat_prev(self, prev, now):
         if type(prev) == list:

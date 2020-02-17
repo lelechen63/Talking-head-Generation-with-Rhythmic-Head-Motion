@@ -209,9 +209,9 @@ class Encoder(BaseNetwork):
             # attention
             if n > 1 and i == self.n_downsample_A-1:
                 b, c, h, w = x.shape
-                x = x.view(b//n, n, c, h*w).permute(0, 2, 1, 3).contiguous().view(b//n, c, -1)  # B X C X NHW
+                x = x.view(b//n, n, c, h*w)
 
-                x = torch.bmm(x, atten).view(b//n, c, h, w)
+                x = torch.sum(x * atten.unsqueeze(2).expand_as(x), dim=1).view(b//n, c, h, w)
 
         return x
 
@@ -290,10 +290,11 @@ class AttenGen(BaseNetwork):
         
         b, c, h, w = atn_key.size()
         b_n = b//n
-        atn_key = atn_key.view(b_n, n, c, -1).permute(0, 1, 3, 2).contiguous().view(b_n, -1, c)  # B X NHW X C
-        atn_query = atn_query.view(b_n, c, -1)  # B X C X HW
-        energy = torch.bmm(atn_key, atn_query)  # B X NHW X HW
-        attention = nn.Softmax(dim=1)(energy)
+        atn_key = atn_key.view(b_n, n, c, -1)
+        atn_query = atn_query.view(b_n, 1, c, -1).expand_as(atn_key)            
+                    
+        energy = torch.sum(atn_key * atn_query, dim=2)
+        attention = nn.Softmax(dim=1)(energy) # b X n X hw
 
         # get most similar reference index
         atn_sum = attention.view(b_n, n, -1).sum(2)

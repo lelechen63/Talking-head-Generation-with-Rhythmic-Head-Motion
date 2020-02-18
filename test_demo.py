@@ -45,10 +45,18 @@ for pick_id in tqdm(pick_ids):
     print('process {} ...'.format(pick_id))
 
     paths = pickle_data[pick_id]
+    # target
     opt.tgt_video_path = os.path.join(root, 'unzip/test_video', paths[0], paths[1], paths[2]+"_aligned.mp4")
     opt.tgt_lmarks_path = os.path.join(root, 'unzip/test_video', paths[0], paths[1], paths[2]+"_aligned.npy")
+    opt.tgt_rt_path = os.path.join(root, 'unzip/test_video', paths[0], paths[1], paths[2]+"_aligned_rt.npy")
+    opt.tgt_ani_path = os.path.join(root, 'unzip/test_video', paths[0], paths[1], paths[2]+"_aligned_ani.mp4")
+    # reference
+    ref_paths = paths
+    opt.ref_front_path = os.path.join(root, 'unzip/test_video', ref_paths[0], ref_paths[1], ref_paths[2]+"_aligned_front.npy")
     opt.ref_video_path = opt.tgt_video_path
     opt.ref_lmarks_path = opt.tgt_lmarks_path
+    opt.ref_rt_path = opt.tgt_rt_path
+    opt.ref_ani_id = int(ref_paths[3])
 
     ### setup dataset
     data_loader = CreateDataLoader(opt)
@@ -62,6 +70,8 @@ for pick_id in tqdm(pick_ids):
         img_path = data['path']
         if not opt.warp_ani:
             data.update({'ani_image':None, 'ani_lmark':None, 'cropped_images':None, 'cropped_lmarks':None })
+        if "warping_ref" not in data:
+            data.update({'warping_ref': None, 'warping_ref_lmark': None})
 
         img_path = data['path']
         data_list = [data['tgt_label'], data['tgt_image'], data['cropped_images'], None, None, \

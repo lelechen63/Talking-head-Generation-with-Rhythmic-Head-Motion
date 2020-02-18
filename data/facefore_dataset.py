@@ -37,7 +37,7 @@ class FaceForeDataset(BaseDataset):
         parser.add_argument('--aspect_ratio', type=float, default=1)        
         parser.add_argument('--no_upper_face', action='store_true', help='do not add upper face')
         parser.add_argument('--use_ft', action='store_true')
-        parser.add_argument('--dataset_name', type=str, help='face or vox')
+        parser.add_argument('--dataset_name', type=str, help='face or vox or grid')
         parser.add_argument('--worst_ref_prob', type=float, default=0.75, help='probability to select worst reference image')
         parser.add_argument('--ref_ratio', type=float, default=0.25, help='ratio to select reference images')
 

@@ -18,7 +18,6 @@ def encode_input(opt, data_list, dummy_bs):
     # target label and image
     tgt_label = encode_label(opt, tgt_label)
     tgt_image = tgt_image.cuda()
-    tgt_crop_image = tgt_crop_image.cuda()
 
     # flownet ground truth
     # flow_gt = [flow.cuda() if flow is not None else None for flow in flow_gt]
@@ -30,6 +29,7 @@ def encode_input(opt, data_list, dummy_bs):
 
     # animation label and image
     if opt.warp_ani:
+        tgt_crop_image = tgt_crop_image.cuda()
         ani_lmark = encode_label(opt, ani_lmark)        
         ani_img = ani_img.cuda()
 

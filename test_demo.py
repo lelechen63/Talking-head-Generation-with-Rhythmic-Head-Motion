@@ -37,7 +37,7 @@ _file = open(os.path.join(root, 'pickle','test_lmark2img.pkl'), "rb")
 pickle_data = pkl.load(_file)
 _file.close()
 
-save_root = 'evaluation_store'
+save_root = os.path.join('evaluation_store', opt.name)
 # pick_ids = np.random.choice(list(range(len(pickle_data))), size=opt.how_many)
 pick_ids = range(0, len(pickle_data), int(len(pickle_data))//opt.how_many)
 
@@ -59,9 +59,15 @@ for pick_id in tqdm(pick_ids):
     ref_idx_fix = None
     for i, data in enumerate(dataset):
         if i >= len(dataset): break
-        img_path = data['path']   
-        data_list = [data['tgt_label'], data['tgt_image'], None, None, data['ref_label'], data['ref_image'], None, None, None]
-        synthesized_image, _, _, _, _, _, _, _, _ = model(data_list, ref_idx_fix=ref_idx_fix)
+        img_path = data['path']
+        if not opt.warp_ani:
+            data.update({'ani_image':None, 'ani_lmark':None, 'cropped_images':None, 'cropped_lmarks':None })
+
+        img_path = data['path']
+        data_list = [data['tgt_label'], data['tgt_image'], data['cropped_images'], None, None, \
+                    data['ref_label'], data['ref_image'], data['warping_ref_lmark'].squeeze(1), data['warping_ref'].squeeze(1), \
+                    data['ani_lmark'], data['ani_image'], None, None, None]
+        synthesized_image, _, _, _, _, _, _, _, _, _ = model(data_list, ref_idx_fix=ref_idx_fix)
         
         synthesized_image = util.tensor2im(synthesized_image)    
         tgt_image = util.tensor2im(data['tgt_image'])
@@ -90,13 +96,13 @@ for pick_id in tqdm(pick_ids):
         if opt.evaluate:
             if not os.path.exists(os.path.join(img_dir, 'real')):
                 os.makedirs(os.path.join(img_dir, 'real'))
-            img_path = os.path.join(img_dir, 'real', '{}_{}_image.jpg'.format(data['index'][0], 'real'))
+            img_path = os.path.join(img_dir, 'real', '{}_{}_image.jpg'.format(data['target_id'][0], 'real'))
             image_pil = Image.fromarray(tgt_image)
             image_pil.save(img_path)
 
             if not os.path.exists(os.path.join(img_dir, 'synthesized')):
                 os.makedirs(os.path.join(img_dir, 'synthesized'))
-            img_path = os.path.join(img_dir, 'synthesized', '{}_{}_image.jpg'.format(data['index'][0], 'synthesized'))
+            img_path = os.path.join(img_dir, 'synthesized', '{}_{}_image.jpg'.format(data['target_id'][0], 'synthesized'))
             image_pil = Image.fromarray(synthesized_image)
             image_pil.save(img_path)
 

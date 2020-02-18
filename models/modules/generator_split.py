@@ -205,7 +205,7 @@ class Encoder(BaseNetwork):
         x = self.conv1(x)
         for i in range(self.n_downsample_G):
             x = getattr(self, 'ref_down_'+str(i))(x)
-            
+
             # attention
             if n > 1 and i == self.n_downsample_A-1:
                 b, c, h, w = x.shape
@@ -343,7 +343,7 @@ class WeightGen(BaseNetwork):
 
     def forward(self, encoded_ref):
         embedding_weights, norm_weights = [], []          
-        for i in range(self.n_adaptive_layers):                                    
+        for i in range(self.n_adaptive_layers):
             feat = encoded_ref[min(len(encoded_ref)-1, i+1)]                         
             embedding_weight, norm_weight = self.get_SPADE_weights(feat, i) 
             embedding_weights.append(embedding_weight)
@@ -410,6 +410,7 @@ class LabelEmbedder(BaseNetwork):
 
     def forward(self, input, weights=None):
         if input is None: return None
+        
         if self.first_layer_free:
             output = [batch_conv(input, weights[0])]
             weights = weights[1:]

@@ -39,26 +39,47 @@ webpage = html.HTML(web_dir, 'Experiment = %s, Phase = %s, Epoch = %s' % (opt.na
 ref_idx_fix = None
 for i, data in enumerate(dataset):
     if i >= opt.how_many or i >= len(dataset): break
-    img_path = data['path']   
-    data_list = [data['tgt_label'], data['tgt_image'], None, None, data['ref_label'], data['ref_image'], None, None, None]
-    synthesized_image, fake_raw_img, warped_img, flow, weight, _, _, ref_label, ref_image = model(data_list, ref_idx_fix=ref_idx_fix)
+    if not opt.warp_ani:
+        data.update({'ani_image':None, 'ani_lmark':None, 'cropped_images':None, 'cropped_lmarks':None })
+
+    img_path = data['path']
+    data_list = [data['tgt_label'], data['tgt_image'], data['cropped_images'], None, None, \
+                 data['ref_label'], data['ref_image'], data['warping_ref_lmark'].squeeze(1), data['warping_ref'].squeeze(1), \
+                 data['ani_lmark'].squeeze(1) if opt.warp_ani else None, \
+                 data['ani_image'].squeeze(1) if opt.warp_ani else None, \
+                 None, None, None]
+    synthesized_image, fake_raw_img, warped_img, flow, weight, _, _, ref_label, ref_image, img_ani = model(data_list, ref_idx_fix=ref_idx_fix)
     
-    visuals = OrderedDict([ ('target_lmark', util.tensor2im(data['tgt_label'])),
-                            ('synthesized_image', util.tensor2im(synthesized_image)),
-                            ('target_image', util.tensor2im(data['tgt_image'])),
-                            ('ref_lmark', util.tensor2im(ref_label)),
-                            ('ref_image', util.tensor2im(ref_image)),
-                            ('raw_image', util.tensor2im(fake_raw_img)),
-                            ('warped_image', util.tensor2im(warped_img[0])),
-                            ('flow', util.tensor2flow(flow[0])),
-                            ('weight', util.tensor2im(weight[0], normalize=False))])
+
+    visual_list = []
+    for i in range(opt.n_shot):
+        visual_list += [('ref_img_{}'.format(i), util.tensor2im(data['ref_image'][:, i:i+1]))]
+    visual_list += [('warping_ref_lmark', util.tensor2im(data['warping_ref_lmark'])),
+                    ('warping_ref_img', util.tensor2im(data['warping_ref'])),
+                    ('target_label', util.visualize_label(opt, data['tgt_label'])),
+                    ('target_image', util.tensor2im(data['tgt_image'])),
+                    ('synthesized_image', util.tensor2im(synthesized_image)),
+                    ('ani_syn_image', util.tensor2im(img_ani)),
+                    ('ref_warped_images', util.tensor2im(warped_img[0][-1], tile=True)),
+                    ('ref_weights', util.tensor2im(weight[0][-1], normalize=False, tile=True)),
+                    ('raw_image', util.tensor2im(fake_raw_img)),
+                    ('ani_warped_images', util.tensor2im(warped_img[2][-1], tile=True) if warped_img[2] is not None else None),
+                    ('ani_weights', util.tensor2im(weight[2][-1], normalize=False, tile=True) if weight[2] is not None else None),
+                    ('ani_flow', util.tensor2flow(flow[2][-1], tile=True) if flow[2] is not None else None),
+                    ('ref_flow', util.tensor2flow(flow[0][-1], tile=True)),
+                    ('ani_image', util.tensor2im(data['ani_image'])),
+                    ('ani_lmark', util.tensor2im(data['ani_lmark'])),
+                    ('cropped_image', util.tensor2im(data['cropped_images'])),
+                    ('cropped_lmark', util.tensor2im(data['cropped_lmarks'])),
+                    ]
+    visuals = OrderedDict(visual_list)
 
     print('process image... %s' % img_path)
 
     # for image save
     img_path_base = os.path.join(*(img_path[0].split('/')[:-3]))
     img_save_name = img_path[0].split('/')[-3:]
-    img_save_name = "{}_{}_{}_{}".format(img_save_name[0], img_save_name[1], data['index'][0].tolist(), img_save_name[2])
+    img_save_name = "{}_{}_{}_{}".format(img_save_name[0], img_save_name[1], data['target_id'][0].tolist(), img_save_name[2])
 
     visualizer.save_images(webpage, visuals, [os.path.join(img_path_base, img_save_name)])
 

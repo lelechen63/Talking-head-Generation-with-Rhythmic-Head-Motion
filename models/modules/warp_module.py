@@ -77,7 +77,7 @@ class WarpModule(BaseNetwork):
         img_final = img_raw
         if self.warp_ani and has_ani:
             img_final = img_final * weight_ani + img_ani_warp * (1 - weight_ani)
-            img_ani = img_final.data.clone()
+            img_ani = img_final
 
         # combine raw result with reference image
         if self.warp_ref and has_ref:

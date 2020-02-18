@@ -38,9 +38,12 @@ class FaceForeDataset(BaseDataset):
         parser.add_argument('--no_upper_face', action='store_true', help='do not add upper face')
         parser.add_argument('--use_ft', action='store_true')
         parser.add_argument('--dataset_name', type=str, help='face or vox')
+        parser.add_argument('--worst_ref_prob', type=float, default=0.75, help='probability to select worst reference image')
+        parser.add_argument('--ref_ratio', type=float, default=0.25, help='ratio to select reference images')
 
         # for reference
         parser.add_argument('--ref_img_id', type=str)
+
 
         return parser
 
@@ -122,19 +125,21 @@ class FaceForeDataset(BaseDataset):
                 transforms.ToTensor(),
                 transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
             ])
+            self.transform_L = transforms.Compose([
+                transforms.Lambda(lambda img: self.__scale_image(img, img_params['new_size'], Image.BILINEAR)),
+                transforms.Lambda(lambda img: self.__flip(img, img_params['flip'])),
+                transforms.ToTensor()
+            ])
         else:
             self.transform = transforms.Compose([
                 transforms.Lambda(lambda img: self.__scale_image(img, img_params['new_size'], Image.BICUBIC)),
-                transforms.Lambda(lambda img: self.__flip(img, img_params['flip'])),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
             ])
-
-        self.transform_L = transforms.Compose([
-            transforms.Lambda(lambda img: self.__scale_image(img, img_params['new_size'], Image.BILINEAR)),
-            transforms.Lambda(lambda img: self.__flip(img, img_params['flip'])),
-            transforms.ToTensor()
-        ])
+            self.transform_L = transforms.Compose([
+                transforms.Lambda(lambda img: self.__scale_image(img, img_params['new_size'], Image.BILINEAR)),
+                transforms.ToTensor()
+            ])
 
 
     def __len__(self):
@@ -202,7 +207,10 @@ class FaceForeDataset(BaseDataset):
         v_length = len(real_video)
 
         # sample index of frames for embedding network
-        input_indexs, target_id = self.get_image_index(self.n_frames_total, v_length)
+        if self.opt.ref_ratio is not None:
+            input_indexs, target_id = self.get_image_index_ratio(self.n_frames_total, v_length)
+        else:
+            input_indexs, target_id = self.get_image_index(self.n_frames_total, v_length)
     
         # define scale
         self.define_scale()
@@ -235,27 +243,17 @@ class FaceForeDataset(BaseDataset):
         
         # get warping reference
         rt = rt[:, :3]
-        warping_refs, warping_ref_lmarks = [], []
+        warping_ref_ids = self.get_warp_ref(rt, input_indexs, target_id)
+        warping_refs = [ref_images[w_ref_id] for w_ref_id in warping_ref_ids]
+        warping_ref_lmarks = [ref_lmarks[w_ref_id] for w_ref_id in warping_ref_ids]
         
-        for gg in target_id:
-            reference_rt_diffs = []
-            target_rt = rt[gg]
-            for t in input_indexs:
-                reference_rt_diffs.append(rt[t] - target_rt)
-            # most similar reference to target
-            reference_rt_diffs = np.mean(np.absolute(reference_rt_diffs), axis=1)
-            similar_id = np.argmin(reference_rt_diffs)
-            # get reference
-            warping_refs.append(ref_images[similar_id])
-            warping_ref_lmarks.append(ref_lmarks[similar_id])
-            
+        # preprocess
         target_img_path  = [os.path.join(video_path[:-4] , '%05d.png'%t_id) for t_id in target_id]
 
         ref_images = torch.cat([ref_img.unsqueeze(0) for ref_img in ref_images], axis=0)
         ref_lmarks = torch.cat([ref_lmark.unsqueeze(0) for ref_lmark in ref_lmarks], axis=0)
         tgt_images = torch.cat([tgt_img.unsqueeze(0) for tgt_img in tgt_images], axis=0)
         tgt_lmarks = torch.cat([tgt_lmark.unsqueeze(0) for tgt_lmark in tgt_lmarks], axis=0)
-        # similar reference frame
         warping_refs = torch.cat([warping_ref.unsqueeze(0) for warping_ref in warping_refs], 0)
         warping_ref_lmarks = torch.cat([warping_ref_lmark.unsqueeze(0) for warping_ref_lmark in warping_ref_lmarks], 0)
         if self.opt.warp_ani:
@@ -265,7 +263,7 @@ class FaceForeDataset(BaseDataset):
             cropped_lmarks = torch.cat([cropped_lmark.unsqueeze(0) for cropped_lmark in cropped_lmarks], 0)
 
         input_dic = {'v_id' : target_img_path, 'tgt_label': tgt_lmarks, 'ref_image':ref_images , 'ref_label': ref_lmarks, \
-        'tgt_image': tgt_images,  'target_id': target_id , 'warping_ref': warping_refs , 'warping_ref_lmark': warping_ref_lmarks }
+        'tgt_image': tgt_images,  'target_id': target_id , 'warping_ref': warping_refs , 'warping_ref_lmark': warping_ref_lmarks, 'path': video_path}
         if self.opt.warp_ani:
             input_dic.update({'ani_image': ani_images, 'ani_lmark': ani_lmarks, 'cropped_images': cropped_images, 'cropped_lmarks' :cropped_lmarks })
 
@@ -308,6 +306,34 @@ class FaceForeDataset(BaseDataset):
 
         return ref_indices, target_ids
 
+    # get index for target and reference by ratio method
+    def get_image_index_ratio(self, n_frames_total, cur_seq_len, max_t_step=4):
+        # check enough frames
+        if n_frames_total + self.num_frames > cur_seq_len:
+            assert False
+        # get lengths
+        target_len = max(int(cur_seq_len * (1 - self.opt.ref_ratio)), n_frames_total)
+        reference_len = max(cur_seq_len - target_len, self.num_frames)
+        target_len = cur_seq_len - reference_len
+        
+        # frame steps, target start index
+        max_t_step = min(max_t_step, (target_len-1) // max(1, (n_frames_total-1)))
+        t_step = np.random.randint(max_t_step) + 1
+        offset_max = max(1, target_len-(n_frames_total-1)*t_step)
+        start_idx = np.random.randint(offset_max) + reference_len
+
+        # indices for target
+        target_ids = [start_idx + step * t_step for step in range(self.n_frames_total)]
+
+        # indices for reference frames
+        if self.opt.isTrain:
+            ref_indices = np.random.choice(reference_len, self.num_frames, replace=False)
+        else:
+            ref_indices = self.opt.ref_img_id.split(',')
+            ref_indices = [int(i) for i in ref_indices]
+
+        return ref_indices, target_ids
+
     # load in all frames from video
     def read_videos(self, video_path):
         cap = cv2.VideoCapture(video_path)
@@ -343,8 +369,11 @@ class FaceForeDataset(BaseDataset):
     # preprocess for landmarks
     def get_keypoints(self, keypoints, transform_L, size, crop_coords, bw):
         # crop landmarks
-        keypoints[:, 0] -= crop_coords[2]
-        keypoints[:, 1] -= crop_coords[0]
+        if self.opt.isTrain:
+            keypoints[:, 0] -= crop_coords[2]
+            keypoints[:, 1] -= crop_coords[0]
+        else:
+            bw = 1
 
         # add upper half face by symmetry
         if self.add_upper_face:
@@ -363,7 +392,10 @@ class FaceForeDataset(BaseDataset):
     def get_image(self, image, transform_I, size, crop_coords):
         # crop
         img = mmcv.bgr2rgb(image)
-        img = self.crop(Image.fromarray(img), crop_coords)
+        if self.opt.isTrain:
+            img = self.crop(Image.fromarray(img), crop_coords)
+        else:
+            img = Image.fromarray(img)
         crop_size = img.size
 
         # transform
@@ -453,5 +485,24 @@ class FaceForeDataset(BaseDataset):
         
         return A3
 
+    def get_warp_ref(self, rt, ref_indexs, target_id):
+        warp_ref_ids = []
+        
+        for gg in target_id:
+            # random
+            if self.opt.isTrain and random.random() >= self.opt.worst_ref_prob:
+                warp_ref_ids.append(random.randint(0, len(ref_indexs)-1))
+            # select
+            else:
+                reference_rt_diffs = []
+                target_rt = rt[gg]
+                for t in ref_indexs:
+                    reference_rt_diffs.append(rt[t] - target_rt)
+                # most similar reference to target
+                reference_rt_diffs = np.mean(np.absolute(reference_rt_diffs), axis=1)
+                if self.opt.isTrain:
+                    warp_ref_ids.append(np.argmax(reference_rt_diffs))
+                else:
+                    warp_ref_ids.append(np.argmin(reference_rt_diffs))
 
-
+        return warp_ref_ids

@@ -75,12 +75,15 @@ class Vid2VidModel(BaseModel):
 
         ### individual frame losses
         # GAN loss
-        data_list = [tgt_label, [tgt_image, tgt_image], [fake_image, fake_raw_image], ref_label, ref_image]
+        if img_ani is not None:
+            data_list = [tgt_label, [tgt_image, tgt_image, tgt_image], [fake_image, fake_raw_image, img_ani], ref_label, ref_image]
+        else:
+            data_list = [tgt_label, [tgt_image, tgt_image], [fake_image, fake_raw_image], ref_label, ref_image]
         loss_G_GAN, loss_G_GAN_Feat = self.lossCollector.compute_GAN_losses(nets,
             data_list, for_discriminator=False)
                    
-        # VGG loss        
-        loss_G_VGG = self.lossCollector.compute_VGG_losses(fake_image, fake_raw_image, tgt_image)
+        # VGG loss
+        loss_G_VGG = self.lossCollector.compute_VGG_losses(fake_image, fake_raw_image, img_ani, tgt_image)
 
         flow, weight, flow_gt, conf_gt, warped_image, tgt_image, tgt_crop_image = \
             self.reshape([flow, weight, flow_gt, conf_gt, warped_image, tgt_image, tgt_crop_image])             
@@ -103,7 +106,7 @@ class Vid2VidModel(BaseModel):
                               prev_label=None, prev_real_image=None, prev_image=None, ref_idx_fix=None):
         ### Fake Generation
         with torch.no_grad():
-            [fake_image, fake_raw_image, _, _, _, _], [ref_label, ref_image], _, _, ref_idx = \
+            [fake_image, fake_raw_image, img_ani, _, _, _], [ref_label, ref_image], _, _, ref_idx = \
                 self.generate_images(tgt_label, tgt_image, ref_labels, ref_images, warp_ref_lmark, \
                     warp_ref_img, ani_lmark, ani_img, [prev_label, prev_real_image, prev_image], ref_idx_fix)
 
@@ -117,8 +120,11 @@ class Vid2VidModel(BaseModel):
             data_list = [None, tgt_image_all, fake_image_all, None, None]
             loss_temp = self.lossCollector.compute_GAN_losses(nets, data_list, for_discriminator=True, for_temporal=True)
 
-        ### individual frame losses              
-        data_list = [tgt_label, [tgt_image, tgt_image], [fake_image, fake_raw_image], ref_label, ref_image]        
+        ### individual frame losses
+        if img_ani is not None:
+            data_list = [tgt_label, [tgt_image, tgt_image, tgt_image], [fake_image, fake_raw_image, img_ani], ref_label, ref_image]
+        else:
+            data_list = [tgt_label, [tgt_image, tgt_image], [fake_image, fake_raw_image], ref_label, ref_image]
         loss_indv = self.lossCollector.compute_GAN_losses(nets, data_list, for_discriminator=True)
 
         loss_list = list(loss_indv) + list(loss_temp)
@@ -196,8 +202,7 @@ class Vid2VidModel(BaseModel):
 
         with torch.no_grad():
             assert self.t == 0
-
-            fake_image, flow, weight, fake_raw_image, warped_image, atn_score, ref_idx = self.netG(tgt_label_valid, 
+            fake_image, flow, weight, fake_raw_image, warped_image, atn_score, ref_idx, img_ani = self.netG(tgt_label_valid, 
                 ref_labels_valid, ref_images, prevs, 
                 warp_ref_img, warp_ref_lmark, ani_img, ani_lmark,
                 t=self.t, ref_idx_fix=ref_idx_fix)
@@ -207,7 +212,7 @@ class Vid2VidModel(BaseModel):
             if not self.temporal:
                 self.prevs = self.concat_prev(self.prevs, [tgt_label_valid, fake_image])            
             
-        return fake_image, fake_raw_image, warped_image, flow, weight, atn_score, ref_idx, ref_label, ref_image
+        return fake_image, fake_raw_image, warped_image, flow, weight, atn_score, ref_idx, ref_label, ref_image, img_ani
 
     def finetune(self, ref_labels, ref_images):
         train_names = ['fc', 'conv_img', 'up']        

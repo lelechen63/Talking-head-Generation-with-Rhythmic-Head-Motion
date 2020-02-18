@@ -113,6 +113,7 @@ class BaseOptions():
         parser.add_argument('--no_ganFeat_loss', action='store_true', help='if specified, do *not* use discriminator feature matching loss')
         parser.add_argument('--no_vgg_loss', action='store_true', help='if specified, do *not* use VGG feature matching loss')
         parser.add_argument('--no_TTUR', action='store_true', help='Use TTUR training scheme')
+        parser.add_argument('--add_raw_loss', action='store_true', help='loss for raw image in spade combine')
 
         # for optimizer
         parser.add_argument('--lr', type=float, default=0.0004, help='initial learning rate for adam')

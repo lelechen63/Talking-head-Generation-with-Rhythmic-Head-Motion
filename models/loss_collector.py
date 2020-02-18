@@ -94,7 +94,7 @@ class LossCollector(BaseModel):
    
         return losses
 
-    def compute_VGG_losses(self, fake_image, fake_raw_image, tgt_image):
+    def compute_VGG_losses(self, fake_image, fake_raw_image, img_ani, tgt_image):
         loss_G_VGG = self.Tensor(1).fill_(0)
         opt = self.opt
         if not opt.no_vgg_loss:
@@ -102,6 +102,8 @@ class LossCollector(BaseModel):
                 loss_G_VGG = self.criterionVGG(fake_image, tgt_image) * opt.lambda_vgg
             if fake_raw_image is not None:
                 loss_G_VGG += self.criterionVGG(fake_raw_image, tgt_image) * opt.lambda_vgg
+            if img_ani is not None:
+                loss_G_VGG += self.criterionVGG(img_ani, tgt_image) * opt.lambda_vgg
         return loss_G_VGG
 
     def compute_flow_losses(self, flow, warped_image, tgt_image, tgt_crop_image, flow_gt, conf_gt):                    
@@ -117,8 +119,8 @@ class LossCollector(BaseModel):
         lambda_flow = self.opt.lambda_flow
         loss_F_Flow, loss_F_Warp = self.Tensor(1).fill_(0), self.Tensor(1).fill_(0)
         if self.opt.isTrain and flow is not None:
-            if flow_gt is not None and self.opt.n_shot == 1: # only computed ground truth flow for first reference image                  
-                loss_F_Flow = self.criterionFlow(flow, flow_gt, conf_gt) * lambda_flow                
+            if flow_gt is not None:               
+                loss_F_Flow = self.criterionFlow(flow, flow_gt, conf_gt) * lambda_flow
             loss_F_Warp = self.criterionFeat(warped_image, tgt_image) * lambda_flow
         return loss_F_Flow, loss_F_Warp
 
@@ -126,7 +128,7 @@ class LossCollector(BaseModel):
         loss_W = self.Tensor(1).fill_(0)
         loss_W += self.compute_weight_loss(weight[0], warped_image[0], tgt_image)        
         loss_W += self.compute_weight_loss(weight[1], warped_image[1], tgt_image)
-        loss_W += self.compute_weight_loss(weight[2], warped_image[2], tgt_crop_image)
+        # loss_W += self.compute_weight_loss(weight[2], warped_image[2], tgt_crop_image)
         
         return loss_W
 
@@ -134,8 +136,8 @@ class LossCollector(BaseModel):
         loss_W = 0
         if self.opt.isTrain and weight is not None:
             img_diff = torch.sum(abs(warped_image - tgt_image), dim=1, keepdim=True)
-            conf = torch.clamp(1 - img_diff, 0, 1)        
-                               
+            conf = torch.clamp(1 - img_diff, 0, 1)
+
             dummy0, dummy1 = torch.zeros_like(weight), torch.ones_like(weight)        
             loss_W = self.criterionFlow(weight, dummy0, conf) * self.opt.lambda_weight
             loss_W += self.criterionFlow(weight, dummy1, 1-conf) * self.opt.lambda_weight

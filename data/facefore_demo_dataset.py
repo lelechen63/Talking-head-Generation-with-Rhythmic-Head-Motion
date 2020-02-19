@@ -22,6 +22,7 @@ import sys
 # sys.path.insert(1, '../utils')
 # from .. import utils
 from torch.utils.data import DataLoader
+from scipy.spatial.transform import Rotation as R
 
 from data.base_dataset import BaseDataset, get_transform
 from data.keypoint2img import interpPoints, drawEdge
@@ -43,9 +44,9 @@ class FaceForeDemoDataset(BaseDataset):
         parser.add_argument('--tgt_video_path', type=str)
         parser.add_argument('--tgt_lmarks_path', type=str)
         parser.add_argument('--tgt_rt_path', type=str, default=None)
+        parser.add_argument('--tgt_ani_path', type=str, default=None)
         parser.add_argument('--ref_video_path', type=str)
         parser.add_argument('--ref_lmarks_path', type=str)
-        parser.add_argument('--tgt_ani_path', type=str, default=None)
         parser.add_argument('--ref_rt_path', type=str, default=None)
         parser.add_argument('--ref_front_path', type=str, default=None)
         parser.add_argument('--ref_ani_id', type=int)
@@ -100,7 +101,7 @@ class FaceForeDemoDataset(BaseDataset):
         if self.opt.warp_ani:
             self.tgt_ani_video = self.read_videos(self.tgt_ani_path)
             self.ref_front = np.load(self.ref_front_path)
-            self.ref_ani_id = self.opt.ani_id
+            self.ref_ani_id = self.opt.ref_ani_id
         if self.opt.warp_ani or self.ref_search:
             self.tgt_rt = np.load(self.tgt_rt_path)
             self.ref_rt = np.load(self.ref_rt_path)

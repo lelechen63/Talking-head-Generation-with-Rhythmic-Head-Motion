@@ -29,7 +29,7 @@ def encode_input(opt, data_list, dummy_bs):
 
     # animation label and image
     if opt.warp_ani:
-        tgt_crop_image = tgt_crop_image.cuda()
+        tgt_crop_image = tgt_crop_image.cuda() if tgt_crop_image is not None else None
         ani_lmark = encode_label(opt, ani_lmark)        
         ani_img = ani_img.cuda()
 

@@ -280,7 +280,6 @@ class FaceForeDataset(BaseDataset):
 
         return correct_nums
 
-
     # get index for target and reference
     def get_image_index(self, n_frames_total, cur_seq_len, max_t_step=4):            
         n_frames_total = min(cur_seq_len, n_frames_total)             # total number of frames to load

@@ -55,7 +55,7 @@ class FlowGenerator(BaseNetwork):
         self.conv_w = nn.Sequential(*conv_w)
 
     def forward(self, label, label_prev, img_prev, for_ref=False):
-        label = torch.cat([label, label_prev, img_prev], dim=1)        
+        label = torch.cat([label, label_prev, img_prev], dim=1)
         downsample = self.down_flow(label)
         res = self.res_flow(downsample)
         flow_feat = self.up_flow(res)        

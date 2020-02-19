@@ -34,56 +34,49 @@ def add_audio(video_name, audio_dir):
     print (command)
     os.system(command)
 
+
 opt = TestOptions().parse()
 
 ### setup models
 model = create_model(opt)
 model.eval()
 
-root = opt.dataroot
-_file = open(os.path.join(root, 'pickle','test_lmark2img.pkl'), "rb")
-pickle_data = pkl.load(_file)
-_file.close()
+fake_root = "/home/cxu-serve/p1/common/tmp/atnet_raw_pca_test"
+files = [f for f in os.listdir(fake_root) if f[-3:]=='npy']
+# files = ["s13__pbbo3a_front.npy"]
+# files = files[:
+# pdb.set_trace()
 
-save_root = os.path.join('evaluation_store_nopick', opt.name)
-# pick_ids = np.random.choice(list(range(len(pickle_data))), size=opt.how_many)
-pick_ids = range(0, len(pickle_data), int(len(pickle_data))//opt.how_many)
+real_root = os.path.join(opt.dataroot, 'align')
+audio_root = os.path.join(opt.dataroot, 'audio')
+save_root = os.path.join('evaluation_store', opt.name)
 
-for pick_id in tqdm(pick_ids):
-    print('process {} ...'.format(pick_id))
+visualizer = Visualizer(opt)
+webpage = html.HTML(save_root, 'Experiment = %s, Phase = %s, Epoch = %s' % (opt.name, opt.phase, opt.which_epoch), infer=True)
 
-    paths = pickle_data[pick_id]
-    if opt.dataset_name == 'vox':
-        # target
-        opt.tgt_video_path = os.path.join(root, 'unzip/test_video', paths[0], paths[1], paths[2]+"_aligned.mp4")
-        opt.tgt_lmarks_path = os.path.join(root, 'unzip/test_video', paths[0], paths[1], paths[2]+"_aligned.npy")
-        opt.tgt_rt_path = os.path.join(root, 'unzip/test_video', paths[0], paths[1], paths[2]+"_aligned_rt.npy")
-        opt.tgt_ani_path = os.path.join(root, 'unzip/test_video', paths[0], paths[1], paths[2]+"_aligned_ani.mp4")
-        # reference
-        ref_paths = paths
-        opt.ref_front_path = os.path.join(root, 'unzip/test_video', ref_paths[0], ref_paths[1], ref_paths[2]+"_aligned_front.npy")
-        opt.ref_video_path = opt.tgt_video_path
-        opt.ref_lmarks_path = opt.tgt_lmarks_path
-        opt.ref_rt_path = opt.tgt_rt_path
-        opt.ref_ani_id = int(ref_paths[3])
+paths = [None, None, None]
+for file_id, file in enumerate(tqdm(files)):
+    if file_id >= opt.how_many: break
 
-        audio_tgt_path = os.path.join(root, 'unzip/test_audio', paths[0], paths[1], paths[2]+".m4a")
+    print('process {} ...'.format(file))
 
-    elif opt.dataset_name == 'grid':
-        # target
-        opt.tgt_video_path = os.path.join(root, 'align', paths[0], paths[1]+"_crop.mp4")
-        opt.tgt_lmarks_path = os.path.join(root, 'align', paths[0], paths[1]+"_original.npy")
-        opt.tgt_rt_path = None
-        opt.tgt_ani_path = None
-        # reference
-        ref_paths = paths
-        opt.ref_front_path = None
-        opt.ref_video_path = opt.tgt_video_path
-        opt.ref_lmarks_path = opt.tgt_lmarks_path
-        opt.ref_rt_path = opt.tgt_rt_path
-        opt.ref_ani_id = None
+    paths[0] = file.split('__')[0]
+    paths[1] = file.split('__')[1].split('_')[0]
 
-        audio_tgt_path = os.path.join(root, 'align', paths[0], paths[1]+".wav")
+    # target
+    opt.tgt_video_path = os.path.join(real_root, paths[0], paths[1]+"_crop.mp4")
+    opt.tgt_lmarks_path = os.path.join(fake_root, file)
+    # opt.tgt_lmarks_path = os.path.join(real_root, paths[0], paths[1]+"_original.npy")
+    opt.tgt_rt_path = None
+    opt.tgt_ani_path = None
+    audio_tgt_path = os.path.join(audio_root, paths[0], paths[1]+".wav")
+    # reference
+    ref_paths = paths
+    opt.ref_front_path = None
+    opt.ref_video_path = opt.tgt_video_path
+    opt.ref_lmarks_path = os.path.join(real_root, ref_paths[0], ref_paths[1]+"_original.npy")
+    opt.ref_rt_path = None
+    opt.ref_ani_id = None
 
     ### setup dataset
     data_loader = CreateDataLoader(opt)
@@ -99,32 +92,36 @@ for pick_id in tqdm(pick_ids):
             data.update({'ani_image':None, 'ani_lmark':None, 'cropped_images':None, 'cropped_lmarks':None })
         if "warping_ref" not in data:
             data.update({'warping_ref': data['ref_image'][:, 0], 'warping_ref_lmark': data['ref_label'][:, 0]})
-        data.update({'warping_ref': data['ref_image'][:, :1], 'warping_ref_lmark': data['ref_label'][:, :1]})
 
         img_path = data['path']
         data_list = [data['tgt_label'], data['tgt_image'], None, None, None, \
                     data['ref_label'], data['ref_image'], \
-                    data['warping_ref_lmark'].squeeze(1) if data['warping_ref_lmark'] is not None else None, \
-                    data['warping_ref'].squeeze(1) if data['warping_ref'] is not None else None, \
+                    data['warping_ref_lmark'], \
+                    data['warping_ref'], \
                     data['ani_lmark'].squeeze(1) if opt.warp_ani else None, \
                     data['ani_image'].squeeze(1) if opt.warp_ani else None, \
                     None, None, None]
-        synthesized_image, _, _, _, _, _, _, _, _, _ = model(data_list, ref_idx_fix=ref_idx_fix)
-        
+        synthesized_image, fake_raw_img, warped_img, flow, weight, _, _, _, _, _ = model(data_list, ref_idx_fix=ref_idx_fix)
         
         synthesized_image = util.tensor2im(synthesized_image)    
         tgt_image = util.tensor2im(data['tgt_image'])
         tgt_lmarks = util.tensor2im(data['tgt_label'])    
-        compare_image = np.hstack([tgt_lmarks, tgt_image, synthesized_image, ])    
+        compare_image = np.hstack([tgt_lmarks, tgt_image, synthesized_image])    
 
         img_id = "{}_{}_{}".format(img_path[0].split('/')[-3], img_path[0].split('/')[-2], img_path[0].split('/')[-1][:-4])
         img_dir = os.path.join(save_root,  img_id)
         img_name = "%06d.jpg"%data['index'][0]
+        img_test_dir = os.path.join(save_root, 'test')
 
         if not os.path.exists(img_dir):
             os.makedirs(img_dir)
         image_pil = Image.fromarray(compare_image)
         image_pil.save(os.path.join(img_dir, img_name))
+
+        if not os.path.exists(img_test_dir):
+            os.makedirs(img_test_dir)
+        image_pil = Image.fromarray(synthesized_image)
+        image_pil.save(os.path.join(img_test_dir, img_name))
 
         # save reference
         if i == 0:
@@ -134,6 +131,9 @@ for pick_id in tqdm(pick_ids):
                 ref_img = util.tensor2im(data['ref_image'][0, ref_img_id])
                 ref_img = Image.fromarray(ref_img)
                 ref_img.save(os.path.join(img_dir, 'reference', 'ref_{}.jpg').format(ref_img_id))
+            warp_ref_img = util.tensor2im(data['warping_ref'][0])
+            warp_ref_img = Image.fromarray(warp_ref_img)
+            warp_ref_img.save(os.path.join(img_dir, 'reference', 'warping_ref.jpg'))
 
         # save for evaluation
         if opt.evaluate:
@@ -151,6 +151,30 @@ for pick_id in tqdm(pick_ids):
 
         # print('process image... %s' % img_path)
 
+        # visual_list = []
+        # for i in range(opt.n_shot):
+        #     visual_list += [('warping_ref_lmark', util.tensor2im(data['warping_ref_lmark'])),
+        #                     ('warping_ref_img', util.tensor2im(data['warping_ref'])),
+        #                     ('target_label', util.visualize_label(opt, data['tgt_label'])),
+        #                     ('target_image', util.tensor2im(data['tgt_image'])),
+        #                     ('synthesized_image', util.tensor2im(synthesized_image)),
+        #                     ('ref_warped_images', util.tensor2im(warped_img[0][-1], tile=True)),
+        #                     ('ref_weights', util.tensor2im(weight[0][-1], normalize=False, tile=True)),
+        #                     ('raw_image', util.tensor2im(fake_raw_img)),
+        #                     ('ani_warped_images', util.tensor2im(warped_img[2][-1], tile=True) if warped_img[2] is not None else None),
+        #                     ('ani_weights', util.tensor2im(weight[2][-1], normalize=False, tile=True) if weight[2] is not None else None),
+        #                     ('ani_flow', util.tensor2flow(flow[2][-1], tile=True) if flow[2] is not None else None),
+        #                     ('ref_flow', util.tensor2flow(flow[0][-1], tile=True)),
+        #                     ]
+        # visuals = OrderedDict(visual_list)
+
+        # # for image save
+        # visualizer.save_images(webpage, visuals, [os.path.join(save_root, file)])
+
     # combine into video
     mmcv.frames2video(img_dir, os.path.join(img_dir, 'test.mp4'))
     add_audio(os.path.join(img_dir, 'test.mp4'), audio_tgt_path)
+    mmcv.frames2video(img_test_dir, os.path.join(img_test_dir, '{}.mp4'.format(file.split('.')[0])))
+    for f in os.listdir(img_test_dir):
+        if f.split('.')[1] != "mp4":
+            os.remove(os.path.join(img_test_dir, f))

@@ -115,7 +115,7 @@ class FewShotGenerator(BaseNetwork):
     # generate image
     def img_generation(self, x, norm_weights, encoded_label, encoded_label_raw=None):
         # main branch convolution layers
-        for i in range(self.n_downsample_G, -1, -1):            
+        for i in range(self.n_downsample_G, -1, -1):          
             conv_weight = None
             norm_weight = norm_weights[i] if (self.adap_spade and i < self.n_adaptive_layers) else None
             # if require loss for raw image
@@ -123,7 +123,7 @@ class FewShotGenerator(BaseNetwork):
                 if i == self.n_sc_layers - 1: x_raw = x
                 x_raw = getattr(self, 'up_'+str(i))(x_raw, encoded_label_raw[i], conv_weights=conv_weight, norm_weights=norm_weight)    
                 if i != 0: x_raw = self.up(x_raw)
-            x = getattr(self, 'up_'+str(i))(x, encoded_label[i], conv_weights=conv_weight, norm_weights=norm_weight)            
+            x = getattr(self, 'up_'+str(i))(x, encoded_label[i], conv_weights=conv_weight, norm_weights=norm_weight)
             if i != 0: x = self.up(x)
 
         # raw synthesized image

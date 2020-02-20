@@ -58,8 +58,8 @@ class Trainer():
             self.visualizer.plot_current_errors(errors, total_steps)
 
         # debug
-        # visuals = save_all_tensors(opt, output_list, model)
-        # self.visualizer.display_current_results(visuals, epoch, total_steps)
+        visuals = save_all_tensors(opt, output_list, model)
+        self.visualizer.display_current_results(visuals, epoch, total_steps)
 
         ### display output images        
         if is_master() and self.save:
@@ -110,6 +110,8 @@ def save_all_tensors(opt, output_list, model):
                     ('ani_syn_image', util.tensor2im(img_ani)),
                     ('ref_warped_images', util.tensor2im(warped_image[0][-1], tile=True)),
                     ('ref_weights', util.tensor2im(weight[0][-1], normalize=False, tile=True)),
+                    ('prev_warped_images', util.tensor2im(warped_image[1][-1], tile=True) if warped_image[1] is not None else None),
+                    ('prev_weights', util.tensor2im(weight[1][-1], normalize=False, tile=True) if weight[1] is not None else None),
                     ('raw_image', util.tensor2im(fake_raw_image)),
                     ('ani_warped_images', util.tensor2im(warped_image[2][-1], tile=True) if warped_image[2] is not None else None),
                     ('ani_weights', util.tensor2im(weight[2][-1], normalize=False, tile=True) if weight[2] is not None else None),
@@ -119,8 +121,8 @@ def save_all_tensors(opt, output_list, model):
                     ('ani_lmark', util.tensor2im(ani_lmark)),
                     ('cropped_image', util.tensor2im(cropped_images)),
                     ('cropped_lmark', util.tensor2im(cropped_lmarks)),
-                    ('flow_ref_gt', util.tensor2flow(flow_gt[0][-1], tile=True) if flow[2] is not None else None),
-                    ('flow_ani_gt', util.tensor2flow(flow_gt[2][-1], tile=True) if flow[2] is not None else None),
+                    ('flow_ref_gt', util.tensor2flow(flow_gt[0][-1][-1], tile=True) if flow[2] is not None else None),
+                    ('flow_ani_gt', util.tensor2flow(flow_gt[2][-1][-1], tile=True) if flow[2] is not None else None),
                     ]
     visuals = OrderedDict(visual_list)
     return visuals

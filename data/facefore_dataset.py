@@ -113,34 +113,9 @@ class FaceForeDataset(BaseDataset):
                 self.video_bag = 'align'
             else:
                 self.video_bag = 'align'
-        print (len(self.data))
-        
-        # get transform for image and landmark
-        img_params = self.get_img_params(self.output_shape)
-        if opt.isTrain:
-            self.transform = transforms.Compose([
-                transforms.Lambda(lambda img: self.__scale_image(img, img_params['new_size'], Image.BICUBIC)),
-                transforms.Lambda(lambda img: self.__color_aug(img, img_params['color_aug'])),
-                transforms.Lambda(lambda img: self.__flip(img, img_params['flip'])),
-                transforms.ToTensor(),
-                transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
-            ])
-            self.transform_L = transforms.Compose([
-                transforms.Lambda(lambda img: self.__scale_image(img, img_params['new_size'], Image.BILINEAR)),
-                transforms.Lambda(lambda img: self.__flip(img, img_params['flip'])),
-                transforms.ToTensor()
-            ])
-        else:
-            self.transform = transforms.Compose([
-                transforms.Lambda(lambda img: self.__scale_image(img, img_params['new_size'], Image.BICUBIC)),
-                transforms.ToTensor(),
-                transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
-            ])
-            self.transform_L = transforms.Compose([
-                transforms.Lambda(lambda img: self.__scale_image(img, img_params['new_size'], Image.BILINEAR)),
-                transforms.ToTensor()
-            ])
 
+        self.data = self.data[:4]
+        print(len(self.data))
 
     def __len__(self):
         return len(self.data) 
@@ -213,13 +188,14 @@ class FaceForeDataset(BaseDataset):
             input_indexs, target_id = self.get_image_index(self.n_frames_total, v_length)
     
         # define scale
-        self.define_scale()
+        scale = self.define_scale()
+        transform, transform_L = self.get_transforms()
 
         # get reference
-        ref_images, ref_lmarks, _ = self.prepare_datas(real_video, lmarks, input_indexs)
+        ref_images, ref_lmarks, _ = self.prepare_datas(real_video, lmarks, input_indexs, transform, transform_L, scale)
 
         # # get target
-        tgt_images, tgt_lmarks, tgt_crop_coords = self.prepare_datas(real_video, lmarks, target_id)
+        tgt_images, tgt_lmarks, tgt_crop_coords = self.prepare_datas(real_video, lmarks, target_id, transform, transform_L, scale)
 
         if self.opt.warp_ani:
         # get animation & get cropped ground truth
@@ -238,8 +214,9 @@ class FaceForeDataset(BaseDataset):
                 cropped_gt[mask] = 0
                 cropped_images.append(cropped_gt)
                 cropped_lmarks.append(lmarks[gg].copy())
-            ani_images, ani_lmarks, _ = self.prepare_datas(ani_images, ani_lmarks, list(range(len(target_id))))
-            cropped_images, cropped_lmarks, _ = self.prepare_datas(cropped_images, cropped_lmarks, list(range(len(target_id))), crop_coords=tgt_crop_coords)
+            ani_images, ani_lmarks, _ = self.prepare_datas(ani_images, ani_lmarks, list(range(len(target_id))), transform, transform_L, scale)
+            cropped_images, cropped_lmarks, _ = self.prepare_datas(cropped_images, cropped_lmarks, list(range(len(target_id))), \
+                                                                    transform, transform_L, scale, crop_coords=tgt_crop_coords)
         
         # get warping reference
         rt = rt[:, :3]
@@ -404,23 +381,25 @@ class FaceForeDataset(BaseDataset):
 
     # get scale for random crop
     def define_scale(self, scale_max = 0.2):
-        self.scale = [np.random.uniform(1 - scale_max, 1 + scale_max), 
+        scale = [np.random.uniform(1 - scale_max, 1 + scale_max), 
                         np.random.uniform(1 - scale_max, 1 + scale_max)]    
 
+        return scale
+
     # get image and landmarks
-    def prepare_datas(self, images, lmarks, choice_ids, crop_coords=None):
+    def prepare_datas(self, images, lmarks, choice_ids, transform, transform_L, scale, crop_coords=None):
         # get cropped coordinates
         if crop_coords is None:
             crop_lmark = lmarks[choice_ids[0]]
-            crop_coords = self.get_crop_coords(crop_lmark)
+            crop_coords = self.get_crop_coords(crop_lmark, scale)
         bw = max(1, (crop_coords[1]-crop_coords[0]) // 256)
 
         # get images and landmarks
         result_lmarks = []
         result_images = []
         for choice in choice_ids:
-            image, crop_size = self.get_image(images[choice], self.transform, self.output_shape, crop_coords)
-            lmark = self.get_keypoints(lmarks[choice], self.transform_L, crop_size, crop_coords, bw)
+            image, crop_size = self.get_image(images[choice], transform, self.output_shape, crop_coords)
+            lmark = self.get_keypoints(lmarks[choice], transform_L, crop_size, crop_coords, bw)
 
             result_lmarks.append(lmark)
             result_images.append(image)
@@ -428,7 +407,7 @@ class FaceForeDataset(BaseDataset):
         return result_images, result_lmarks, crop_coords
 
     # get crop standard from one landmark
-    def get_crop_coords(self, keypoints, crop_size=None):           
+    def get_crop_coords(self, keypoints, scale, crop_size=None):           
         min_y, max_y = int(keypoints[:,1].min()), int(keypoints[:,1].max())
         min_x, max_x = int(keypoints[:,0].min()), int(keypoints[:,0].max())
         x_cen, y_cen = (min_x + max_x) // 2, (min_y + max_y) // 2                
@@ -440,8 +419,8 @@ class FaceForeDataset(BaseDataset):
             offset = [np.random.uniform(-offset_max, offset_max), 
                       np.random.uniform(-offset_max, offset_max)]
 
-            w *= self.scale[0]
-            h *= self.scale[1]
+            w *= scale[0]
+            h *= scale[1]
             x_cen += int(offset[0]*w)
             y_cen += int(offset[1]*h)
                         
@@ -463,6 +442,7 @@ class FaceForeDataset(BaseDataset):
         v_b = random.uniform(-10, 10)    
         
         flip = random.random() > 0.5
+
         return {'new_size': (w, h), 'flip': flip, 
                 'color_aug': (h_b, s_a, s_b, v_a, v_b)}
 
@@ -505,3 +485,33 @@ class FaceForeDataset(BaseDataset):
                     warp_ref_ids.append(np.argmin(reference_rt_diffs))
 
         return warp_ref_ids
+
+
+    def get_transforms(self):
+        img_params = self.get_img_params(self.output_shape)
+
+        if self.opt.isTrain:
+            transform = transforms.Compose([
+                transforms.Lambda(lambda img: self.__scale_image(img, img_params['new_size'], Image.BICUBIC)),
+                transforms.Lambda(lambda img: self.__color_aug(img, img_params['color_aug'])),
+                transforms.Lambda(lambda img: self.__flip(img, img_params['flip'])),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
+            ])
+            transform_L = transforms.Compose([
+                transforms.Lambda(lambda img: self.__scale_image(img, img_params['new_size'], Image.BILINEAR)),
+                transforms.Lambda(lambda img: self.__flip(img, img_params['flip'])),
+                transforms.ToTensor()
+            ])
+        else:
+            transform = transforms.Compose([
+                transforms.Lambda(lambda img: self.__scale_image(img, img_params['new_size'], Image.BICUBIC)),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
+            ])
+            transform_L = transforms.Compose([
+                transforms.Lambda(lambda img: self.__scale_image(img, img_params['new_size'], Image.BILINEAR)),
+                transforms.ToTensor()
+            ])
+        
+        return transform, transform_L

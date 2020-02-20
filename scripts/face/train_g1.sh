@@ -11,12 +11,12 @@
 # --n_shot 1 \
 # --dataroot '/home/cxu-serve/p1/common/faceforensics/original_sequences/youtube/cropped/train_file' \
 
-# CUDA_VISIBLE_DEVICES=3 python train.py --name face8_face_newloader --dataset_mode facefore \
-# --adaptive_spade --warp_ref --warp_ani --spade_combine \
-# --gpu_ids 0 --batchSize 1 --nThreads 0 --niter 500 --niter_single 1 --niter_step 1 \
-# --n_shot 8 --save_epoch_freq 50 \
-# --n_frames_G 2 \
-# --dataroot '/home/cxu-serve/p1/common/voxceleb2' --dataset_name vox
+CUDA_VISIBLE_DEVICES=1 python train.py --name face8_face_newloader --dataset_mode facefore \
+--adaptive_spade --warp_ref --warp_ani --spade_combine \
+--gpu_ids 0 --batchSize 2 --nThreads 0 --niter 500 --niter_single 0 --niter_step 5 \
+--n_shot 8 --save_epoch_freq 50 \
+--n_frames_G 2 \
+--dataroot '/home/cxu-serve/p1/common/voxceleb2' --dataset_name vox
 
 # CUDA_VISIBLE_DEVICES=3 python train.py --name face8_face_newloader --dataset_mode facefore \
 # --adaptive_spade --warp_ref --warp_ani \
@@ -25,9 +25,16 @@
 # --n_frames_G 1 --add_raw_loss \
 # --dataroot '/home/cxu-serve/p1/common/voxceleb2' --dataset_name vox
 
-CUDA_VISIBLE_DEVICES=2 python train.py --name face8_grid_ani_retrain --dataset_mode facefore \
---adaptive_spade --warp_ref \
---gpu_ids 0 --batchSize 2 --nThreads 0 --niter 1000 --niter_single 1001 \
---n_shot 1 --n_frames_G 1 --ref_ratio 0 \
---dataroot '/home/cxu-serve/p1/common/grid' --dataset_name grid \
---continue_train
+# CUDA_VISIBLE_DEVICES=2 python train.py --name face8_face_newloader --dataset_mode facefore \
+# --adaptive_spade --warp_ref \
+# --gpu_ids 0 --batchSize 2 --nThreads 0 --niter 1000 --niter_single 1001 \
+# --n_shot 1 --n_frames_G 1 --ref_ratio 0 \
+# --dataroot '/home/cxu-serve/p1/common/grid' --dataset_name grid \
+# --continue_train
+
+# CUDA_VISIBLE_DEVICES=3 python train.py --name face8_face_newloader --dataset_mode facefore \
+# --adaptive_spade --warp_ref --spade_combine \
+# --gpu_ids 0 --batchSize 1 --nThreads 8 --niter 1000 --niter_single 1001 \
+# --n_shot 1 --n_frames_G 1 --ref_ratio 0 --serial_batches \
+# --dataroot '/home/cxu-serve/p1/common/grid' --dataset_name grid \
+# --continue_train

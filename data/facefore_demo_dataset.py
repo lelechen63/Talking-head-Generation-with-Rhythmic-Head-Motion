@@ -124,6 +124,7 @@ class FaceForeDemoDataset(BaseDataset):
         # get transform for image and landmark
         self.transform = transforms.Compose([
             transforms.Lambda(lambda img: self.__scale_image(img, self.output_shape, Image.BICUBIC)),
+            transforms.Lambda(lambda img: self.__color_aug(img)),
             transforms.ToTensor(),
             transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
         ])
@@ -143,6 +144,11 @@ class FaceForeDemoDataset(BaseDataset):
     def __scale_image(self, img, size, method=Image.BICUBIC):
         w, h = size    
         return img.resize((w, h), method)
+
+    def __color_aug(self, img):
+        h, s, v = img.convert('HSV').split()    
+        img = Image.merge('HSV', (h, s, v)).convert('RGB')
+        return img
 
     def name(self):
         return 'FaceForensicsDemoDataset'
@@ -299,6 +305,7 @@ class FaceForeDemoDataset(BaseDataset):
         img = mmcv.bgr2rgb(image)
         crop_size = Image.fromarray(img).size
 
+        # debug
         img = transform_I(Image.fromarray(img))
 
         return img, crop_size

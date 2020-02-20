@@ -42,7 +42,7 @@ model = create_model(opt)
 model.eval()
 
 fake_root = "/home/cxu-serve/p1/common/tmp/atnet_raw_pca_test"
-files = [f for f in os.listdir(fake_root) if f[-3:]=='npy']
+files = [f for f in os.listdir(fake_root) if f[-3:]=='npy'][:opt.how_many]
 # files = ["s13__pbbo3a_front.npy"]
 # files = files[:
 # pdb.set_trace()
@@ -56,7 +56,7 @@ webpage = html.HTML(save_root, 'Experiment = %s, Phase = %s, Epoch = %s' % (opt.
 
 paths = [None, None, None]
 for file_id, file in enumerate(tqdm(files)):
-    if file_id >= opt.how_many: break
+    # if file_id >= opt.how_many: break
 
     print('process {} ...'.format(file))
 
@@ -103,10 +103,21 @@ for file_id, file in enumerate(tqdm(files)):
                     None, None, None]
         synthesized_image, fake_raw_img, warped_img, flow, weight, _, _, _, _, _ = model(data_list, ref_idx_fix=ref_idx_fix)
         
-        synthesized_image = util.tensor2im(synthesized_image)    
+        visuals = [
+            util.tensor2im(data['tgt_label']), \
+            util.tensor2im(data['tgt_image']), \
+            util.tensor2im(synthesized_image), \
+            util.tensor2im(fake_raw_img), \
+            util.tensor2im(warped_img[0]), \
+            util.tensor2im(weight[0]), \
+            util.tensor2im(warped_img[2]), \
+            util.tensor2im(weight[2])
+        ]
+        compare_image = np.hstack([v for v in visuals if v is not None])
+
+        synthesized_image = util.tensor2im(synthesized_image)
         tgt_image = util.tensor2im(data['tgt_image'])
-        tgt_lmarks = util.tensor2im(data['tgt_label'])    
-        compare_image = np.hstack([tgt_lmarks, tgt_image, synthesized_image])    
+
 
         img_id = "{}_{}_{}".format(img_path[0].split('/')[-3], img_path[0].split('/')[-2], img_path[0].split('/')[-1][:-4])
         img_dir = os.path.join(save_root,  img_id)
@@ -115,12 +126,12 @@ for file_id, file in enumerate(tqdm(files)):
 
         if not os.path.exists(img_dir):
             os.makedirs(img_dir)
-        image_pil = Image.fromarray(compare_image)
+        image_pil = Image.fromarray(compare_image).convert('RGB')
         image_pil.save(os.path.join(img_dir, img_name))
 
         if not os.path.exists(img_test_dir):
             os.makedirs(img_test_dir)
-        image_pil = Image.fromarray(synthesized_image)
+        image_pil = Image.fromarray(synthesized_image).convert('RGB')
         image_pil.save(os.path.join(img_test_dir, img_name))
 
         # save reference
@@ -129,10 +140,10 @@ for file_id, file in enumerate(tqdm(files)):
                 os.makedirs(os.path.join(img_dir, 'reference'))
             for ref_img_id in range(data['ref_image'].shape[1]):
                 ref_img = util.tensor2im(data['ref_image'][0, ref_img_id])
-                ref_img = Image.fromarray(ref_img)
+                ref_img = Image.fromarray(ref_img).convert('RGB')
                 ref_img.save(os.path.join(img_dir, 'reference', 'ref_{}.jpg').format(ref_img_id))
             warp_ref_img = util.tensor2im(data['warping_ref'][0])
-            warp_ref_img = Image.fromarray(warp_ref_img)
+            warp_ref_img = Image.fromarray(warp_ref_img).convert('RGB')
             warp_ref_img.save(os.path.join(img_dir, 'reference', 'warping_ref.jpg'))
 
         # save for evaluation

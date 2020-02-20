@@ -34,24 +34,7 @@ def add_audio(video_name, audio_dir):
     print (command)
     os.system(command)
 
-opt = TestOptions().parse()
-
-### setup models
-model = create_model(opt)
-model.eval()
-
-root = opt.dataroot
-_file = open(os.path.join(root, 'pickle','test_lmark2img.pkl'), "rb")
-pickle_data = pkl.load(_file)
-_file.close()
-
-save_root = os.path.join('evaluation_store_nopick', opt.name)
-# pick_ids = np.random.choice(list(range(len(pickle_data))), size=opt.how_many)
-pick_ids = range(0, len(pickle_data), int(len(pickle_data))//opt.how_many)
-
-for pick_id in tqdm(pick_ids):
-    print('process {} ...'.format(pick_id))
-
+def get_param(root, pick_id, opt):
     paths = pickle_data[pick_id]
     if opt.dataset_name == 'vox':
         # target
@@ -85,6 +68,47 @@ for pick_id in tqdm(pick_ids):
 
         audio_tgt_path = os.path.join(root, 'align', paths[0], paths[1]+".wav")
 
+    elif opt.dataset_name == 'lrs':
+        # target
+        paths[1] = paths[1].split('_')[0]
+        opt.tgt_video_path = os.path.join(root, 'pretrain', paths[0], paths[1]+"_crop.mp4")
+        opt.tgt_lmarks_path = os.path.join(root, 'pretrain', paths[0], paths[1]+"_original.npy")
+        opt.tgt_rt_path = None
+        opt.tgt_ani_path = None
+        # reference
+        ref_paths = paths
+        opt.ref_front_path = None
+        opt.ref_video_path = opt.tgt_video_path
+        opt.ref_lmarks_path = opt.tgt_lmarks_path
+        opt.ref_rt_path = opt.tgt_rt_path
+        opt.ref_ani_id = None
+
+        audio_tgt_path = os.path.join(root, 'pretrain', paths[0], paths[1]+".wav")
+
+    return audio_tgt_path
+
+opt = TestOptions().parse()
+
+### setup models
+model = create_model(opt)
+model.eval()
+
+root = opt.dataroot
+_file = open(os.path.join(root, 'pickle','test_lmark2img.pkl'), "rb")
+pickle_data = pkl.load(_file)
+_file.close()
+
+save_name = opt.name
+if opt.dataset_name == 'lrs':
+    save_name = 'lrs'
+save_root = os.path.join('evaluation_store_nopick', save_name)
+# pick_ids = np.random.choice(list(range(len(pickle_data))), size=opt.how_many)
+pick_ids = range(0, len(pickle_data), int(len(pickle_data))//opt.how_many)
+
+for pick_id in tqdm(pick_ids):
+    print('process {} ...'.format(pick_id))
+    audio_tgt_path = get_param(root, pick_id, opt)
+
     ### setup dataset
     data_loader = CreateDataLoader(opt)
     dataset = data_loader.load_data()
@@ -98,7 +122,7 @@ for pick_id in tqdm(pick_ids):
         if not opt.warp_ani:
             data.update({'ani_image':None, 'ani_lmark':None, 'cropped_images':None, 'cropped_lmarks':None })
         if "warping_ref" not in data:
-            data.update({'warping_ref': data['ref_image'][:, 0], 'warping_ref_lmark': data['ref_label'][:, 0]})
+            data.update({'warping_ref': data['ref_image'][:, :1], 'warping_ref_lmark': data['ref_label'][:, :1]})
         data.update({'warping_ref': data['ref_image'][:, :1], 'warping_ref_lmark': data['ref_label'][:, :1]})
 
         img_path = data['path']
@@ -109,13 +133,19 @@ for pick_id in tqdm(pick_ids):
                     data['ani_lmark'].squeeze(1) if opt.warp_ani else None, \
                     data['ani_image'].squeeze(1) if opt.warp_ani else None, \
                     None, None, None]
-        synthesized_image, _, _, _, _, _, _, _, _, _ = model(data_list, ref_idx_fix=ref_idx_fix)
+        synthesized_image, fake_raw_img, warped_img, _, weight, _, _, _, _, _ = model(data_list, ref_idx_fix=ref_idx_fix)
         
-        
-        synthesized_image = util.tensor2im(synthesized_image)    
-        tgt_image = util.tensor2im(data['tgt_image'])
-        tgt_lmarks = util.tensor2im(data['tgt_label'])    
-        compare_image = np.hstack([tgt_lmarks, tgt_image, synthesized_image, ])    
+        visuals = [
+            util.tensor2im(data['tgt_label']), \
+            util.tensor2im(data['tgt_image']), \
+            util.tensor2im(synthesized_image), \
+            util.tensor2im(fake_raw_img), \
+            util.tensor2im(warped_img[0]), \
+            util.tensor2im(weight[0]), \
+            util.tensor2im(warped_img[2]), \
+            util.tensor2im(weight[2])
+        ]
+        compare_image = np.hstack([v for v in visuals if v is not None])
 
         img_id = "{}_{}_{}".format(img_path[0].split('/')[-3], img_path[0].split('/')[-2], img_path[0].split('/')[-1][:-4])
         img_dir = os.path.join(save_root,  img_id)

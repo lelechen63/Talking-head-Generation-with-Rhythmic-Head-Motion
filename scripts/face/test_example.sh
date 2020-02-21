@@ -6,7 +6,7 @@
 # https://nvlabs.github.io/few-shot-vid2vid/License.txt
 
 test_model_8(){
-    CUDA_VISIBLE_DEVICES=$1 python test_example.py --name face8_vox_ani \
+    CUDA_VISIBLE_DEVICES=$1 python test_example.py --name face8_vox_ani_nonlinear \
     --dataset_mode facefore \
     --adaptive_spade \
     --warp_ref \
@@ -40,5 +40,5 @@ test_model_1(){
 }
 
 
-# test_model_8 3 latest 50
-test_model_1 3 latest 50
+test_model_8 3 latest 50
+# test_model_1 3 latest 50

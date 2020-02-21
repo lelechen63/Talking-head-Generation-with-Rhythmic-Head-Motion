@@ -58,12 +58,6 @@ def train():
             data_ani = [data['warping_ref_lmark'], data['warping_ref'], data['ani_lmark'], data['ani_image']]
 
             ############## Forward Pass ######################
-            prevs = {"raw_images":[], "synthesized_images":[], \
-                    "prev_warp_images":[], "prev_weights":[], \
-                    "ani_warp_images":[], "ani_weights":[], \
-                    "ref_warp_images":[], "ref_weights":[], \
-                    "ref_flows":[], "prev_flows":[], "ani_flows":[], \
-                    "ani_syn":[]}
             for t in range(0, n_frames_total, n_frames_load):
                 
                 data_list_t = get_data_t(data_list, n_frames_load, t) + data_ref_list + \
@@ -74,14 +68,10 @@ def train():
 
                 d_losses, _ = model(data_list_t, mode='discriminator', ref_idx_fix=ref_idx_fix)
                 d_losses = loss_backward(opt, d_losses, model.module.optimizer_D)
-
-                # store previous
-                store_prev(generated, prevs)
                         
             loss_dict = dict(zip(model.module.lossCollector.loss_names, g_losses + d_losses))     
 
-            # output_data_list = generated + data_list + [data['ref_label'], data['ref_image']] + data_ani + [data['cropped_lmarks']]
-            output_data_list = [prevs] + [data['ref_image']] + data_ani + data_list
+            output_data_list = generated + data_list + [data['ref_label'], data['ref_image']] + data_ani + [data['cropped_lmarks']]
 
             if trainer.end_of_iter(loss_dict, output_data_list, model):
                 break        
@@ -93,22 +83,6 @@ def get_data_t(data, n_frames_load, t):
     if type(data) == list:
         return [get_data_t(d, n_frames_load, t) for d in data]
     return data[:,t:t+n_frames_load]
-
-def store_prev(data, prevs):
-    fake_image, fake_raw_image, img_ani, warped_image, flow, weight, atn_score = data
-
-    prevs['raw_images'].append(fake_raw_image[-1].cpu().data if fake_raw_image is not None else None)
-    prevs['synthesized_images'].append(fake_image[-1].cpu().data)
-    prevs['prev_warp_images'].append(warped_image[1][-1].cpu().data if warped_image[1] is not None else None)
-    prevs['prev_weights'].append(weight[1][-1].cpu().data if weight[1] is not None else None)
-    prevs['ani_warp_images'].append(warped_image[2][-1].cpu().data if warped_image[2] is not None else None)
-    prevs['ani_weights'].append(weight[2][-1].cpu().data if weight[2] is not None else None)
-    prevs['ref_warp_images'].append(warped_image[0][-1].cpu().data if warped_image[0] is not None else None)
-    prevs['ref_weights'].append(weight[0][-1].cpu().data if weight[0] is not None else None)
-    prevs['ref_flows'].append(flow[0][-1].cpu().data if flow[0] is not None else None)
-    prevs['prev_flows'].append(flow[1][-1].cpu().data if flow[1] is not None else None)
-    prevs['ani_flows'].append(flow[2][-1].cpu().data if flow[2] is not None else None)
-    prevs['ani_syn'].append(img_ani[-1].cpu().data if img_ani is not None else None)
 
 if __name__ == "__main__":
    train()

@@ -135,7 +135,8 @@ class FaceForeDemoDataset(BaseDataset):
         ])
 
         # define parameters for inference
-        self.ref_video, self.ref_lmarks, self.ref_indices = self.define_inference(self.ref_video, self.ref_lmarks)
+        if len(self.tgt_video) > 70:
+            self.ref_video, self.ref_lmarks, self.ref_indices = self.define_inference(self.ref_video, self.ref_lmarks)
 
 
     def __len__(self):

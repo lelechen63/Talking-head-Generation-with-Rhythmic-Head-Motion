@@ -6,6 +6,7 @@
 # https://nvlabs.github.io/few-shot-vid2vid/License.txt
 import os
 import numpy as np
+import torch
 import time
 from collections import OrderedDict
 import fractions
@@ -94,35 +95,58 @@ class Trainer():
         self.epoch_iter = 0        
     
 def save_all_tensors(opt, output_list, model):
-    fake_image, fake_raw_image, img_ani, warped_image, flow, weight, atn_score, \
-        target_label, target_image, cropped_images, flow_gt, conf_gt, \
-        ref_label, ref_image, \
-        warping_ref_lmark, warping_ref, ani_lmark, ani_image, cropped_lmarks = output_list
+    # fake_image, fake_raw_image, img_ani, warped_image, flow, weight, atn_score, \
+    #     target_label, target_image, cropped_images, flow_gt, conf_gt, \
+    #     ref_label, ref_image, \
+    #     warping_ref_lmark, warping_ref, ani_lmark, ani_image, cropped_lmarks = output_list
+    prevs, ref_images, warping_ref_lmark, warping_ref, ani_lmark, ani_image,\
+        target_label, target_image, cropped_images, flow_gt, conf_gt = output_list
+
+    # in prevs
+    fake_image = torch.cat(prevs['synthesized_images'], axis=0)
+    ref_warped_images = handle_cat(prevs['ref_warp_images'])
+    ref_weights = handle_cat(prevs['ref_weights'])
+    prev_warped_images = handle_cat(prevs['prev_warp_images'])
+    prev_weights = handle_cat(prevs['prev_warp_images'])
+    fake_raw_image = torch.cat(prevs['raw_images'], axis=0) if prevs['raw_images'][0] is not None else None
+    ani_warped_images = handle_cat(prevs['ani_warp_images'])
+    ani_weights = handle_cat(prevs['ani_weights'])
+    ani_flow = handle_cat(prevs['ani_flows'])
+    ref_flow = handle_cat(prevs['ref_flows'])
+    prev_flow = handle_cat(prevs['prev_flows'])
+    img_ani = torch.cat(prevs['ani_syn'], axis=0) if prevs['ani_syn'][0] is not None else None
 
     visual_list = []
     for i in range(opt.n_shot):
-        visual_list += [('ref_img_{}'.format(i), util.tensor2im(ref_image[:, i:i+1]))]
-    visual_list += [('warping_ref_lmark', util.tensor2im(warping_ref_lmark)),
-                    ('warping_ref_img', util.tensor2im(warping_ref)),
+        visual_list += [('ref_img_{}'.format(i), util.tensor2im(ref_images[:, i:i+1]))]
+    visual_list += [('warping_ref_lmark', util.tensor2im(warping_ref_lmark, tile=True)),
+                    ('warping_ref_img', util.tensor2im(warping_ref, tile=True)),
                     ('target_label', util.visualize_label(opt, target_label, model)),
-                    ('target_image', util.tensor2im(target_image)),
-                    ('synthesized_image', util.tensor2im(fake_image)),
-                    ('ani_syn_image', util.tensor2im(img_ani)),
-                    ('ref_warped_images', util.tensor2im(warped_image[0][-1], tile=True) if warped_image[1] is not None else None),
-                    ('ref_weights', util.tensor2im(weight[0][-1], normalize=False, tile=True) if weight[0] is not None else None),
-                    ('prev_warped_images', util.tensor2im(warped_image[1][-1], tile=True) if warped_image[1] is not None else None),
-                    ('prev_weights', util.tensor2im(weight[1][-1], normalize=False, tile=True) if weight[1] is not None else None),
-                    ('raw_image', util.tensor2im(fake_raw_image)),
-                    ('ani_warped_images', util.tensor2im(warped_image[2][-1], tile=True) if warped_image[2] is not None else None),
-                    ('ani_weights', util.tensor2im(weight[2][-1], normalize=False, tile=True) if weight[2] is not None else None),
-                    ('ani_flow', util.tensor2flow(flow[2][-1], tile=True) if flow[2] is not None else None),
-                    ('ref_flow', util.tensor2flow(flow[0][-1], tile=True) if flow[0] is not None else None),
-                    ('ani_image', util.tensor2im(ani_image)),
-                    ('ani_lmark', util.tensor2im(ani_lmark)),
-                    ('cropped_image', util.tensor2im(cropped_images)),
-                    ('cropped_lmark', util.tensor2im(cropped_lmarks)),
-                    ('flow_ref_gt', util.tensor2flow(flow_gt[0][-1][-1], tile=True) if flow_gt[0] is not None else None),
-                    ('flow_ani_gt', util.tensor2flow(flow_gt[2][-1][-1], tile=True) if flow_gt[2] is not None else None),
+                    ('target_image', util.tensor2im(target_image, tile=True)),
+                    ('synthesized_image', util.tensor2im(fake_image, tile=True)),
+                    ('ani_syn_image', util.tensor2im(img_ani, tile=True)),
+                    ('ref_warped_images', util.tensor2im(ref_warped_images, tile=True)),
+                    ('ref_weights', util.tensor2im(ref_weights, normalize=False, tile=True)),
+                    ('prev_warped_images', util.tensor2im(prev_warped_images, tile=True)),
+                    ('prev_weights', util.tensor2im(prev_weights, tile=True)),
+                    ('raw_image', util.tensor2im(fake_raw_image, tile=True)),
+                    ('ani_warped_images', util.tensor2im(ani_warped_images, tile=True)),
+                    ('ani_weights', util.tensor2im(ani_weights, tile=True)),
+                    ('ani_flow', util.tensor2flow(ani_flow, tile=True)),
+                    ('ref_flow', util.tensor2flow(ref_flow, tile=True)),
+                    ('prev_flow', util.tensor2flow(prev_flow, tile=True)),
+                    ('ani_image', util.tensor2im(ani_image, tile=True)),
+                    ('ani_lmark', util.tensor2im(ani_lmark, tile=True)),
+                    ('cropped_image', util.tensor2im(cropped_images, tile=True)),
+                    ('flow_ref_gt', util.tensor2flow(flow_gt[0][-1], tile=True) if flow_gt[0] is not None else None),
+                    ('flow_ani_gt', util.tensor2flow(flow_gt[2][-1], tile=True) if flow_gt[2] is not None else None),
                     ]
     visuals = OrderedDict(visual_list)
     return visuals
+
+def handle_cat(in_list):
+    combine = [ele.unsqueeze(0) for ele in in_list if ele is not None]
+    if len(combine) == 0:
+        return None
+    else:
+        return torch.cat(combine, axis=0)

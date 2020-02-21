@@ -55,8 +55,8 @@ class SpadeCombineModule(BaseNetwork):
 
     ### if using SPADE for combination
     def SPADE_combine(self, encoded_label, ds_ref):                  
-        encoded_image_warp = [self.img_ani_embedding(ds_ref[2]) if ds_ref[2] is not None else None,
-                              self.img_ref_embedding(ds_ref[0]), 
+        encoded_image_warp = [self.img_ref_embedding(ds_ref[0]),
+                              self.img_ani_embedding(ds_ref[2]) if ds_ref[2] is not None else None,
                               self.img_prev_embedding(ds_ref[1]) if ds_ref[1] is not None else None
                              ]
         for i in range(self.netG.n_sc_layers):

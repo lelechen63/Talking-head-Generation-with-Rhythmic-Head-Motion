@@ -1,8 +1,11 @@
 test_model_lrs(){
-    CUDA_VISIBLE_DEVICES=$1 python test_demo.py --name face8_vox_ani \
+    CUDA_VISIBLE_DEVICES=$1 python test_demo.py --name face8_vox_ani_nonlinear \
     --dataset_mode facefore_demo \
     --adaptive_spade \
     --warp_ref \
+    --warp_ani \
+    --add_raw_loss \
+    --spade_combine \
     --example \
     --n_frames_G 1 \
     --which_epoch $2 \
@@ -21,6 +24,7 @@ test_model_vox(){
     --adaptive_spade \
     --warp_ref \
     --warp_ani \
+    --add_raw_loss \
     --spade_combine \
     --example \
     --n_frames_G 1 \
@@ -51,6 +55,6 @@ test_model_audio(){
     --dataset_name grid
 }
 
-# test_model_lrs 3 latest 5
+test_model_lrs 3 latest 5   
 # test_model_vox 3 latest 5
-test_model_audio 2 latest 50
+# test_model_audio 2 latest 50

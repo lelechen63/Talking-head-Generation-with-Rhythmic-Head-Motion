@@ -53,4 +53,4 @@ test_model_audio(){
 
 # test_model_lrs 3 latest 5
 # test_model_vox 3 latest 5
-test_model_audio 3 latest 50
+test_model_audio 2 latest 50

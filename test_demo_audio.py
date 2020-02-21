@@ -34,6 +34,13 @@ def add_audio(video_name, audio_dir):
     print (command)
     os.system(command)
 
+def image_to_video(sample_dir = None, video_name = None):
+    
+    command = 'ffmpeg -framerate 25  -i ' + sample_dir +  '/%05d.png -c:v libx264 -y -vf "pad=ceil(iw/2)*2:ceil(ih/2)*2"  ' + video_name 
+    #ffmpeg -framerate 25 -i real_%d.png -c:v libx264 -y -vf format=yuv420p real.mp4
+    print (command)
+    os.system(command)
+
 
 opt = TestOptions().parse()
 
@@ -49,7 +56,7 @@ files = [f for f in os.listdir(fake_root) if f[-3:]=='npy'][:opt.how_many]
 
 real_root = os.path.join(opt.dataroot, 'align')
 audio_root = os.path.join(opt.dataroot, 'audio')
-save_root = os.path.join('evaluation_store', opt.name)
+save_root = os.path.join('evaluation_store', opt.name, 'fake_lmark')
 
 visualizer = Visualizer(opt)
 webpage = html.HTML(save_root, 'Experiment = %s, Phase = %s, Epoch = %s' % (opt.name, opt.phase, opt.which_epoch), infer=True)
@@ -121,7 +128,7 @@ for file_id, file in enumerate(tqdm(files)):
 
         img_id = "{}_{}_{}".format(img_path[0].split('/')[-3], img_path[0].split('/')[-2], img_path[0].split('/')[-1][:-4])
         img_dir = os.path.join(save_root,  img_id)
-        img_name = "%06d.jpg"%data['index'][0]
+        img_name = "%05d.png"%data['index'][0]
         img_test_dir = os.path.join(save_root, 'test')
 
         if not os.path.exists(img_dir):
@@ -183,9 +190,12 @@ for file_id, file in enumerate(tqdm(files)):
         # visualizer.save_images(webpage, visuals, [os.path.join(save_root, file)])
 
     # combine into video
-    mmcv.frames2video(img_dir, os.path.join(img_dir, 'test.mp4'))
+    # mmcv.frames2video(img_dir, os.path.join(img_dir, 'test.mp4'))
+    image_to_video(img_dir, os.path.join(img_dir, 'test.mp4'))
     add_audio(os.path.join(img_dir, 'test.mp4'), audio_tgt_path)
-    mmcv.frames2video(img_test_dir, os.path.join(img_test_dir, '{}.mp4'.format(file.split('.')[0])))
+    # mmcv.frames2video(img_test_dir, os.path.join(img_test_dir, '{}.mp4'.format(file.split('.')[0])))
+    image_to_video(img_test_dir, os.path.join(img_test_dir, '{}.mp4'.format(file.split('.')[0])))
+    # add_audio(os.path.join(img_test_dir, '{}.mp4'.format(file.split('.')[0])), audio_tgt_path)
     for f in os.listdir(img_test_dir):
         if f.split('.')[1] != "mp4":
             os.remove(os.path.join(img_test_dir, f))

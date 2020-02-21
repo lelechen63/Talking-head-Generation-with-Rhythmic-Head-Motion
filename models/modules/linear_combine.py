@@ -15,8 +15,17 @@ class LinearCombineModule(BaseNetwork):
         fake_raw_img, atn, ref_idx = self.netG(label=tgt_lmark, label_refs=ref_lmarks, img_refs=ref_imgs, t=t)
 
         # warp and linear combine
-        prev_lmark, prev_img = prev
-        img_final, flow, weight, img_warp, img_ani = self.warp(fake_raw_img, tgt_lmark, warp_ref_lmark, warp_ref_img, ani_lmark, ani_img, prev_lmark, prev_img)
+        no_warp = not (self.warp.warp_ani or self.warp.warp_prev or self.warp.warp_ref)
+        if not no_warp:
+            prev_lmark, prev_img = prev
+            img_final, flow, weight, img_warp, img_ani = self.warp(fake_raw_img, tgt_lmark, warp_ref_lmark, warp_ref_img, ani_lmark, ani_img, prev_lmark, prev_img)
+        else:
+            img_final = fake_raw_img
+            flow = [None] * 3
+            weight = [None] * 3
+            img_warp = [None] * 3
+            img_ani = None
+            fake_raw_img = None
 
         return img_final, flow, weight, fake_raw_img, img_warp, atn, ref_idx, img_ani
 

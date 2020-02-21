@@ -59,7 +59,7 @@ class FaceForeDataset(BaseDataset):
         """
         self.output_shape = tuple([opt.loadSize, opt.loadSize])
         self.num_frames = opt.n_shot
-        self.n_frames_total = opt.n_frames_G
+        self.n_frames_total = 1
         self.opt = opt
         self.root  = opt.dataroot
         self.fix_crop_pos = True

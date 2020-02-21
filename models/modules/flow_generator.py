@@ -49,7 +49,7 @@ class FlowGenerator(BaseNetwork):
         conv_w = [nn.Conv2d(nf, 1, kernel_size=3, padding=1), nn.Sigmoid()] 
       
         self.down_flow = nn.Sequential(*down_flow)        
-        self.res_flow = nn.Sequential(*res_flow)                                            
+        self.res_flow = nn.Sequential(*res_flow)
         self.up_flow = nn.Sequential(*up_flow)
         self.conv_flow = nn.Sequential(*conv_flow)        
         self.conv_w = nn.Sequential(*conv_w)

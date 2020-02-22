@@ -161,6 +161,7 @@ class FaceForeDataset(BaseDataset):
             front_path = os.path.join(self.root, self.video_bag, paths[0], paths[1]+ '_front.npy') 
             
         # read in data
+        self.video_path = video_path
         lmarks = np.load(lmark_path)#[:,:,:-1]
         real_video = self.read_videos(video_path)
         
@@ -399,8 +400,15 @@ class FaceForeDataset(BaseDataset):
         result_images = []
         for choice in choice_ids:
             image, crop_size = self.get_image(images[choice], transform, self.output_shape, crop_coords)
-            lmark = self.get_keypoints(lmarks[choice], transform_L, crop_size, crop_coords, bw)
-
+            # get landmark
+            while True:
+                try:
+                    lmark = self.get_keypoints(lmarks[choice], transform_L, crop_size, crop_coords, bw)
+                    break
+                except:
+                    choice = ((choice + 1)%images.shape[0])
+                    print("what the fuck for {}".format(self.video_path))
+                    
             result_lmarks.append(lmark)
             result_images.append(image)
 

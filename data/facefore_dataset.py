@@ -493,7 +493,6 @@ class FaceForeDataset(BaseDataset):
         if self.opt.isTrain:
             transform = transforms.Compose([
                 transforms.Lambda(lambda img: self.__scale_image(img, img_params['new_size'], Image.BICUBIC)),
-                transforms.Lambda(lambda img: self.__color_aug(img, img_params['color_aug'])),
                 transforms.Lambda(lambda img: self.__flip(img, img_params['flip'])),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))

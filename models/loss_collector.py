@@ -33,12 +33,13 @@ class LossCollector(BaseModel):
             self.criterionGAN = networks.GANLoss(opt.gan_mode, tensor=self.Tensor, opt=opt)            
             self.criterionFeat = torch.nn.L1Loss()
             self.criterionFlow = networks.MaskedL1Loss()
+            self.criterionGen = torch.nn.L1Loss()
             if not opt.no_vgg_loss:             
                 self.criterionVGG = networks.VGGLoss(opt, self.gpu_ids)
         
             # Names so we can breakout loss
             self.loss_names_G = ['G_GAN', 'G_GAN_Feat', 'G_VGG', 'GT_GAN', 'GT_GAN_Feat', 
-                                 'F_Flow', 'F_Warp', 'W']
+                                 'F_Flow', 'F_Warp', 'L1_Loss']
             self.loss_names_D = ['D_real', 'D_fake', 'DT_real', 'DT_fake'] 
             self.loss_names = self.loss_names_G + self.loss_names_D
 
@@ -154,6 +155,11 @@ class LossCollector(BaseModel):
                     unweighted_loss = self.criterionFeat(pred_fake[i][j], pred_real[i][j].detach())
                     loss_G_GAN_Feat += D_weights * feat_weights * unweighted_loss * self.opt.lambda_feat            
         return loss_G_GAN_Feat
+
+
+    def compute_L1_loss(self, syn_image, tgt_image):
+        loss_l1 = self.criterionGen(syn_image, tgt_image)
+        return loss_l1
 
 def loss_backward(opt, losses, optimizer):    
     losses = [ torch.mean(x) if not isinstance(x, int) else x for x in losses ]

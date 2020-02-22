@@ -146,11 +146,14 @@ class FaceForeDemoDataset(BaseDataset):
         w, h = size    
         return img.resize((w, h), method)
 
-    def __color_aug(self, img):
+    def __color_aug(self, img, params):
         h, s, v = img.convert('HSV').split()    
+        h = h.point(lambda i: (i + params[0]) % 256)
+        s = s.point(lambda i: min(255, max(0, i * params[1] + params[2])))
+        v = v.point(lambda i: min(255, max(0, i * params[3] + params[4])))
         img = Image.merge('HSV', (h, s, v)).convert('RGB')
         return img
-
+        
     def name(self):
         return 'FaceForensicsDemoDataset'
 

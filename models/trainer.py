@@ -107,7 +107,7 @@ def save_all_tensors(opt, output_list, model):
     ref_warped_images = handle_cat(prevs['ref_warp_images'])
     ref_weights = handle_cat(prevs['ref_weights'])
     prev_warped_images = handle_cat(prevs['prev_warp_images'])
-    prev_weights = handle_cat(prevs['prev_warp_images'])
+    prev_weights = handle_cat(prevs['prev_weights'])
     fake_raw_image = torch.cat(prevs['raw_images'], axis=0) if prevs['raw_images'][0] is not None else None
     ani_warped_images = handle_cat(prevs['ani_warp_images'])
     ani_weights = handle_cat(prevs['ani_weights'])

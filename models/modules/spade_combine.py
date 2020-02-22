@@ -14,6 +14,7 @@ class SpadeCombineModule(BaseNetwork):
         self.get_SPADE_embed(opt)
         self.opt = opt
         self.add_raw_loss = self.opt.add_raw_loss
+        self.flow_temp_is_initalized = False
 
     def forward(self, tgt_lmark, ref_lmarks, ref_imgs, prev, warp_ref_img, warp_ref_lmark, ani_img, ani_lmark, t=0, ref_idx_fix=None):
         # SPADE weight generation
@@ -70,6 +71,7 @@ class SpadeCombineModule(BaseNetwork):
         self.load_pretrained_net(self.img_ref_embedding, self.img_prev_embedding)
         
         self.warp.set_temporal()
+        self.flow_temp_is_initalized = True
 
     def pick_ref(self, refs, ref_idx):
         return self.warp.pick_ref(refs, ref_idx)

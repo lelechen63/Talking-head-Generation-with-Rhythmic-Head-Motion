@@ -114,6 +114,7 @@ class FaceForeDataset(BaseDataset):
             else:
                 self.video_bag = 'align'
 
+        # self.data = self.data[:2]
         print(len(self.data))
 
     def __len__(self):

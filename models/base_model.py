@@ -11,6 +11,8 @@ from util.visualizer import Visualizer
 import models.networks as networks
 from util.distributed import master_only_print as print
 
+import pdb
+
 class BaseModel(torch.nn.Module):
     def name(self):
         return 'BaseModel'
@@ -72,7 +74,7 @@ class BaseModel(torch.nn.Module):
                     Visualizer.vis_print(self.opt, 'Pretrained network %s has excessive layers; Only loading layers that are used' % network_label)
                 except:
                     Visualizer.vis_print(self.opt, 'Pretrained network %s has fewer layers; The following are not initialized:' % network_label)                    
-                    not_initialized = set()                    
+                    not_initialized = set()               
                     for k, v in pretrained_dict.items():                      
                         if v.size() == model_dict[k].size():
                             model_dict[k] = v
@@ -191,7 +193,7 @@ class BaseModel(torch.nn.Module):
 
         # make model temporal by generating multiple frames
         if (not opt.isTrain or start_epoch > opt.niter_single) and opt.n_frames_G > 1:
-            self.make_temporal_model() 
+            self.make_temporal_model()
 
     def save_networks(self, which_epoch):
         self.save_network(self.netG, 'G', which_epoch, self.gpu_ids)
@@ -203,9 +205,9 @@ class BaseModel(torch.nn.Module):
         opt = self.opt
         if not self.isTrain or opt.continue_train or opt.load_pretrain:
             pretrained_path = '' if not self.isTrain or opt.continue_train else opt.load_pretrain
-            self.load_network(self.netG, 'G', opt.which_epoch, pretrained_path)                  
+            self.load_network(self.netG, 'G', opt.which_epoch, pretrained_path)                 
             if self.temporal and opt.warp_ref and not self.netG.flow_temp_is_initalized:
-                self.netG.load_pretrained_net(self.netG.flow_network_ref, self.netG.flow_network_temp)
+                self.netG.set_flow_prev()
             if (self.isTrain and not opt.load_pretrain) or opt.finetune:
                 self.load_network(self.netD, 'D', opt.which_epoch, pretrained_path)  
                 if self.isTrain and self.temporal: 

@@ -85,6 +85,9 @@ class Vid2VidModel(BaseModel):
         # VGG loss
         loss_G_VGG = self.lossCollector.compute_VGG_losses(fake_image, fake_raw_image, img_ani, tgt_image)
 
+        # L1 loss
+        loss_l1 = self.lossCollector.compute_L1_loss(syn_image=fake_image, tgt_image=tgt_image)
+
         flow, weight, flow_gt, conf_gt, warped_image, tgt_image, tgt_crop_image = \
             self.reshape([flow, weight, flow_gt, conf_gt, warped_image, tgt_image, tgt_crop_image])             
         loss_F_Flow, loss_F_Warp = self.lossCollector.compute_flow_losses(flow, warped_image, tgt_image, tgt_crop_image,
@@ -94,7 +97,7 @@ class Vid2VidModel(BaseModel):
         
         loss_list = [loss_G_GAN, loss_G_GAN_Feat, loss_G_VGG, # GAN + VGG loss
                      loss_GT_GAN, loss_GT_GAN_Feat,           # temporal GAN loss
-                     loss_F_Flow, loss_F_Warp]        # flow loss (debug whether add weight loss)
+                     loss_F_Flow, loss_F_Warp, loss_l1]        # flow loss (debug whether add weight loss)
         loss_list = [loss.view(1, 1) for loss in loss_list]
         
         return loss_list, \
@@ -140,7 +143,7 @@ class Vid2VidModel(BaseModel):
         ref_labels_valid = ref_labels
         
         for t in range(opt.n_frames_per_gpu):
-            # get inputs for time t            
+            # get inputs for time t
             tgt_label_t, tgt_label_valid, tgt_images, warp_ref_img_t, warp_ref_lmark_t, \
                     ani_img_t, ani_lmark_t, prev_t = self.get_input_t(tgt_labels, tgt_images, warp_ref_img, 
                                                                     warp_ref_lmark, ani_img, 

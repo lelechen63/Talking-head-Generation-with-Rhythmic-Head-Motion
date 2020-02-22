@@ -9,6 +9,7 @@ class LinearCombineModule(BaseNetwork):
         super().__init__()
         self.netG = FewShotGenerator(opt)
         self.warp = WarpModule(opt, opt.n_frames_G)
+        self.flow_temp_is_initalized = False
 
     def forward(self, tgt_lmark, ref_lmarks, ref_imgs, prev, warp_ref_img, warp_ref_lmark, ani_img, ani_lmark, t=0, ref_idx_fix=None):
         # generate image
@@ -34,3 +35,4 @@ class LinearCombineModule(BaseNetwork):
 
     def set_flow_prev(self):
         self.warp.set_temporal()
+        self.flow_temp_is_initalized = True

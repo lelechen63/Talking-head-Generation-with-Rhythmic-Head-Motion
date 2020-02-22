@@ -121,7 +121,7 @@ def save_all_tensors(opt, output_list, model):
         visual_list += [('ref_img_{}'.format(i), util.tensor2im(ref_images[:, i:i+1]))]
     visual_list += [('warping_ref_lmark', util.tensor2im(warping_ref_lmark, tile=True)),
                     ('warping_ref_img', util.tensor2im(warping_ref, tile=True)),
-                    ('target_label', util.visualize_label(opt, target_label, model)),
+                    ('target_label', util.tensor2im(target_label, tile=True)),
                     ('target_image', util.tensor2im(target_image, tile=True)),
                     ('synthesized_image', util.tensor2im(fake_image, tile=True)),
                     ('ani_syn_image', util.tensor2im(img_ani, tile=True)),

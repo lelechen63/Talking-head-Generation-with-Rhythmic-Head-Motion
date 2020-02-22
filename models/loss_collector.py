@@ -157,8 +157,8 @@ class LossCollector(BaseModel):
         return loss_G_GAN_Feat
 
 
-    def compute_L1_loss(self, syn_image, tgt_image):
-        loss_l1 = self.criterionGen(syn_image, tgt_image)
+    def compute_L1_loss(self, syn_image, tgt_image, l1_ratio=10):
+        loss_l1 = self.criterionGen(syn_image, tgt_image) * l1_ratio
         return loss_l1
 
 def loss_backward(opt, losses, optimizer):    

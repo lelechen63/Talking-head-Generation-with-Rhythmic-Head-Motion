@@ -162,7 +162,7 @@ class LossCollector(BaseModel):
         loss_l1 = self.criterionGen(syn_image, tgt_image) * l1_ratio
         return loss_l1
 
-    def atten_L1_loss(self, syn_image, tgt_image, tgt_template, atten_ratio=100):
+    def atten_L1_loss(self, syn_image, tgt_image, tgt_template, atten_ratio=1000):
         loss_atten = self.criterionGen(syn_image * tgt_template, tgt_image * tgt_template) * atten_ratio
         return loss_atten
 

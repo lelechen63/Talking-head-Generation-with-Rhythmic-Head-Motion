@@ -24,6 +24,7 @@ class WarpModule(BaseNetwork):
     def set_temporal(self):
         self.warp_prev = True
         if self.opt.same_flownet and self.warp_ref:
+            print('use same flownet for temporal and reference')
             self.flow_network_temp = self.flow_network_ref
         else:
             self.flow_network_temp = FlowGenerator(self.opt, self.opt.n_frames_G)

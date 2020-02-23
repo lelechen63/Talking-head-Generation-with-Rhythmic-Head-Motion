@@ -113,6 +113,21 @@ class FaceForeDataset(BaseDataset):
                 self.video_bag = 'align'
             else:
                 self.video_bag = 'align'
+        
+        elif self.opt.dataset_name == 'lrs':
+            if opt.isTrain:
+                _file = open(os.path.join(self.root, 'pickle','dev_lmark2img.pkl'), "rb")
+                self.data = pkl.load(_file)
+                _file.close()
+            else :
+                _file = open(os.path.join(self.root, 'pickle','test_lmark2img.pkl'), "rb")
+                self.data = pkl.load(_file)
+                _file.close()
+
+            if opt.isTrain:
+                self.video_bag = 'unzip/dev_video'
+            else:
+                self.video_bag = 'test'
 
         # self.data = self.data[:2]
         print(len(self.data))
@@ -159,6 +174,16 @@ class FaceForeDataset(BaseDataset):
             lmark_path = os.path.join(self.root, self.video_bag, paths[0], paths[1]+ '_original.npy') 
             rt_path = os.path.join(self.root, self.video_bag, paths[0], paths[1]+ '_rt.npy') 
             front_path = os.path.join(self.root, self.video_bag, paths[0], paths[1]+ '_front.npy') 
+
+        elif self.opt.dataset_name == 'lrs':
+            paths = self.data[index]
+            paths[1] = paths[1].split('_')[0]
+            video_path = os.path.join(self.root, self.video_bag, paths[0], paths[1] + '_crop.mp4')
+            lmark_path = os.path.join(self.root, self.video_bag, paths[0], paths[1]+ '_original.npy') 
+            ani_path = os.path.join(self.root, self.video_bag, paths[0], paths[1]+"_ani.mp4")
+            rt_path = os.path.join(self.root, self.video_bag, paths[0], paths[1]+ '_rt.npy') 
+            front_path = os.path.join(self.root, self.video_bag, paths[0], paths[1]+ '_front.npy') 
+            ani_id = int(paths[2])
             
         # read in data
         self.video_path = video_path

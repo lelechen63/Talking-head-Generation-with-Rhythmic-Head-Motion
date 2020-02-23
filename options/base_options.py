@@ -85,6 +85,8 @@ class BaseOptions():
         parser.add_argument('--n_sc_layers', type=int, default=2, help='number of layers to use SPADE combination in netG')        
         parser.add_argument('--sc_arch', type=str, default='encoder', help='selects model to use for the image embedding network')
 
+        parser.add_argument('--same_flownet', action='store_true', help='same flowNet for reference and previous')
+
         # for attention mechanism
         parser.add_argument('--n_shot', type=int, default=1, help='how many reference images')
         parser.add_argument('--n_downsample_A', type=int, default=2, help='# of downsamplings in attention network')

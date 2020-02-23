@@ -1,5 +1,6 @@
 from models.modules.flow_generator import FlowGenerator
 from models.networks.base_network import BaseNetwork
+import torch
 
 import pdb
 
@@ -22,9 +23,12 @@ class WarpModule(BaseNetwork):
     # set previous warper
     def set_temporal(self):
         self.warp_prev = True
-        self.flow_network_temp = FlowGenerator(self.opt, self.opt.n_frames_G)
-        if self.warp_ref:
-            self.load_pretrained_net(self.flow_network_ref, self.flow_network_temp)
+        if self.opt.same_flownet and self.warp_ref:
+            self.flow_network_temp = self.flow_network_ref
+        else:
+            self.flow_network_temp = FlowGenerator(self.opt, self.opt.n_frames_G)
+            if self.warp_ref:
+                self.load_pretrained_net(self.flow_network_ref, self.flow_network_temp)
 
     # [target landmark, reference landmark, reference image] -> flow, weight, warp -> combine
     def forward(self, fake_raw_img, tgt_lmark, ref_lmarks, ref_imgs, ani_lmark, ani_img, prev_lmark=None, prev_img=None, ref_idx=None):
@@ -51,8 +55,12 @@ class WarpModule(BaseNetwork):
             flow[0], weight[0], img_warp[0] = flow_ref, weight_ref, img_ref_warp[:,:3]
 
         if self.warp_prev and has_prev:
-            flow_prev, weight_prev = self.flow_network_temp(tgt_lmark, prev_lmark, prev_img)
-            img_prev_warp = self.resample(prev_img[:,-3:], flow_prev)            
+            if self.opt.same_flownet:
+                with torch.no_grad():
+                    flow_prev, weight_prev = self.flow_network_temp(tgt_lmark, prev_lmark, prev_img)
+            else:
+                flow_prev, weight_prev = self.flow_network_temp(tgt_lmark, prev_lmark, prev_img)
+            img_prev_warp = self.resample(prev_img[:,-3:], flow_prev)
             flow[1], weight[1], img_warp[1] = flow_prev, weight_prev, img_prev_warp
 
         if self.warp_ani and has_ani:

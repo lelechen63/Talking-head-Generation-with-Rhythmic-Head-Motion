@@ -12,8 +12,8 @@ test_model_lrs(){
     --how_many $3 \
     --nThreads 0 \
     --dataroot '/home/cxu-serve/p1/common/lrs3/lrs3_v0.4' \
-    --ref_img_id "0,10,20,30,40,50,60,70" \
-    --n_shot 8 \
+    --ref_img_id "0" \
+    --n_shot 1 \
     --serial_batches \
     --dataset_name lrs
 }
@@ -32,8 +32,8 @@ test_model_vox(){
     --how_many $3 \
     --nThreads 0 \
     --dataroot '/home/cxu-serve/p1/common/voxceleb2' \
-    --ref_img_id "0" \
-    --n_shot 1 \
+    --ref_img_id "0,10,20,30,40,50,60,70" \
+    --n_shot 8 \
     --serial_batches \
     --dataset_name vox
 }
@@ -70,7 +70,7 @@ test_model_audio(){
     --dataset_name grid
 }
 
-# test_model_lrs 3 latest 5   
-test_model_vox 2 latest 5
+test_model_lrs 1 latest 5
+# test_model_vox 3 latest 5
 # test_model_audio 2 latest 5
 # test_model_grid 2 latest 5

@@ -108,9 +108,9 @@ _file.close()
 save_name = opt.name
 if opt.dataset_name == 'lrs':
     save_name = 'lrs'
-save_root = os.path.join('evaluation_store', save_name)
+save_root = os.path.join('evaluation_store', save_name, '{}_shot'.format(opt.n_shot))
 # pick_ids = np.random.choice(list(range(len(pickle_data))), size=opt.how_many)
-pick_ids = range(0, len(pickle_data), int(len(pickle_data))//opt.how_many)[1:3]
+pick_ids = range(0, len(pickle_data), int(len(pickle_data))//opt.how_many)
 
 for pick_id in tqdm(pick_ids):
     print('process {} ...'.format(pick_id))

@@ -139,7 +139,7 @@ for pick_id in tqdm(pick_ids):
         # data.update({'warping_ref': data['ref_image'][:, :1], 'warping_ref_lmark': data['ref_label'][:, :1]})
 
         img_path = data['path']
-        data_list = [data['tgt_label'], data['tgt_image'], None, None, None, \
+        data_list = [data['tgt_label'], data['tgt_image'], None, None, None, None, \
                     data['ref_label'], data['ref_image'], \
                     data['warping_ref_lmark'].squeeze(1) if data['warping_ref_lmark'] is not None else None, \
                     data['warping_ref'].squeeze(1) if data['warping_ref'] is not None else None, \

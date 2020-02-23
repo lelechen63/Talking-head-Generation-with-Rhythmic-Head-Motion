@@ -93,12 +93,14 @@ class Vid2VidModel(BaseModel):
             self.reshape([flow, weight, flow_gt, conf_gt, warped_image, tgt_image, tgt_crop_image])             
         loss_F_Flow, loss_F_Warp = self.lossCollector.compute_flow_losses(flow, warped_image, tgt_image, tgt_crop_image,
             flow_gt, conf_gt)
-        # loss_W = self.lossCollector.compute_weight_losses(weight, warped_image, tgt_image, tgt_crop_image)
+
+        # add W
+        loss_W = self.lossCollector.compute_weight_losses(weight, warped_image, tgt_image, tgt_crop_image)
         # loss_W = 0
         
         loss_list = [loss_G_GAN, loss_G_GAN_Feat, loss_G_VGG, # GAN + VGG loss
                      loss_GT_GAN, loss_GT_GAN_Feat,           # temporal GAN loss
-                     loss_F_Flow, loss_F_Warp, loss_l1, loss_atten]        # flow loss (debug whether add weight loss)
+                     loss_F_Flow, loss_F_Warp, loss_l1, loss_atten, loss_W]        # flow loss (debug whether add weight loss)
         loss_list = [loss.view(1, 1) for loss in loss_list]
         
         return loss_list, \

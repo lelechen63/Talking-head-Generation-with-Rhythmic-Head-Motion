@@ -68,7 +68,14 @@ def train():
                 
                 data_list_t = get_data_t(data_list, n_frames_load, t) + data_ref_list + \
                               get_data_t(data_ani, n_frames_load, t) + data_prev
-                                
+
+                # get new previous flow loss
+                # if t != 0:
+                #     with torch.no_grad():
+                #         flow_prev_gt, conf_prev_gt = flowNet.module.flowNet_forward(data_prev[2].cuda(), data_list_t[1].cuda())
+                #         data_list_t[4][1] = flow_prev_gt
+                #         data_list_t[5][1] = conf_prev_gt
+
                 g_losses, generated, data_prev, ref_idx = model(data_list_t, save_images=trainer.save, mode='generator', ref_idx_fix=ref_idx_fix)
                 g_losses = loss_backward(opt, g_losses, model.module.optimizer_G)
 

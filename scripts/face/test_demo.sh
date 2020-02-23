@@ -38,6 +38,26 @@ test_model_vox(){
     --dataset_name vox
 }
 
+test_model_vox_temp(){
+    CUDA_VISIBLE_DEVICES=$1 python test_demo.py --name $2 \
+    --dataset_mode facefore_demo \
+    --adaptive_spade \
+    --warp_ref \
+    --warp_ani \
+    --add_raw_loss \
+    --spade_combine \
+    --example \
+    --n_frames_G 1 \
+    --which_epoch $3 \
+    --how_many $4 \
+    --nThreads 0 \
+    --dataroot '/home/cxu-serve/p1/common/voxceleb2' \
+    --ref_img_id "0" \
+    --n_shot 1 \
+    --serial_batches \
+    --dataset_name vox
+}
+
 test_model_grid(){
     CUDA_VISIBLE_DEVICES=$1 python test_demo.py --name face8_grid_raw \
     --dataset_mode facefore_demo \
@@ -70,7 +90,9 @@ test_model_audio(){
     --dataset_name grid
 }
 
-test_model_lrs 3 latest 5
+# test_model_lrs 3 latest 5
 # test_model_vox 3 latest 5
+# test_model_vox_temp 2 face8_vox_ani_nonlinear_temp latest 5
+test_model_vox_temp 2 face8_vox_ani_nonlinear_atten latest 5
 # test_model_audio 2 latest 5
 # test_model_grid 2 latest 5

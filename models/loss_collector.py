@@ -40,7 +40,7 @@ class LossCollector(BaseModel):
         
             # Names so we can breakout loss
             self.loss_names_G = ['G_GAN', 'G_GAN_Feat', 'G_VGG', 'GT_GAN', 'GT_GAN_Feat', 
-                                 'F_Flow', 'F_Warp', 'L1_Loss', 'Atten_L1_Loss']
+                                 'F_Flow', 'F_Warp', 'L1_Loss', 'Atten_L1_Loss', 'W']
             self.loss_names_D = ['D_real', 'D_fake', 'DT_real', 'DT_fake'] 
             self.loss_names = self.loss_names_G + self.loss_names_D
 
@@ -128,8 +128,8 @@ class LossCollector(BaseModel):
 
     def compute_weight_losses(self, weight, warped_image, tgt_image, tgt_crop_image):         
         loss_W = self.Tensor(1).fill_(0)
-        loss_W += self.compute_weight_loss(weight[0], warped_image[0], tgt_image)        
-        loss_W += self.compute_weight_loss(weight[1], warped_image[1], tgt_image)
+        # loss_W += self.compute_weight_loss(weight[0], warped_image[0], tgt_image)        
+        # loss_W += self.compute_weight_loss(weight[1], warped_image[1], tgt_image)
         # loss_W += self.compute_weight_loss(weight[2], warped_image[2], tgt_crop_image)
         
         return loss_W

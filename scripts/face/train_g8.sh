@@ -28,9 +28,18 @@ train_grid_linear(){
 }
 
 train_grid_linear_temp(){
-    CUDA_VISIBLE_DEVICES=2 python train.py --name face8_grid_ani_retrain_temp --dataset_mode facefore \
+    CUDA_VISIBLE_DEVICES=0,1,2 python train.py --name face8_grid_ani_retrain_temp --dataset_mode facefore \
     --adaptive_spade --warp_ref \
-    --gpu_ids 0 --batchSize 2 --nThreads 0 --niter 1000 --niter_single 0 --niter_step 3 \
+    --gpu_ids 0,1,2 --batchSize 12 --nThreads 8 --niter 1000 --niter_single 0 --niter_step 3 \
+    --n_shot 1 --n_frames_G 2 --ref_ratio 0 --display_freq 1 \
+    --dataroot '/home/cxu-serve/p1/common/grid' --dataset_name grid \
+    --continue_train
+}
+
+train_grid_linear_temp_newflow(){
+    CUDA_VISIBLE_DEVICES=1,2,3 python train.py --name face8_grid_ani_retrain_temp_newflow --dataset_mode facefore \
+    --adaptive_spade --warp_ref \
+    --gpu_ids 0,1,2 --batchSize 12 --nThreads 8 --niter 1000 --niter_single 0 --niter_step 3 \
     --n_shot 1 --n_frames_G 2 --ref_ratio 0 --display_freq 1 \
     --dataroot '/home/cxu-serve/p1/common/grid' --dataset_name grid \
     --continue_train
@@ -57,10 +66,10 @@ train_vox_nonlinear(){
 train_vox_nonlinear_temp(){
     CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 python train.py --name face8_vox_ani_nonlinear_temp --dataset_mode facefore \
     --adaptive_spade --warp_ref --warp_ani --spade_combine --add_raw_loss \
-    --gpu_ids 0,1,2,3,4,5,6,7 --batchSize 36 --nThreads 64 --niter 1000 --niter_single 1 --niter_step 3 \
+    --gpu_ids 0,1,2,3,4,5,6,7 --batchSize 56 --nThreads 64 --niter 1000 --niter_single 6 --niter_step 3 \
     --n_shot 8 --n_frames_G 2 \
-    --dataroot '/data2/lchen63/voxceleb' --dataset_name vox --save_epoch_freq 50 --display_freq 5000 \
-    --continue_train 
+    --dataroot '/mnt/Data/lchen63/voxceleb' --dataset_name vox --save_epoch_freq 1 --display_freq 1000 \
+    --continue_train --same_flownet
 }
 
 train_grid_nonlinear(){
@@ -75,6 +84,7 @@ train_grid_nonlinear(){
 # train_vox_nonlinear
 # train_grid_linear
 # train_grid_nonlinear
-# train_vox_nonlinear_temp
-train_grid_linear_temp
+train_vox_nonlinear_temp
+# train_grid_linear_temp
+# train_grid_linear_temp_newflow
 # train_grid_raw

@@ -18,7 +18,7 @@ def encode_input(opt, data_list, dummy_bs):
     # target label and image
     tgt_label = encode_label(opt, tgt_label)
     tgt_image = tgt_image.cuda()
-    tgt_template = tgt_template.cuda()
+    tgt_template = tgt_template.cuda() if tgt_template is not None else None
 
     # flownet ground truth
     # flow_gt = [flow.cuda() if flow is not None else None for flow in flow_gt]

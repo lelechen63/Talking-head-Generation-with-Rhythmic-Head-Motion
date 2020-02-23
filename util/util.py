@@ -11,6 +11,45 @@ from PIL import Image
 import os
 import cv2
 
+def get_roi(lmark): #lmark shape (68,2) or (68,3) , tempolate shape(256, 256, 1)
+    tempolate = np.zeros((256, 256 , 1), np.uint8)
+    eyes =[17, 20 , 21, 22, 24,  26, 36, 39,42, 45]
+    eyes_x = []
+    eyes_y = []
+    for i in eyes:
+        eyes_x.append(lmark[i,0])
+        eyes_y.append(lmark[i,1])
+    min_x = lmark[eyes[np.argmin(eyes_x)], 0] 
+    max_x = lmark[eyes[np.argmax(eyes_x)], 0] 
+    min_y = lmark[eyes[np.argmin(eyes_y)], 1]
+    
+    max_y = lmark[eyes[np.argmax(eyes_y)], 1]
+    min_x = max(0, int(min_x-10) )
+    max_x = min(255, int(max_x+10) )
+    min_y = max(0, int(min_y-10) )
+    max_y = min(255, int(max_y+10) )
+
+    tempolate[ int(min_y): int(max_y), int(min_x):int(max_x)] = 1 
+    mouth = [48, 50, 51, 54, 57]
+    mouth_x = []
+    mouth_y = []
+    for i in mouth:
+        mouth_x.append(lmark[i,0])
+        mouth_y.append(lmark[i,1])
+    min_x2 = lmark[mouth[np.argmin(mouth_x)], 0] 
+    max_x2 = lmark[mouth[np.argmax(mouth_x)], 0] 
+    min_y2 = lmark[mouth[np.argmin(mouth_y)], 1]
+    max_y2 = lmark[mouth[np.argmax(mouth_y)], 1] 
+
+    min_x2 = max(0, int(min_x2-10) )
+    max_x2 = min(255, int(max_x2+10) )
+    min_y2 = max(0, int(min_y2-10) )
+    max_y2 = min(255, int(max_y2+10) )
+
+    
+    tempolate[int(min_y2):int(max_y2), int(min_x2):int(max_x2)] = 1
+    return  tempolate
+
 def visualize_label(opt, label_tensor, model=None): 
     if label_tensor.dim() == 5:
         label_tensor = label_tensor[-1]

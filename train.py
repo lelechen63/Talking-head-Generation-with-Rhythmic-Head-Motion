@@ -52,7 +52,7 @@ def train():
             if not opt.no_flow_gt: 
                 data_list = [data['tgt_image'], data['cropped_images'], data['warping_ref'], data['ani_image']]
                 flow_gt, conf_gt = flowNet(data_list, epoch)
-            data_list = [data['tgt_label'], data['tgt_image'], data['cropped_images'], flow_gt, conf_gt]
+            data_list = [data['tgt_label'], data['tgt_image'], data['tgt_template'], data['cropped_images'], flow_gt, conf_gt]
             data_ref_list = [data['ref_label'], data['ref_image']]
             data_prev = [None, None, None]
             data_ani = [data['warping_ref_lmark'], data['warping_ref'], data['ani_lmark'], data['ani_image']]

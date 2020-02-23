@@ -6,6 +6,7 @@
 # https://nvlabs.github.io/few-shot-vid2vid/License.txt
 import torch
 from util.image_pool import ImagePool
+from util.util import get_roi
 from models.base_model import BaseModel
 import models.networks as networks
 from models.input_process import *
@@ -39,7 +40,7 @@ class LossCollector(BaseModel):
         
             # Names so we can breakout loss
             self.loss_names_G = ['G_GAN', 'G_GAN_Feat', 'G_VGG', 'GT_GAN', 'GT_GAN_Feat', 
-                                 'F_Flow', 'F_Warp', 'L1_Loss']
+                                 'F_Flow', 'F_Warp', 'L1_Loss', 'Atten_L1_Loss']
             self.loss_names_D = ['D_real', 'D_fake', 'DT_real', 'DT_fake'] 
             self.loss_names = self.loss_names_G + self.loss_names_D
 
@@ -160,6 +161,10 @@ class LossCollector(BaseModel):
     def compute_L1_loss(self, syn_image, tgt_image, l1_ratio=10):
         loss_l1 = self.criterionGen(syn_image, tgt_image) * l1_ratio
         return loss_l1
+
+    def atten_L1_loss(self, syn_image, tgt_image, tgt_template, atten_ratio=100):
+        loss_atten = self.criterionGen(syn_image * tgt_template, tgt_image * tgt_template) * atten_ratio
+        return loss_atten
 
 def loss_backward(opt, losses, optimizer):    
     losses = [ torch.mean(x) if not isinstance(x, int) else x for x in losses ]

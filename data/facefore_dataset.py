@@ -26,7 +26,9 @@ from torch.utils.data import DataLoader
 from data.base_dataset import BaseDataset, get_transform
 from data.keypoint2img import interpPoints, drawEdge
 from scipy.spatial.transform import Rotation as R
+from util.util import get_roi
 
+import copy
 import pdb
 
 class FaceForeDataset(BaseDataset):
@@ -215,13 +217,19 @@ class FaceForeDataset(BaseDataset):
     
         # define scale
         scale = self.define_scale()
-        transform, transform_L = self.get_transforms()
+        transform, transform_L, transform_T = self.get_transforms()
 
         # get reference
         ref_images, ref_lmarks, _ = self.prepare_datas(real_video, lmarks, input_indexs, transform, transform_L, scale)
 
         # # get target
         tgt_images, tgt_lmarks, tgt_crop_coords = self.prepare_datas(real_video, lmarks, target_id, transform, transform_L, scale)
+
+        # get template for target
+        tgt_templates = []
+        for gg in target_id:
+            lmark = lmarks[gg]
+            tgt_templates.append(self.get_template(lmark, transform_T, self.output_shape, tgt_crop_coords))
 
         if self.opt.warp_ani:
         # get animation & get cropped ground truth
@@ -239,7 +247,7 @@ class FaceForeDataset(BaseDataset):
                 # mask = scipy.ndimage.morphology.binary_dilation(mask.numpy(),iterations = 5).astype(np.bool)
                 cropped_gt[mask] = 0
                 cropped_images.append(cropped_gt)
-                cropped_lmarks.append(lmarks[gg].copy())
+                cropped_lmarks.append(lmarks[gg])
             ani_images, ani_lmarks, _ = self.prepare_datas(ani_images, ani_lmarks, list(range(len(target_id))), transform, transform_L, scale)
             cropped_images, cropped_lmarks, _ = self.prepare_datas(cropped_images, cropped_lmarks, list(range(len(target_id))), \
                                                                     transform, transform_L, scale, crop_coords=tgt_crop_coords)
@@ -257,6 +265,8 @@ class FaceForeDataset(BaseDataset):
         ref_lmarks = torch.cat([ref_lmark.unsqueeze(0) for ref_lmark in ref_lmarks], axis=0)
         tgt_images = torch.cat([tgt_img.unsqueeze(0) for tgt_img in tgt_images], axis=0)
         tgt_lmarks = torch.cat([tgt_lmark.unsqueeze(0) for tgt_lmark in tgt_lmarks], axis=0)
+        tgt_templates = torch.cat([torch.Tensor(tgt_template).unsqueeze(0).unsqueeze(0) for tgt_template in tgt_templates], axis=0)
+
         warping_refs = torch.cat([warping_ref.unsqueeze(0) for warping_ref in warping_refs], 0)
         warping_ref_lmarks = torch.cat([warping_ref_lmark.unsqueeze(0) for warping_ref_lmark in warping_ref_lmarks], 0)
         if self.opt.warp_ani:
@@ -265,7 +275,7 @@ class FaceForeDataset(BaseDataset):
             cropped_images = torch.cat([cropped_image.unsqueeze(0) for cropped_image in cropped_images], 0)
             cropped_lmarks = torch.cat([cropped_lmark.unsqueeze(0) for cropped_lmark in cropped_lmarks], 0)
 
-        input_dic = {'v_id' : target_img_path, 'tgt_label': tgt_lmarks, 'ref_image':ref_images , 'ref_label': ref_lmarks, \
+        input_dic = {'v_id' : target_img_path, 'tgt_label': tgt_lmarks, 'tgt_template': tgt_templates, 'ref_image':ref_images , 'ref_label': ref_lmarks, \
         'tgt_image': tgt_images,  'target_id': target_id , 'warping_ref': warping_refs , 'warping_ref_lmark': warping_ref_lmarks, 'path': video_path}
         if self.opt.warp_ani:
             input_dic.update({'ani_image': ani_images, 'ani_lmark': ani_lmarks, 'cropped_images': cropped_images, 'cropped_lmarks' :cropped_lmarks })
@@ -405,6 +415,15 @@ class FaceForeDataset(BaseDataset):
 
         return img, crop_size
 
+    # preprocess for template
+    def get_template(self, lmark, transform_T, size, crop_coords):
+        # crop
+        template = get_roi(lmark)
+        template = self.crop(Image.fromarray(template[:, :, 0], 'L'), crop_coords)
+        template = np.asarray(transform_T(template))
+        
+        return template
+
     # get scale for random crop
     def define_scale(self, scale_max = 0.2):
         scale = [np.random.uniform(1 - scale_max, 1 + scale_max), 
@@ -426,13 +445,17 @@ class FaceForeDataset(BaseDataset):
         for choice in choice_ids:
             image, crop_size = self.get_image(images[choice], transform, self.output_shape, crop_coords)
             # get landmark
+            count = 0
             while True:
                 try:
-                    lmark = self.get_keypoints(lmarks[choice], transform_L, crop_size, crop_coords, bw)
+                    lmark = self.get_keypoints(lmarks[choice].copy(), transform_L, crop_size, crop_coords, bw)
                     break
                 except:
                     choice = ((choice + 1)%images.shape[0])
                     print("what the fuck for {}".format(self.video_path))
+                    count += 1
+                    if count > 20:
+                        break
                     
             result_lmarks.append(lmark)
             result_images.append(image)
@@ -530,6 +553,10 @@ class FaceForeDataset(BaseDataset):
                 transforms.ToTensor(),
                 transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
             ])
+            transform_T = transforms.Compose([
+                transforms.Lambda(lambda img: self.__scale_image(img, img_params['new_size'], Image.BICUBIC)),
+                transforms.Lambda(lambda img: self.__flip(img, img_params['flip'])),
+            ])
             transform_L = transforms.Compose([
                 transforms.Lambda(lambda img: self.__scale_image(img, img_params['new_size'], Image.BILINEAR)),
                 transforms.Lambda(lambda img: self.__flip(img, img_params['flip'])),
@@ -545,6 +572,7 @@ class FaceForeDataset(BaseDataset):
                 transforms.Lambda(lambda img: self.__scale_image(img, img_params['new_size'], Image.BILINEAR)),
                 transforms.ToTensor()
             ])
+            transform_T = None
         
         
-        return transform, transform_L
+        return transform, transform_L, transform_T

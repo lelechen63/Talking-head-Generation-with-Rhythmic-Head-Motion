@@ -30,10 +30,10 @@ train_grid_linear(){
 train_grid_linear_temp(){
     CUDA_VISIBLE_DEVICES=2 python train.py --name face8_grid_ani_retrain_temp --dataset_mode facefore \
     --adaptive_spade --warp_ref \
-    --gpu_ids 0 --batchSize 2 --nThreads 8 --niter 1000 --niter_single 0 --niter_step 3 \
-    --n_shot 1 --n_frames_G 2 --ref_ratio 0 --display_freq 50 \
+    --gpu_ids 0 --batchSize 2 --nThreads 0 --niter 1000 --niter_single 0 --niter_step 3 \
+    --n_shot 1 --n_frames_G 2 --ref_ratio 0 --display_freq 1 \
     --dataroot '/home/cxu-serve/p1/common/grid' --dataset_name grid \
-    --continue_train --same_flownet
+    --continue_train
 }
 
 train_grid_raw(){

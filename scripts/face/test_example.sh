@@ -90,11 +90,12 @@ test_model_8_lrs(){
     --dataroot '/home/cxu-serve/p1/common/lrs3/lrs3_v0.4' \
     --ref_img_id "0" \
     --n_shot 1 \
-    --dataset_name lrs
+    --dataset_name lrs \
+    --serial_batches
 }
 
 
-test_model_8_grid 3 latest 50
+# test_model_8_grid 3 latest 50
 # test_model_8 3 latest 50
 # test_model_1 3 latest 50
-# test_model_8_lrs 3 latest 50
+test_model_8_lrs 2 latest 20

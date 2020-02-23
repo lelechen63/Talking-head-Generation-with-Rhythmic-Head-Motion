@@ -100,7 +100,7 @@ def save_all_tensors(opt, output_list, model):
     #     ref_label, ref_image, \
     #     warping_ref_lmark, warping_ref, ani_lmark, ani_image, cropped_lmarks = output_list
     prevs, ref_images, warping_ref_lmark, warping_ref, ani_lmark, ani_image,\
-        target_label, target_image, cropped_images, flow_gt, conf_gt = output_list
+        target_label, target_image, tgt_template, cropped_images, flow_gt, conf_gt = output_list
 
     # in prevs
     fake_image = torch.cat(prevs['synthesized_images'], axis=0)
@@ -115,6 +115,7 @@ def save_all_tensors(opt, output_list, model):
     ref_flow = handle_cat(prevs['ref_flows'])
     prev_flow = handle_cat(prevs['prev_flows'])
     img_ani = torch.cat(prevs['ani_syn'], axis=0) if prevs['ani_syn'][0] is not None else None
+    atten_img = target_image * tgt_template
 
     visual_list = []
     for i in range(opt.n_shot):
@@ -123,6 +124,7 @@ def save_all_tensors(opt, output_list, model):
                     ('warping_ref_img', util.tensor2im(warping_ref, tile=True)),
                     ('target_label', util.tensor2im(target_label, tile=True)),
                     ('target_image', util.tensor2im(target_image, tile=True)),
+                    ('target_atten_image', util.tensor2im(atten_img, tile=True)),
                     ('synthesized_image', util.tensor2im(fake_image, tile=True)),
                     ('ani_syn_image', util.tensor2im(img_ani, tile=True)),
                     ('ref_warped_images', util.tensor2im(ref_warped_images, tile=True)),
@@ -139,6 +141,7 @@ def save_all_tensors(opt, output_list, model):
                     ('ani_lmark', util.tensor2im(ani_lmark, tile=True)),
                     ('cropped_image', util.tensor2im(cropped_images, tile=True)),
                     ('flow_ref_gt', util.tensor2flow(flow_gt[0][-1], tile=True) if flow_gt[0] is not None else None),
+                    ('flow_prev_gt', util.tensor2flow(flow_gt[1][-1], tile=True) if flow_gt[1] is not None else None),
                     ('flow_ani_gt', util.tensor2flow(flow_gt[2][-1], tile=True) if flow_gt[2] is not None else None),
                     ]
     visuals = OrderedDict(visual_list)

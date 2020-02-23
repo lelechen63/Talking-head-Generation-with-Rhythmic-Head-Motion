@@ -12,6 +12,7 @@ import os
 import cv2
 
 def get_roi(lmark): #lmark shape (68,2) or (68,3) , tempolate shape(256, 256, 1)
+    lmark = lmark.copy()
     tempolate = np.zeros((256, 256 , 1), np.uint8)
     eyes =[17, 20 , 21, 22, 24,  26, 36, 39,42, 45]
     eyes_x = []

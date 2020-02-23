@@ -89,9 +89,6 @@ class Vid2VidModel(BaseModel):
         loss_l1 = self.lossCollector.compute_L1_loss(syn_image=fake_image, tgt_image=tgt_image)
         loss_atten = self.lossCollector.atten_L1_loss(syn_image=fake_image, tgt_image=tgt_image, tgt_template=tgt_template)
 
-        # debug
-        print(loss_atten)
-
         flow, weight, flow_gt, conf_gt, warped_image, tgt_image, tgt_crop_image = \
             self.reshape([flow, weight, flow_gt, conf_gt, warped_image, tgt_image, tgt_crop_image])             
         loss_F_Flow, loss_F_Warp = self.lossCollector.compute_flow_losses(flow, warped_image, tgt_image, tgt_crop_image,

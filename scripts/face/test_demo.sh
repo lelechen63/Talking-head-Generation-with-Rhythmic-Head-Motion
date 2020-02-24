@@ -59,13 +59,14 @@ test_model_vox_temp(){
 }
 
 test_model_grid(){
-    CUDA_VISIBLE_DEVICES=$1 python test_demo.py --name face8_grid_raw \
+    CUDA_VISIBLE_DEVICES=$1 python test_demo.py --name $2 \
     --dataset_mode facefore_demo \
     --adaptive_spade \
+    --warp_ref \
     --example \
     --n_frames_G 1 \
-    --which_epoch $2 \
-    --how_many $3 \
+    --which_epoch $3 \
+    --how_many $4 \
     --nThreads 0 \
     --dataroot '/home/cxu-serve/p1/common/grid' \
     --ref_img_id "0" \
@@ -75,13 +76,13 @@ test_model_grid(){
 }
 
 test_model_audio(){
-    CUDA_VISIBLE_DEVICES=$1 python test_demo_audio.py --name face8_grid_raw \
+    CUDA_VISIBLE_DEVICES=$1 python test_demo_audio.py --name $2 \
     --dataset_mode facefore_demo \
     --adaptive_spade \
     --example \
     --n_frames_G 1 \
-    --which_epoch $2 \
-    --how_many $3 \
+    --which_epoch $3 \
+    --how_many $4 \
     --nThreads 0 \
     --dataroot '/home/cxu-serve/p1/common/grid' \
     --ref_img_id "0" \
@@ -93,6 +94,6 @@ test_model_audio(){
 # test_model_lrs 3 latest 5
 # test_model_vox 3 latest 5
 # test_model_vox_temp 2 face8_vox_ani_nonlinear_temp latest 5
-test_model_vox_temp 2 face8_vox_ani_nonlinear_atten latest 5
+# test_model_vox_temp 2 face8_vox_ani_nonlinear_atten latest 5
 # test_model_audio 2 latest 5
-# test_model_grid 2 latest 5
+test_model_grid 3 face8_grid_ani_retrain latest 5000

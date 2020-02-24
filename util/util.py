@@ -10,7 +10,7 @@ import numpy as np
 from PIL import Image
 import os
 import cv2
-
+import math
 def get_roi(lmark): #lmark shape (68,2) or (68,3) , tempolate shape(256, 256, 1)
     lmark = lmark.copy()
     tempolate = np.zeros((256, 256 , 1), np.uint8)
@@ -50,6 +50,40 @@ def get_roi(lmark): #lmark shape (68,2) or (68,3) , tempolate shape(256, 256, 1)
     
     tempolate[int(min_y2):int(max_y2), int(min_x2):int(max_x2)] = 1
     return  tempolate
+def eye_blinking(lmark, rate = 40): #lmark shape (k, 68,2) or (k,68,3) , tempolate shape(256, 256, 1)
+    length = lmark.shape[0]
+    bink_time = math.floor(length / float(rate) )
+    
+    eys =[[37,41],[38,40] ,[43,47],[44,46]]  # [upper, lower] , [left1,left2, right1, right1]
+    
+    for i in range(bink_time):
+
+        print ('+++++')
+        for e in eys:
+            dis =  (np.abs(lmark[0, e[0],:2] -  lmark[0, e[1],:2] ) / 2)
+            print ('--------')
+            # -2 
+            
+            lmark[rate * (i + 1)-2, e[0],:2] += 0.45 * (dis)
+            lmark[rate * (i + 1)-2, e[1],:2] -= 0.45 * (dis)
+            # +2
+            lmark[rate * (i + 1)+2, e[0], :2] += 0.45 * (dis)
+            lmark[rate * (i + 1)+2, e[1], :2] -= 0.45 * (dis)
+
+            # -1
+            lmark[rate * (i + 1)-1, e[0], :2] += 0.85 * (dis)
+            lmark[rate * (i + 1)-1, e[1], :2] -= 0.85 * (dis)
+            # +1
+            lmark[rate * (i + 1)+1, e[0], :2] += 0.8 * (dis)
+            lmark[rate * (i + 1)+1, e[1], :2] -= 0.8 * (dis)
+
+            # 0
+            lmark[rate * (i + 1), e[0], :2] += 0.95 * (dis)
+            lmark[rate * (i + 1), e[1], :2] -= 0.95 * (dis)
+    return lmark
+
+
+
 
 def visualize_label(opt, label_tensor, model=None): 
     if label_tensor.dim() == 5:

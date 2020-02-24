@@ -41,7 +41,7 @@ def image_to_video(sample_dir = None, video_name = None):
     print (command)
     os.system(command)
 
-def get_param(root, pick_id, opt):
+def get_param(root, pickle_data, pick_id, opt):
     paths = pickle_data[pick_id]
     if opt.dataset_name == 'vox':
         # target
@@ -73,7 +73,7 @@ def get_param(root, pick_id, opt):
         opt.ref_rt_path = opt.tgt_rt_path
         opt.ref_ani_id = None
 
-        audio_tgt_path = os.path.join(root, 'align', paths[0], paths[1]+".wav")
+        audio_tgt_path = os.path.join(root, 'audio', paths[0], paths[1]+".wav")
 
     elif opt.dataset_name == 'lrs':
         # target
@@ -101,22 +101,31 @@ model = create_model(opt)
 model.eval()
 
 root = opt.dataroot
-_file = open(os.path.join(root, 'pickle','test_lmark2img.pkl'), "rb")
+if opt.dataset_name == 'grid':
+    _file = open(os.path.join(root, 'pickle','test_audio2lmark_grid.pkl'), "rb")
+else:
+    _file = open(os.path.join(root, 'pickle','test_lmark2img.pkl'), "rb")
 pickle_data = pkl.load(_file)
 _file.close()
 
 save_name = opt.name
 if opt.dataset_name == 'lrs':
     save_name = 'lrs'
-save_root = os.path.join('evaluation_store', save_name, '{}_shot'.format(opt.n_shot))
+save_root = os.path.join('evaluation_store', save_name, '{}_shot_test'.format(opt.n_shot))
 # pick_ids = np.random.choice(list(range(len(pickle_data))), size=opt.how_many)
-end = int(len(pickle_data)) // 2
-pick_ids = range(0, end, end//opt.how_many)
+# end = int(len(pickle_data)) // 2
+# pick_ids = range(0, end, end//opt.how_many)
 # pick_ids = range(0, opt.how_many)
+pick_ids = range(0, len(pickle_data))
+pick_files = ['s14', 's15']
 
 for pick_id in tqdm(pick_ids):
     print('process {} ...'.format(pick_id))
-    audio_tgt_path = get_param(root, pick_id, opt)
+    audio_tgt_path = get_param(root, pickle_data, pick_id, opt)
+
+    paths = pickle_data[pick_id]
+    if paths[0] not in pick_files:
+        continue
 
     ### setup dataset
     data_loader = CreateDataLoader(opt)

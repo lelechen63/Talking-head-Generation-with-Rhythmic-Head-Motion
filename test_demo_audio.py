@@ -72,8 +72,8 @@ for file_id, file in enumerate(tqdm(files)):
 
     # target
     opt.tgt_video_path = os.path.join(real_root, paths[0], paths[1]+"_crop.mp4")
-    opt.tgt_lmarks_path = os.path.join(fake_root, file)
-    # opt.tgt_lmarks_path = os.path.join(real_root, paths[0], paths[1]+"_original.npy")
+    # opt.tgt_lmarks_path = os.path.join(fake_root, file)
+    opt.tgt_lmarks_path = os.path.join(real_root, paths[0], paths[1]+"_original.npy")
     opt.tgt_rt_path = None
     opt.tgt_ani_path = None
     audio_tgt_path = os.path.join(audio_root, paths[0], paths[1]+".wav")
@@ -101,7 +101,7 @@ for file_id, file in enumerate(tqdm(files)):
             data.update({'warping_ref': data['ref_image'][:, 0], 'warping_ref_lmark': data['ref_label'][:, 0]})
 
         img_path = data['path']
-        data_list = [data['tgt_label'], data['tgt_image'], None, None, None, \
+        data_list = [data['tgt_label'], data['tgt_image'], None, None, None, None, \
                     data['ref_label'], data['ref_image'], \
                     data['warping_ref_lmark'], \
                     data['warping_ref'], \

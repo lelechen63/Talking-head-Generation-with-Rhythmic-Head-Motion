@@ -40,7 +40,7 @@ def get_roi(lmark): #lmark shape (68,2) or (68,3) , tempolate shape(256, 256, 1)
     min_x2 = lmark[mouth[np.argmin(mouth_x)], 0] 
     max_x2 = lmark[mouth[np.argmax(mouth_x)], 0] 
     min_y2 = lmark[mouth[np.argmin(mouth_y)], 1]
-    max_y2 = lmark[mouth[np.argmax(mouth_y)], 1] 
+    max_y2 = lmark[mouth[np.argmax(mouth_y)], 1]  
 
     min_x2 = max(0, int(min_x2-10) )
     max_x2 = min(255, int(max_x2+10) )
@@ -233,3 +233,15 @@ class Colorize(object):
             color_image[2][mask] = self.cmap[label][2]
 
         return color_image
+
+#  calculate mouth open
+def openrate(lmark1):
+    open_pair = []
+    for i in range(3):
+        open_pair.append([i + 61, 67 - i])
+    open_rate1 = []
+    for k in range(3):
+        open_rate1.append(lmark1[open_pair[k][0],:2] - lmark1[open_pair[k][1], :2])
+        
+    open_rate1 = np.asarray(open_rate1)
+    return open_rate1.mean() 

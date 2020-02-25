@@ -23,6 +23,11 @@ class CustomDatasetDataLoader(BaseDataLoader):
         else:
             sampler = None
 
+        if opt.isTrain:
+            drop = True
+        else:
+            drop = False
+
         self.dataloader = torch.utils.data.DataLoader(
             self.dataset,
             batch_size=opt.batchSize,
@@ -31,7 +36,7 @@ class CustomDatasetDataLoader(BaseDataLoader):
             sampler=sampler,
             pin_memory=True,
             num_workers=int(opt.nThreads),
-            drop_last=True
+            drop_last=drop
         )
 
     def load_data(self):

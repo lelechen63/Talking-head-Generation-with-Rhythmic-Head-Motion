@@ -26,6 +26,7 @@ from scipy.spatial.transform import Rotation as R
 
 from data.base_dataset import BaseDataset, get_transform
 from data.keypoint2img import interpPoints, drawEdge
+from util.util import openrate
 
 import pdb
 
@@ -50,6 +51,7 @@ class FaceForeDemoDataset(BaseDataset):
         parser.add_argument('--ref_rt_path', type=str, default=None)
         parser.add_argument('--ref_front_path', type=str, default=None)
         parser.add_argument('--ref_ani_id', type=int)
+        parser.add_argument('--find_largest_mouth', action='store_true', help='find reference image that open mouth in largest ratio')
 
         return parser
 
@@ -205,8 +207,16 @@ class FaceForeDemoDataset(BaseDataset):
 
     # define parameters for inference
     def define_inference(self, real_video, lmarks):
-        # get reference index
-        ref_indices = self.opt.ref_img_id.split(',')
+        # get reference index (not only for one shot)
+        if self.opt.find_largest_mouth:
+            openrates = []
+            for i in range(len(lmarks)):
+                openrates.append(openrate(lmarks[i]))
+            openrates = np.asarray(openrates)
+            max_index = np.argsort(openrates)
+            ref_indices = max_index[:self.opt.n_shot]
+        else:
+            ref_indices = self.opt.ref_img_id.split(',')
         ref_indices = [int(i) for i in ref_indices]
 
         # get face image

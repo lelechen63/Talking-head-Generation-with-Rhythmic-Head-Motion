@@ -27,15 +27,6 @@ train_grid_linear(){
     --continue_train
 }
 
-train_grid_linear_temp(){
-    CUDA_VISIBLE_DEVICES=0,1,2 python train.py --name face8_grid_ani_retrain_temp --dataset_mode facefore \
-    --adaptive_spade --warp_ref \
-    --gpu_ids 0,1,2 --batchSize 12 --nThreads 8 --niter 1000 --niter_single 0 --niter_step 3 \
-    --n_shot 1 --n_frames_G 2 --ref_ratio 0 --display_freq 1 \
-    --dataroot '/home/cxu-serve/p1/common/grid' --dataset_name grid \
-    --continue_train
-}
-
 train_grid_linear_temp_newflow(){
     CUDA_VISIBLE_DEVICES=1,2,3 python train.py --name face8_grid_ani_retrain_temp_newflow --dataset_mode facefore \
     --adaptive_spade --warp_ref \
@@ -73,18 +64,48 @@ train_vox_nonlinear_temp(){
 }
 
 train_grid_nonlinear(){
-    CUDA_VISIBLE_DEVICES=0,1,2 python train.py --name face8_grid_ani_nonlinear --dataset_mode facefore \
+    CUDA_VISIBLE_DEVICES=0,1,2,3 python train.py --name face8_grid_ani_nonlinear --dataset_mode facefore \
     --adaptive_spade --warp_ref --spade_combine --add_raw_loss \
-    --gpu_ids 0,1,2 --batchSize 12 --nThreads 8 --niter 1000 --niter_single 1001 \
+    --gpu_ids 0,1,2,3 --batchSize 16 --nThreads 8 --niter 1000 --niter_single 20 --niter_step 3 \
+    --n_shot 1 --n_frames_G 2 --ref_ratio 0 \
+    --dataroot '/home/cxu-serve/p1/common/grid' --dataset_name grid --save_epoch_freq 1 \
+    --continue_train --same_flownet
+}
+
+train_grid_linear_temp(){
+    CUDA_VISIBLE_DEVICES=1,2,3 python train.py --name face8_grid_ani_retrain_temp --dataset_mode facefore \
+    --adaptive_spade --warp_ref \
+    --gpu_ids 0,1,2 --batchSize 12 --nThreads 8 --niter 1000 --niter_single 0 --niter_step 3 \
+    --n_shot 1 --n_frames_G 2 --ref_ratio 0 \
+    --dataroot '/home/cxu-serve/p1/common/grid' --dataset_name grid --save_epoch_freq 1 \
+    --continue_train --same_flownet
+}
+
+train_crema_linear(){
+    CUDA_VISIBLE_DEVICES=0,1,2 python train.py --name face8_crema_linear --dataset_mode facefore \
+    --adaptive_spade --warp_ref \
+    --gpu_ids 0,1,2 --batchSize 12 --nThreads 8 --niter 50 --niter_single 51 \
     --n_shot 1 --n_frames_G 1 --ref_ratio 0 \
-    --dataroot '/home/cxu-serve/p1/common/grid' --dataset_name grid \
+    --dataroot '/home/cxu-serve/p1/common/CREMA' --dataset_name crema --save_epoch_freq 5 \
     --continue_train
 }
 
+train_grid_linear_8shot(){
+    CUDA_VISIBLE_DEVICES=0,1,2,3 python train.py --name face8_grid_linear --dataset_mode facefore \
+    --adaptive_spade --warp_ref \
+    --gpu_ids 0,1,2,3 --batchSize 12 --nThreads 8 --niter 30 --niter_single 1001 \
+    --n_shot 8 --n_frames_G 1 \
+    --dataroot '/home/cxu-serve/p1/common/grid' --dataset_name grid --save_epoch_freq 5 \
+    --continue_train
+}
+
+
 # train_vox_nonlinear
-train_grid_linear
+# train_grid_linear
 # train_grid_nonlinear
 # train_vox_nonlinear_temp
 # train_grid_linear_temp
 # train_grid_linear_temp_newflow
 # train_grid_raw
+# train_crema_linear
+train_grid_linear_8shot

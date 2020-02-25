@@ -131,6 +131,23 @@ class FaceForeDataset(BaseDataset):
             else:
                 self.video_bag = 'test'
 
+        elif self.opt.dataset_name == 'crema':
+            if opt.isTrain:
+                _file = open(os.path.join(self.root, 'pickle','train_lmark2img.pkl'), "rb")
+                self.data = pkl.load(_file)
+                _file.close()
+            else :
+                _file = open(os.path.join(self.root, 'pickle','train_lmark2img.pkl'), "rb")
+                self.data = pkl.load(_file)
+                _file.close()
+
+            if opt.isTrain:
+                self.video_bag = 'VideoFlash'
+                self.data = self.data[:int(0.8*len(self.data))]
+            else:
+                self.video_bag = 'VideoFlash'
+                self.data = self.data[int(0.8*len(self.data)):]
+
         # self.data = self.data[:2]
         print(len(self.data))
 
@@ -186,7 +203,14 @@ class FaceForeDataset(BaseDataset):
             rt_path = os.path.join(self.root, self.video_bag, paths[0], paths[1]+ '_rt.npy') 
             front_path = os.path.join(self.root, self.video_bag, paths[0], paths[1]+ '_front.npy') 
             ani_id = int(paths[2])
-            
+
+        elif self.opt.dataset_name == 'crema':
+            paths = self.data[index]
+            video_path = os.path.join(self.root, self.video_bag, paths[0][:-10] + '_crop.mp4')
+            lmark_path = os.path.join(self.root, self.video_bag, paths[0][:-10] + '_original.npy') 
+            rt_path = os.path.join(self.root, self.video_bag, paths[0][:-10] + '_rt.npy') 
+            front_path = os.path.join(self.root, self.video_bag, paths[0][:-10] + '_front.npy') 
+        
         # read in data
         self.video_path = video_path
         lmarks = np.load(lmark_path)#[:,:,:-1]
@@ -226,10 +250,11 @@ class FaceForeDataset(BaseDataset):
         tgt_images, tgt_lmarks, tgt_crop_coords = self.prepare_datas(real_video, lmarks, target_id, transform, transform_L, scale)
 
         # get template for target
-        tgt_templates = []
-        for gg in target_id:
-            lmark = lmarks[gg]
-            tgt_templates.append(self.get_template(lmark, transform_T, self.output_shape, tgt_crop_coords))
+        if self.opt.isTrain:
+            tgt_templates = []
+            for gg in target_id:
+                lmark = lmarks[gg]
+                tgt_templates.append(self.get_template(lmark, transform_T, self.output_shape, tgt_crop_coords))
 
         if self.opt.warp_ani:
         # get animation & get cropped ground truth
@@ -265,7 +290,10 @@ class FaceForeDataset(BaseDataset):
         ref_lmarks = torch.cat([ref_lmark.unsqueeze(0) for ref_lmark in ref_lmarks], axis=0)
         tgt_images = torch.cat([tgt_img.unsqueeze(0) for tgt_img in tgt_images], axis=0)
         tgt_lmarks = torch.cat([tgt_lmark.unsqueeze(0) for tgt_lmark in tgt_lmarks], axis=0)
-        tgt_templates = torch.cat([torch.Tensor(tgt_template).unsqueeze(0).unsqueeze(0) for tgt_template in tgt_templates], axis=0)
+        if self.opt.isTrain:
+            tgt_templates = torch.cat([torch.Tensor(tgt_template).unsqueeze(0).unsqueeze(0) for tgt_template in tgt_templates], axis=0)
+        else:
+            tgt_templates = 0
 
         warping_refs = torch.cat([warping_ref.unsqueeze(0) for warping_ref in warping_refs], 0)
         warping_ref_lmarks = torch.cat([warping_ref_lmark.unsqueeze(0) for warping_ref_lmark in warping_ref_lmarks], 0)

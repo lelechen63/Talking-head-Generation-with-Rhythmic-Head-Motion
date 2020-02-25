@@ -94,8 +94,24 @@ test_model_8_lrs(){
     --serial_batches
 }
 
+test_model_8_crema(){
+    CUDA_VISIBLE_DEVICES=$1 python test_example.py --name face8_crema_linear \
+    --dataset_mode facefore \
+    --adaptive_spade \
+    --warp_ref \
+    --example \
+    --n_frames_G 1 \
+    --which_epoch $2 \
+    --how_many $3 \
+    --nThreads 0 \
+    --dataroot '/home/cxu-serve/p1/common/CREMA' \
+    --ref_img_id "0" \
+    --n_shot 1 \
+    --dataset_name crema
+}
 
 # test_model_8_grid 3 latest 50
 # test_model_8 3 latest 50
 # test_model_1 3 latest 50
-test_model_8_lrs 2 latest 20
+# test_model_8_lrs 2 latest 20
+test_model_8_crema 3 45 50

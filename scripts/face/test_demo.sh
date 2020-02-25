@@ -72,7 +72,8 @@ test_model_grid(){
     --ref_img_id "0" \
     --n_shot 1 \
     --serial_batches \
-    --dataset_name grid
+    --dataset_name grid \
+    --find_largest_mouth
 }
 
 test_model_audio(){
@@ -91,9 +92,29 @@ test_model_audio(){
     --dataset_name grid
 }
 
+test_grid_save(){
+    CUDA_VISIBLE_DEVICES=$1 python test_demo_save.py --name $2 \
+    --dataset_mode facefore_demo \
+    --adaptive_spade \
+    --warp_ref \
+    --example \
+    --n_frames_G 1 \
+    --which_epoch $3 \
+    --how_many $4 \
+    --nThreads 8 \
+    --dataroot '/home/cxu-serve/p1/common/grid' \
+    --ref_img_id "0" \
+    --n_shot 1 \
+    --batchSize 5 \
+    --serial_batches \
+    --dataset_name grid \
+    --find_largest_mouth
+}
+
 # test_model_lrs 3 latest 5
 # test_model_vox 3 latest 5
 # test_model_vox_temp 2 face8_vox_ani_nonlinear_temp latest 5
 # test_model_vox_temp 2 face8_vox_ani_nonlinear_atten latest 5
 # test_model_audio 2 latest 5
-test_model_grid 3 face8_grid_ani_retrain latest 5000
+# test_model_grid 3 face8_grid_ani_retrain latest 5
+test_grid_save 0 face8_grid_ani_retrain latest 5

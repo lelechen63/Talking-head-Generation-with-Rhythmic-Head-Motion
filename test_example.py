@@ -43,7 +43,7 @@ for i, data in enumerate(dataset):
         data.update({'ani_image':None, 'ani_lmark':None, 'cropped_images':None, 'cropped_lmarks':None })
 
     img_path = data['path']
-    data_list = [data['tgt_label'], data['tgt_image'], data['cropped_images'], None, None, \
+    data_list = [data['tgt_label'], data['tgt_image'], None, data['cropped_images'], None, None, \
                  data['ref_label'], data['ref_image'], data['warping_ref_lmark'].squeeze(1), data['warping_ref'].squeeze(1), \
                  data['ani_lmark'].squeeze(1) if opt.warp_ani else None, \
                  data['ani_image'].squeeze(1) if opt.warp_ani else None, \

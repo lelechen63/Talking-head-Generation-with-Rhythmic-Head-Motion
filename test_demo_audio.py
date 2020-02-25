@@ -48,8 +48,16 @@ opt = TestOptions().parse()
 model = create_model(opt)
 model.eval()
 
-fake_root = "/home/cxu-serve/p1/common/tmp/atnet_raw_pca_test"
-files = [f for f in os.listdir(fake_root) if f[-3:]=='npy'][:opt.how_many]
+# fake_root = "/home/cxu-serve/p1/common/tmp/atnet_raw_pca_test"
+fake_root = '/u/lchen63/Project/face_tracking_detection/eccv2020/sample/atnet_raw_pca_test'
+# files = [f for f in os.listdir(fake_root) if f[-3:]=='npy'][:opt.how_many]
+files = []
+select_fs = ['s14', 's15']
+for f in os.listdir(fake_root):
+    if f[-3:]=='npy' and f.split('__')[0] in select_fs:
+        files.append(f)
+files = files[:opt.how_many]
+
 # files = ["s13__pbbo3a_front.npy"]
 # files = files[:
 # pdb.set_trace()
@@ -72,8 +80,8 @@ for file_id, file in enumerate(tqdm(files)):
 
     # target
     opt.tgt_video_path = os.path.join(real_root, paths[0], paths[1]+"_crop.mp4")
-    # opt.tgt_lmarks_path = os.path.join(fake_root, file)
-    opt.tgt_lmarks_path = os.path.join(real_root, paths[0], paths[1]+"_original.npy")
+    opt.tgt_lmarks_path = os.path.join(fake_root, file)
+    # opt.tgt_lmarks_path = os.path.join(real_root, paths[0], paths[1]+"_original.npy")
     opt.tgt_rt_path = None
     opt.tgt_ani_path = None
     audio_tgt_path = os.path.join(audio_root, paths[0], paths[1]+".wav")

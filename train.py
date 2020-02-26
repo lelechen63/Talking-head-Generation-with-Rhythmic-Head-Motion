@@ -37,7 +37,7 @@ def train():
 
     ### setup models
     model, flowNet = create_model(opt, trainer.start_epoch)
-    flow_gt = conf_gt = [None] * 2       
+    flow_gt = conf_gt = [None] * 3      
     
     ref_idx_fix = torch.zeros([opt.batchSize])
     for epoch in tqdm(range(trainer.start_epoch, opt.niter + opt.niter_decay + 1)):

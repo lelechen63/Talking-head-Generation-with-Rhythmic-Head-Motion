@@ -94,8 +94,8 @@ pickle_data = pkl.load(_file)
 _file.close()
 
 save_root = os.path.join('/home/cxu-serve/p1/common/grid_gen')
-start_id = len(pickle_data) // 3 * 2
-end_id = len(pickle_data)
+start_id = len(pickle_data) // 3 * 1
+end_id = len(pickle_data) // 3 * 2
 pick_ids = range(start_id, end_id)
 
 for pick_id in tqdm(pick_ids):
@@ -134,7 +134,6 @@ for pick_id in tqdm(pick_ids):
             frames.append(np.expand_dims(img, axis=0))
 
     frames_for_save = np.concatenate(frames, axis=0)
-    pdb.set_trace()
     # save image
     img_dir = os.path.join(save_root,  paths[0])
     if not os.path.exists(img_dir):

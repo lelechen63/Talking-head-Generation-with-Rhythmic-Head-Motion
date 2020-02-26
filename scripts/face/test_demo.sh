@@ -52,8 +52,8 @@ test_model_vox_temp(){
     --how_many $4 \
     --nThreads 0 \
     --dataroot '/home/cxu-serve/p1/common/voxceleb2' \
-    --ref_img_id "0,10,20,30,40,50,60,70" \
-    --n_shot 8 \
+    --ref_img_id "0" \
+    --n_shot 1 \
     --serial_batches \
     --dataset_name vox
 }
@@ -69,8 +69,8 @@ test_model_grid(){
     --how_many $4 \
     --nThreads 0 \
     --dataroot '/home/cxu-serve/p1/common/grid' \
-    --ref_img_id "0,10,20,30,40,50,60,70" \
-    --n_shot 8 \
+    --ref_img_id "0" \
+    --n_shot 1 \
     --serial_batches \
     --dataset_name grid \
     --find_largest_mouth
@@ -152,9 +152,10 @@ test_model_lisa(){
 # test_model_lrs 3 latest 5
 # test_model_vox 3 latest 5
 # test_model_vox_temp 2 face8_vox_ani_nonlinear_temp latest 5
-# test_model_vox_temp 1 face8_vox_ani_nonlinear_atten latest 500
+test_model_vox_temp 3 face8_vox_ani_nonlinear_atten latest 5
+# test_model_vox_temp 1 face8_vox_ani_retrain latest 5
 # test_model_audio 2 latest 5
-# test_model_grid 1 face8_grid_linear latest 5
-test_grid_save 0 face8_grid_ani_retrain latest 5
+# test_model_grid 1 face8_grid_ani_retrain latest 5
+# test_grid_save 1 face8_grid_ani_retrain latest 5
 # test_model_crema 3 face8_crema_linear 50 20
 # test_model_lisa 3 face8_vox_ani_nonlinear_atten latest 3

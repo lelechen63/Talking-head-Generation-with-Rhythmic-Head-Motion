@@ -63,7 +63,7 @@ def get_param(root, pickle_data, pick_id, opt):
         # target
         opt.tgt_video_path = os.path.join(root, 'align', paths[0], paths[1]+"_crop.mp4")
         opt.tgt_lmarks_path = os.path.join(root, 'align', paths[0], paths[1]+"_original.npy")
-        opt.tgt_rt_path = os.path.join(self.root, 'align', paths[0], paths[1]+ '_rt.npy') 
+        opt.tgt_rt_path = os.path.join(root, 'align', paths[0], paths[1]+ '_rt.npy') 
         opt.tgt_ani_path = None
         # reference
         ref_paths = paths
@@ -152,15 +152,19 @@ if opt.dataset_name == 'lrs':
 save_root = os.path.join('evaluation_store', save_name, '{}_shot_test'.format(opt.n_shot))
 # pick_ids = np.random.choice(list(range(len(pickle_data))), size=opt.how_many)
 end = int(len(pickle_data))
-pick_ids = range(0, end, end//opt.how_many)
+# pick_ids = range(0, end, end//opt.how_many)
 # pick_ids = range(0, opt.how_many)
-# pick_ids = range(0, len(pickle_data))
+pick_ids = range(0, len(pickle_data))
 # pick_files = ['s14', 's15']
 # pick_files = ['1075_IWL_FEA_XX_', '1090_IOM_FEA_XX_', '1088_ITH_HAP_XX_', '1091_IWL_NEU_XX_', \
 #               '1085_TIE_HAP_XX_', '1075_TIE_HAP_XX_', '1077_WSI_FEA_XX__', '1089_IWL_ANG_XX_']
 # pick_files = np.asarray([['id00081', '2xYrsnvtUWc', '00002'], ['id00081', '2xYrsnvtUWc', '00004'], ['id01000', '0lmrq0quo9M', '00001']])
 
-# pickle_data = []
+pick_files = np.asarray([['id04094', '2sjuXzB2I1M', '00025'], \
+               ['id00081', '2xYrsnvtUWc', '00002'], \
+               ['id00081', '2xYrsnvtUWc', '00004'], \
+               ['id01000', '0lmrq0quo9M', '00001']])
+# pick_ids = range(0, len(pickle_data))
 
 for pick_id in tqdm(pick_ids):
     print('process {} ...'.format(pick_id))
@@ -171,8 +175,8 @@ for pick_id in tqdm(pick_ids):
     #     continue
     # if paths[0][:-10] not in pick_files:
     #     continue
-    # if not((paths[1] in pick_files[:, 1]) and (paths[0] in pick_files[:, 0]) and (paths[2] in pick_files[:, 2])):
-    #     continue
+    if not((paths[1] in pick_files[:, 1]) and (paths[0] in pick_files[:, 0]) and (paths[2] in pick_files[:, 2])):
+        continue
 
     ### setup dataset
     data_loader = CreateDataLoader(opt)

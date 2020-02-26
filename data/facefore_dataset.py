@@ -77,76 +77,7 @@ class FaceForeDataset(BaseDataset):
                      [range(48, 55), [54,55,56,57,58,59,48], range(60, 65), [64,65,66,67,60]], # mouth and tongue
                     ]
         
-        if self.opt.dataset_name == 'face':
-            if opt.isTrain:
-                _file = open(os.path.join(self.root, 'pickle','train_lmark2img.pkl'), "rb")
-                self.data = pkl.load(_file)
-                _file.close()
-            else :
-                _file = open(os.path.join(self.root, 'pickle','test_lmark2img.pkl'), "rb")
-                self.data = pkl.load(_file)
-                _file.close()
-
-        elif self.opt.dataset_name == 'vox':
-            if opt.isTrain:
-                _file = open(os.path.join(self.root, 'pickle','dev_lmark2img.pkl'), "rb")
-                self.data = pkl.load(_file)
-                _file.close()
-            else :
-                _file = open(os.path.join(self.root, 'pickle','test_lmark2img.pkl'), "rb")
-                self.data = pkl.load(_file)
-                _file.close()
-
-            if opt.isTrain:
-                self.video_bag = 'unzip/dev_video'
-            else:
-                self.video_bag = 'unzip/test_video'
-        elif self.opt.dataset_name == 'grid':
-            if opt.isTrain:
-                _file = open(os.path.join(self.root, 'pickle', 'train_audio2lmark_grid.pkl'), "rb")
-                self.data = pkl.load(_file)
-                _file.close()
-            else :
-                _file = open(os.path.join(self.root, 'pickle','test_audio2lmark_grid.pkl'), "rb")
-                self.data = pkl.load(_file)
-                _file.close()
-
-            if opt.isTrain:
-                self.video_bag = 'align'
-            else:
-                self.video_bag = 'align'
-        
-        elif self.opt.dataset_name == 'lrs':
-            if opt.isTrain:
-                _file = open(os.path.join(self.root, 'pickle','dev_lmark2img.pkl'), "rb")
-                self.data = pkl.load(_file)
-                _file.close()
-            else :
-                _file = open(os.path.join(self.root, 'pickle','test_lmark2img.pkl'), "rb")
-                self.data = pkl.load(_file)
-                _file.close()
-
-            if opt.isTrain:
-                self.video_bag = 'unzip/dev_video'
-            else:
-                self.video_bag = 'test'
-
-        elif self.opt.dataset_name == 'crema':
-            if opt.isTrain:
-                _file = open(os.path.join(self.root, 'pickle','train_lmark2img.pkl'), "rb")
-                self.data = pkl.load(_file)
-                _file.close()
-            else :
-                _file = open(os.path.join(self.root, 'pickle','train_lmark2img.pkl'), "rb")
-                self.data = pkl.load(_file)
-                _file.close()
-
-            if opt.isTrain:
-                self.video_bag = 'VideoFlash'
-                self.data = self.data[:int(0.8*len(self.data))]
-            else:
-                self.video_bag = 'VideoFlash'
-                self.data = self.data[int(0.8*len(self.data)):]
+        self.load_pickle(opt)
 
         # self.data = self.data[:2]
         print(len(self.data))
@@ -570,7 +501,6 @@ class FaceForeDataset(BaseDataset):
 
         return warp_ref_ids
 
-
     def get_transforms(self):
         img_params = self.get_img_params(self.output_shape)
 
@@ -604,3 +534,75 @@ class FaceForeDataset(BaseDataset):
         
         
         return transform, transform_L, transform_T
+
+    def load_pickle(self, opt):
+        if self.opt.dataset_name == 'face':
+            if opt.isTrain:
+                _file = open(os.path.join(self.root, 'pickle','train_lmark2img.pkl'), "rb")
+                self.data = pkl.load(_file)
+                _file.close()
+            else :
+                _file = open(os.path.join(self.root, 'pickle','test_lmark2img.pkl'), "rb")
+                self.data = pkl.load(_file)
+                _file.close()
+
+        elif self.opt.dataset_name == 'vox':
+            if opt.isTrain:
+                _file = open(os.path.join(self.root, 'pickle','dev_lmark2img.pkl'), "rb")
+                self.data = pkl.load(_file)
+                _file.close()
+            else :
+                _file = open(os.path.join(self.root, 'pickle','test_lmark2img.pkl'), "rb")
+                self.data = pkl.load(_file)
+                _file.close()
+
+            if opt.isTrain:
+                self.video_bag = 'unzip/dev_video'
+            else:
+                self.video_bag = 'unzip/test_video'
+        elif self.opt.dataset_name == 'grid':
+            if opt.isTrain:
+                _file = open(os.path.join(self.root, 'pickle', 'train_audio2lmark_grid.pkl'), "rb")
+                self.data = pkl.load(_file)
+                _file.close()
+            else :
+                _file = open(os.path.join(self.root, 'pickle','test_audio2lmark_grid.pkl'), "rb")
+                self.data = pkl.load(_file)
+                _file.close()
+
+            if opt.isTrain:
+                self.video_bag = 'align'
+            else:
+                self.video_bag = 'align'
+        
+        elif self.opt.dataset_name == 'lrs':
+            if opt.isTrain:
+                _file = open(os.path.join(self.root, 'pickle','dev_lmark2img.pkl'), "rb")
+                self.data = pkl.load(_file)
+                _file.close()
+            else :
+                _file = open(os.path.join(self.root, 'pickle','test_lmark2img.pkl'), "rb")
+                self.data = pkl.load(_file)
+                _file.close()
+
+            if opt.isTrain:
+                self.video_bag = 'unzip/dev_video'
+            else:
+                self.video_bag = 'test'
+
+        elif self.opt.dataset_name == 'crema':
+            if opt.isTrain:
+                _file = open(os.path.join(self.root, 'pickle','train_lmark2img.pkl'), "rb")
+                self.data = pkl.load(_file)
+                _file.close()
+            else :
+                _file = open(os.path.join(self.root, 'pickle','train_lmark2img.pkl'), "rb")
+                self.data = pkl.load(_file)
+                _file.close()
+
+            if opt.isTrain:
+                self.video_bag = 'VideoFlash'
+                self.data = self.data[:int(0.8*len(self.data))]
+            else:
+                self.video_bag = 'VideoFlash'
+                self.data = self.data[int(0.8*len(self.data)):]

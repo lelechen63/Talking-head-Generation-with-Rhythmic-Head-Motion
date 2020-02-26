@@ -63,7 +63,7 @@ def get_param(root, pickle_data, pick_id, opt):
         # target
         opt.tgt_video_path = os.path.join(root, 'align', paths[0], paths[1]+"_crop.mp4")
         opt.tgt_lmarks_path = os.path.join(root, 'align', paths[0], paths[1]+"_original.npy")
-        opt.tgt_rt_path = None
+        opt.tgt_rt_path = os.path.join(self.root, 'align', paths[0], paths[1]+ '_rt.npy') 
         opt.tgt_ani_path = None
         # reference
         ref_paths = paths
@@ -92,6 +92,38 @@ def get_param(root, pickle_data, pick_id, opt):
 
         audio_tgt_path = os.path.join(root, 'test', paths[0], paths[1]+".wav")
 
+    elif opt.dataset_name == 'crema':
+        # target
+        opt.tgt_video_path = os.path.join(root, 'VideoFlash', paths[0][:-10]+"_crop.mp4")
+        opt.tgt_lmarks_path = os.path.join(root, 'VideoFlash', paths[0][:-10]+"_original.npy")
+        opt.tgt_rt_path = os.path.join(root, 'VideoFlash', paths[0][:-10]+"_rt.npy")
+        opt.tgt_ani_path = None
+        # reference
+        ref_paths = paths
+        opt.ref_front_path = os.path.join(root, 'VideoFlash', paths[0][:-10]+"_front.npy")
+        opt.ref_video_path = opt.tgt_video_path
+        opt.ref_lmarks_path = opt.tgt_lmarks_path
+        opt.ref_rt_path = opt.tgt_rt_path
+        opt.ref_ani_id = None
+
+        audio_tgt_path = os.path.join(root, 'AudioWAV', paths[0][:-11]+".wav")
+
+    elif opt.dataset_name == 'lisa':
+        # target
+        opt.tgt_video_path = os.path.join(root, paths[0], paths[1], paths[2]+"_aligned.mp4")
+        opt.tgt_lmarks_path = os.path.join(root, "_aligned.npy")
+        opt.tgt_rt_path = os.path.join(root, 'unzip/test_video', paths[0], paths[1], paths[2]+"_aligned_rt.npy")
+        opt.tgt_ani_path = os.path.join(root, 'unzip/test_video', paths[0], paths[1], paths[2]+"_aligned_ani.mp4")
+        # reference
+        ref_paths = paths
+        opt.ref_front_path = os.path.join(root, 'unzip/test_video', ref_paths[0], ref_paths[1], ref_paths[2]+"_aligned_front.npy")
+        opt.ref_video_path = opt.tgt_video_path
+        opt.ref_lmarks_path = opt.tgt_lmarks_path
+        opt.ref_rt_path = opt.tgt_rt_path
+        opt.ref_ani_id = int(ref_paths[3])
+
+        audio_tgt_path = os.path.join(root, 'unzip/test_audio', paths[0], paths[1], paths[2]+".m4a")
+
     return audio_tgt_path
 
 opt = TestOptions().parse()
@@ -102,22 +134,33 @@ model.eval()
 
 root = opt.dataroot
 if opt.dataset_name == 'grid':
-    _file = open(os.path.join(root, 'pickle','train_audio2lmark_grid.pkl'), "rb")
+    _file = open(os.path.join(root, 'pickle','test_audio2lmark_grid.pkl'), "rb")
+elif opt.dataset_name == 'crema':
+    _file = open(os.path.join(root, 'pickle','train_lmark2img.pkl'), "rb")
 else:
     _file = open(os.path.join(root, 'pickle','test_lmark2img.pkl'), "rb")
 pickle_data = pkl.load(_file)
 _file.close()
+
+if opt.dataset_name == 'crema':
+    pickle_data = pickle_data[int(len(pickle_data)*0.8):]
+# pickle_data = [['id00081', '2xYrsnvtUWc', '00002'], ['id00081', '2xYrsnvtUWc', '00004'], ['id01000', '0lmrq0quo9M', '00001']]
 
 save_name = opt.name
 if opt.dataset_name == 'lrs':
     save_name = 'lrs'
 save_root = os.path.join('evaluation_store', save_name, '{}_shot_test'.format(opt.n_shot))
 # pick_ids = np.random.choice(list(range(len(pickle_data))), size=opt.how_many)
-end = int(len(pickle_data)) // 2
+end = int(len(pickle_data))
 pick_ids = range(0, end, end//opt.how_many)
 # pick_ids = range(0, opt.how_many)
 # pick_ids = range(0, len(pickle_data))
-pick_files = ['s14', 's15']
+# pick_files = ['s14', 's15']
+# pick_files = ['1075_IWL_FEA_XX_', '1090_IOM_FEA_XX_', '1088_ITH_HAP_XX_', '1091_IWL_NEU_XX_', \
+#               '1085_TIE_HAP_XX_', '1075_TIE_HAP_XX_', '1077_WSI_FEA_XX__', '1089_IWL_ANG_XX_']
+# pick_files = np.asarray([['id00081', '2xYrsnvtUWc', '00002'], ['id00081', '2xYrsnvtUWc', '00004'], ['id01000', '0lmrq0quo9M', '00001']])
+
+# pickle_data = []
 
 for pick_id in tqdm(pick_ids):
     print('process {} ...'.format(pick_id))
@@ -125,6 +168,10 @@ for pick_id in tqdm(pick_ids):
 
     paths = pickle_data[pick_id]
     # if paths[0] not in pick_files:
+    #     continue
+    # if paths[0][:-10] not in pick_files:
+    #     continue
+    # if not((paths[1] in pick_files[:, 1]) and (paths[0] in pick_files[:, 0]) and (paths[2] in pick_files[:, 2])):
     #     continue
 
     ### setup dataset

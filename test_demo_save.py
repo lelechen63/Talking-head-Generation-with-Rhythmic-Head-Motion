@@ -129,9 +129,12 @@ for pick_id in tqdm(pick_ids):
                     None, None, None]
         synthesized_image, _, _, _, _, _, _, _, _, _ = model(data_list, ref_idx_fix=ref_idx_fix)
         
-        frames.append(util.tensor2im(synthesized_image))
+        for batch in range(synthesized_image.shape[0]):
+            img = util.tensor2im(synthesized_image[batch])
+            frames.append(np.expand_dims(img, axis=0))
 
     frames_for_save = np.concatenate(frames, axis=0)
+    pdb.set_trace()
     # save image
     img_dir = os.path.join(save_root,  paths[0])
     if not os.path.exists(img_dir):

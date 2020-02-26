@@ -32,8 +32,8 @@ test_model_vox(){
     --how_many $3 \
     --nThreads 0 \
     --dataroot '/home/cxu-serve/p1/common/voxceleb2' \
-    --ref_img_id "0,10,20,30,40,50,60,70" \
-    --n_shot 8 \
+    --ref_img_id "0" \
+    --n_shot 1 \
     --serial_batches \
     --dataset_name vox
 }
@@ -52,8 +52,8 @@ test_model_vox_temp(){
     --how_many $4 \
     --nThreads 0 \
     --dataroot '/home/cxu-serve/p1/common/voxceleb2' \
-    --ref_img_id "0" \
-    --n_shot 1 \
+    --ref_img_id "0,10,20,30,40,50,60,70" \
+    --n_shot 8 \
     --serial_batches \
     --dataset_name vox
 }
@@ -69,8 +69,8 @@ test_model_grid(){
     --how_many $4 \
     --nThreads 0 \
     --dataroot '/home/cxu-serve/p1/common/grid' \
-    --ref_img_id "0" \
-    --n_shot 1 \
+    --ref_img_id "0,10,20,30,40,50,60,70" \
+    --n_shot 8 \
     --serial_batches \
     --dataset_name grid \
     --find_largest_mouth
@@ -111,10 +111,50 @@ test_grid_save(){
     --find_largest_mouth
 }
 
+test_model_crema(){
+    CUDA_VISIBLE_DEVICES=$1 python test_demo.py --name $2 \
+    --dataset_mode facefore_demo \
+    --adaptive_spade \
+    --warp_ref \
+    --example \
+    --n_frames_G 1 \
+    --which_epoch $3 \
+    --how_many $4 \
+    --nThreads 8 \
+    --dataroot '/home/cxu-serve/p1/common/CREMA' \
+    --ref_img_id "0" \
+    --n_shot 1 \
+    --serial_batches \
+    --dataset_name crema
+}
+
+test_model_lisa(){
+    CUDA_VISIBLE_DEVICES=$1 python test_demo_lisa.py --name $2 \
+    --dataset_mode facefore_demo_lisa \
+    --adaptive_spade \
+    --warp_ref \
+    --warp_ani \
+    --add_raw_loss \
+    --spade_combine \
+    --example \
+    --n_frames_G 1 \
+    --which_epoch $3 \
+    --how_many $4 \
+    --nThreads 0 \
+    --dataroot '/home/cxu-serve/p1/common/demo' \
+    --ref_img_id "0" \
+    --n_shot 1 \
+    --serial_batches \
+    --dataset_name lisa
+}
+
+
 # test_model_lrs 3 latest 5
 # test_model_vox 3 latest 5
 # test_model_vox_temp 2 face8_vox_ani_nonlinear_temp latest 5
-# test_model_vox_temp 2 face8_vox_ani_nonlinear_atten latest 5
+# test_model_vox_temp 1 face8_vox_ani_nonlinear_atten latest 500
 # test_model_audio 2 latest 5
-# test_model_grid 3 face8_grid_ani_retrain latest 5
+# test_model_grid 1 face8_grid_linear latest 5
 test_grid_save 0 face8_grid_ani_retrain latest 5
+# test_model_crema 3 face8_crema_linear 50 20
+# test_model_lisa 3 face8_vox_ani_nonlinear_atten latest 3

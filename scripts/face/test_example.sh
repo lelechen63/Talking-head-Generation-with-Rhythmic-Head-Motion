@@ -111,7 +111,7 @@ test_model_8_crema(){
 }
 
 # test_model_8_grid 3 latest 50
-# test_model_8 3 latest 50
+test_model_8 3 latest 50
 # test_model_1 3 latest 50
 # test_model_8_lrs 2 latest 20
-test_model_8_crema 3 45 50
+# test_model_8_crema 3 45 50

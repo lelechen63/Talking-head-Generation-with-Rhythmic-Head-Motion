@@ -87,15 +87,18 @@ model.eval()
 
 root = opt.dataroot
 if opt.dataset_name == 'grid':
-    _file = open(os.path.join(root, 'pickle','train_audio2lmark_grid.pkl'), "rb")
+    _file = open(os.path.join(root, 'pickle','test_audio2lmark_grid.pkl'), "rb")
 else:
     _file = open(os.path.join(root, 'pickle','test_lmark2img.pkl'), "rb")
 pickle_data = pkl.load(_file)
 _file.close()
 
 save_root = os.path.join('/home/cxu-serve/p1/common/grid_gen')
-start_id = len(pickle_data) // 3 * 1
-end_id = len(pickle_data) // 3 * 2
+start_id = len(pickle_data) // 3 * 2
+# end_id = len(pickle_data) // 3 * 2
+end_id = len(pickle_data)
+# start_id = 0
+# end_id = len(pickle_data)
 pick_ids = range(start_id, end_id)
 
 for pick_id in tqdm(pick_ids):

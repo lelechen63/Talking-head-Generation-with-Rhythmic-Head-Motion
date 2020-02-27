@@ -185,6 +185,26 @@ test_model_crema_multi(){
     --dataset_name crema
 }
 
+test_lrw_save(){
+    CUDA_VISIBLE_DEVICES=$1 python test_demo_save.py --name $2 \
+    --dataset_mode facefore_demo \
+    --adaptive_spade \
+    --warp_ref \
+    --warp_ani \
+    --spade_combine \
+    --example \
+    --n_frames_G 1 \
+    --which_epoch $3 \
+    --how_many $4 \
+    --nThreads 8 \
+    --dataroot '/home/cxu-serve/p1/common/lrw' \
+    --ref_img_id "0" \
+    --n_shot 1 \
+    --batchSize 5 \
+    --serial_batches \
+    --dataset_name lrw \
+    --find_largest_mouth
+}
 
 # test_model_lrs 3 latest 5
 # test_model_vox 3 latest 5
@@ -193,8 +213,9 @@ test_model_crema_multi(){
 # test_model_vox_temp 1 face8_vox_ani_retrain latest 5
 # test_model_audio 2 latest 5
 # test_model_grid 1 face8_grid_ani_retrain latest 50
-test_grid_save 2 face8_grid_ani_retrain latest 100
+# test_grid_save 2 face8_grid_ani_retrain latest 100
 # test_model_crema 3 face8_crema_linear 50 20
 # test_model_lisa 3 face8_vox_ani_nonlinear_atten latest 3
 # test_model_lrw 1 face8_vox_ani_nonlinear_atten latest 5
 # test_model_crema_multi 3 face8_crema_linear 50 50
+test_lrw_save 1 face8_vox_ani_nonlinear_atten latest 100

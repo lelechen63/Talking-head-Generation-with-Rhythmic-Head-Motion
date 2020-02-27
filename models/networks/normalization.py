@@ -36,7 +36,9 @@ class SPADE(nn.Module):
         
         self.params_free = params_free
 
-    def forward(self, x, maps, weights=None):
+        self.hidden_nc = hidden_nc
+
+    def forward(self, x, maps, weights=None, k=None):
         if not isinstance(maps, list): maps = [maps]
         out = self.batch_norm(x)
         for i in range(len(maps)):

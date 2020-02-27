@@ -13,7 +13,7 @@ import copy
 import pdb
 
 from models.networks.base_network import BaseNetwork, batch_conv
-from models.networks.architecture import SPADEResnetBlock, SPADEConv2d, actvn
+from models.networks.architecture import SPADEResnetBlockConcat, SPADEResnetBlock, SPADEConv2d, actvn
 import torch.nn.utils.spectral_norm as sn
 
 # generator
@@ -54,21 +54,30 @@ class FewShotGenerator(BaseNetwork):
         norm_ref = norm.replace('spade', '')
         input_nc = opt.label_nc if opt.label_nc != 0 else opt.input_nc  #1
         ref_nc = opt.output_nc #3
-        self.image_encoder = Encoder(norm_ref = norm_ref, 
-                                    nf=self.nf, ch=self.ch, 
-                                    n_shot=self.opt.n_shot, 
-                                    n_downsample_G=self.n_downsample_G, 
-                                    n_downsample_A=self.n_downsample_A, 
-                                    isTrain=self.opt.isTrain, 
-                                    ref_nc=ref_nc)
+        # self.image_encoder = Encoder(norm_ref = norm_ref, 
+        #                             nf=self.nf, ch=self.ch, 
+        #                             n_shot=self.opt.n_shot, 
+        #                             n_downsample_G=self.n_downsample_G, 
+        #                             n_downsample_A=self.n_downsample_A, 
+        #                             isTrain=self.opt.isTrain, 
+        #                             ref_nc=ref_nc)
         
-        self.lmark_encoder = Encoder(norm_ref = norm_ref, 
+        # self.lmark_encoder = Encoder(norm_ref = norm_ref, 
+        #                             nf=self.nf, ch=self.ch, 
+        #                             n_shot=self.opt.n_shot, 
+        #                             n_downsample_G=self.n_downsample_G, 
+        #                             n_downsample_A=self.n_downsample_A, 
+        #                             isTrain=self.opt.isTrain, 
+        #                             ref_nc=input_nc)
+
+        self.encoder = EncoderSelfAtten(norm_ref = norm_ref, 
                                     nf=self.nf, ch=self.ch, 
                                     n_shot=self.opt.n_shot, 
                                     n_downsample_G=self.n_downsample_G, 
                                     n_downsample_A=self.n_downsample_A, 
                                     isTrain=self.opt.isTrain, 
-                                    ref_nc=input_nc)
+                                    ref_nc=ref_nc,
+                                    lmark_nc=input_nc)
 
         self.comb_encoder = CombEncoder(norm_ref=norm_ref, ch=self.ch,
                                         n_shot=self.opt.n_shot,
@@ -93,11 +102,17 @@ class FewShotGenerator(BaseNetwork):
             
         ### main branch layers
         for i in reversed(range(n_downsample_G + 1)):
-            setattr(self, 'up_%d' % i, SPADEResnetBlock(ch[i+1], ch[i], norm=norm, hidden_nc=ch_hidden[i], 
-                    conv_ks=conv_ks, spade_ks=spade_ks,
-                    conv_params_free=False,
-                    norm_params_free=(self.adap_spade and i < self.n_adaptive_layers)))
-                   
+            if i >= self.n_sc_layers:
+                setattr(self, 'up_%d' % i, SPADEResnetBlock(ch[i+1], ch[i], norm=norm, hidden_nc=ch_hidden[i], 
+                        conv_ks=conv_ks, spade_ks=spade_ks,
+                        conv_params_free=False,
+                        norm_params_free=(self.adap_spade and i < self.n_adaptive_layers)))
+            else:
+                setattr(self, 'up_%d' % i, SPADEResnetBlockConcat(ch[i+1], ch[i], norm=norm, hidden_nc=ch_hidden[i], 
+                        conv_ks=conv_ks, spade_ks=spade_ks,
+                        conv_params_free=False,
+                        norm_params_free=(self.adap_spade and i < self.n_adaptive_layers)))
+
         self.conv_img = nn.Conv2d(nf, 3, kernel_size=3, padding=1)
         self.up = functools.partial(F.interpolate, scale_factor=2)
 
@@ -158,16 +173,15 @@ class FewShotGenerator(BaseNetwork):
 
         return x, encoded_label, norm_weights, atn, ref_idx
 
-
-
     ### encode the reference image to get features for weight generation
     def reference_encoding(self, img_ref, label_ref, label, n, t=0):
         # get attention
         atten, ref_idx = self.atten_gen(label, label_ref)    # b x n x hw
 
         # encode image and landmarks separately
-        x = self.image_encoder(img_ref, atten)
-        x_label = self.lmark_encoder(label_ref, atten)
+        # x = self.image_encoder(img_ref, atten)
+        # x_label = self.lmark_encoder(label_ref, atten)
+        x, x_label = self.encoder(img_ref, label_ref, atten)
 
         # combine image and landmarks for spade weight
         if self.opt.isTrain or self.opt.n_shot > 1 or t == 0:
@@ -214,6 +228,75 @@ class Encoder(BaseNetwork):
                 x = torch.sum(x * atten.unsqueeze(2).expand_as(x), dim=1).view(b//n, c, h, w)
 
         return x
+
+# encode image and landmark together
+class EncoderSelfAtten(BaseNetwork):
+    def __init__(self, norm_ref, nf, ch, n_shot, n_downsample_G, n_downsample_A, isTrain, ref_nc=3, lmark_nc=1):
+        super().__init__()
+
+        # parameters for model
+        self.conv1 = SPADEConv2d(ref_nc, nf, norm=norm_ref)
+        self.conv2 = SPADEConv2d(lmark_nc, nf, norm=norm_ref)
+
+        for i in range(n_downsample_G):
+            ch_in, ch_out = ch[i], ch[i+1]            
+            setattr(self, 'ref_down_img_%d' % i, SPADEConv2d(ch_in, ch_out, stride=2, norm=norm_ref))
+            setattr(self, 'ref_down_lmark_%d' % i, SPADEConv2d(ch_in, ch_out, stride=2, norm=norm_ref))
+            if n_shot > 1 and i == n_downsample_A-1:
+                self.fusion1 = SPADEConv2d(ch_out*2, ch_out, norm=norm_ref)
+                self.fusion2 = SPADEConv2d(ch_out*2, ch_out, norm=norm_ref)
+                self.fusion = SPADEResnetBlock(ch_out*2, ch_out, norm=norm_ref)
+                self.atten1 = SPADEConv2d(ch_out*n_shot, ch_out, norm=norm_ref)
+                self.atten2 = SPADEConv2d(ch_out*n_shot, ch_out, norm=norm_ref)
+                
+        # other parameters
+        self.isTrain = isTrain
+        self.n_shot = n_shot
+        self.n_downsample_G = n_downsample_G
+        self.n_downsample_A = n_downsample_A
+        
+    # x:[b*n, c, h, w], atten:[b, n, h*w]
+    def forward(self, x, x_label, atten):
+        # prepare
+        n = self.n_shot
+        assert x.shape[0] % n == 0
+        assert x_label.shape[0] % n == 0
+
+        # forward
+        x = self.conv1(x)
+        x_label = self.conv2(x_label)
+        for i in range(self.n_downsample_G):
+            x = getattr(self, 'ref_down_img_'+str(i))(x)
+            x_label = getattr(self, 'ref_down_lmark_'+str(i))(x_label)
+            # attention
+            if n > 1 and i == self.n_downsample_A-1:
+                x, x_label = self.attention_module(x, x_label, atten, n)
+
+        return x, x_label
+
+    # attention
+    def attention_module(self, x, x_label, atten, n):
+        b, c, h, w = x.shape
+        ##### cross attention #####(TODO: check dimension)
+        x_atten_cat = torch.cat([x, x_label], axis=1)
+        x_atten_cat = self.fusion(x_atten_cat)
+        # fuse to two branch
+        x_cat = torch.cat([x, x_atten_cat], axis=1)
+        x = self.fusion1(x_cat)
+        x_label_cat = torch.cat([x_label, x_atten_cat], axis=1)
+        x_label = self.fusion2(x_label_cat)
+        #### self attention #####
+        x_self_atten = x.view(b//n, n*c, h, w)
+        x_self_atten = self.atten1(x_self_atten)
+        x_label_self_atten = x_label.view(b//n, n*c, h, w)
+        x_label_self_atten = self.atten2(x_label_self_atten)
+        ##### ref & tgt attention #####
+        x = x.view(b//n, n, c, h*w)
+        x = torch.sum(x * atten.unsqueeze(2).expand_as(x), dim=1).view(b//n, c, h, w) + x_self_atten
+        x_label = x_label.view(b//n, n, c, h*w)
+        x_label = torch.sum(x_label * atten.unsqueeze(2).expand_as(x_label), dim=1).view(b//n, c, h, w) + x_label_self_atten
+
+        return x, x_label
 
 # encode combining image and landmarks
 class CombEncoder(BaseNetwork):

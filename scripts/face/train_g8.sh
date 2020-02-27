@@ -117,6 +117,15 @@ train_vox_raw_comp(){
     --continue_train --no_flow_gt
 }
 
+train_vox_new_nonlinear(){
+    CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 python train.py --name face8_vox_ani_nonlinear_continue --dataset_mode facefore \
+    --adaptive_spade --warp_ref --warp_ani --spade_combine \
+    --gpu_ids 0,1,2,3,4,5,6,7 --batchSize 80 --nThreads 64 --niter 1000 --niter_single 1001 \
+    --n_shot 8 --n_frames_G 1 \
+    --dataroot '/data2/lchen63/voxceleb' --dataset_name vox --save_epoch_freq 1 --display_freq 5000 \
+    --continue_train 
+}
+
 # train_vox_nonlinear
 # train_grid_linear
 # train_grid_nonlinear

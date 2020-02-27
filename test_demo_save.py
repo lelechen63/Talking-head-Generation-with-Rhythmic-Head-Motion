@@ -77,6 +77,22 @@ def get_param(root, pickle_data, pick_id, opt):
 
         audio_tgt_path = os.path.join(root, 'test', paths[0], paths[1]+".wav")
 
+    elif opt.dataset_name == 'lrw':
+        # target
+        opt.tgt_video_path = os.path.join(paths[0]+"_crop.mp4")
+        opt.tgt_lmarks_path = os.path.join(paths[0]+"_original.npy")
+        opt.tgt_rt_path = os.path.join(paths[0]+"_rt.npy")
+        opt.tgt_ani_path = os.path.join(paths[0]+"_ani.mp4")
+        # reference
+        ref_paths = paths
+        opt.ref_front_path = os.path.join(ref_paths[0]+"_front.npy")
+        opt.ref_video_path = opt.tgt_video_path
+        opt.ref_lmarks_path = opt.tgt_lmarks_path
+        opt.ref_rt_path = opt.tgt_rt_path
+        opt.ref_ani_id = int(ref_paths[1])
+
+        audio_tgt_path = os.path.join(paths[0].replace('video', 'audio')+".wav")
+
     return audio_tgt_path
 
 opt = TestOptions().parse()
@@ -88,17 +104,20 @@ model.eval()
 root = opt.dataroot
 if opt.dataset_name == 'grid':
     _file = open(os.path.join(root, 'pickle','test_audio2lmark_grid.pkl'), "rb")
+elif opt.dataset_name == 'lrw':
+    _file = open(os.path.join(root, 'pickle','test3_lmark2img.pkl'), "rb")
 else:
     _file = open(os.path.join(root, 'pickle','test_lmark2img.pkl'), "rb")
 pickle_data = pkl.load(_file)
 _file.close()
 
-save_root = os.path.join('/home/cxu-serve/p1/common/grid_gen')
+# save_root = os.path.join('/home/cxu-serve/p1/common/grid_gen')
+save_root = os.path.join('/home/cxu-serve/p1/common/lrw_gen')
 start_id = len(pickle_data) // 3 * 2
 # end_id = len(pickle_data) // 3 * 2
-end_id = len(pickle_data)
-# start_id = 0
 # end_id = len(pickle_data)
+# start_id = 0
+end_id = len(pickle_data)
 pick_ids = range(start_id, end_id)
 
 for pick_id in tqdm(pick_ids):
@@ -136,10 +155,21 @@ for pick_id in tqdm(pick_ids):
             img = util.tensor2im(synthesized_image[batch])
             frames.append(np.expand_dims(img, axis=0))
 
+    # for f_id, f in enumerate(frames):
+    #     img = Image.fromarray(f[0])
+    #     img.save('example/lrw/{}.png'.format(f_id))
     frames_for_save = np.concatenate(frames, axis=0)
     # save image
-    img_dir = os.path.join(save_root,  paths[0])
-    if not os.path.exists(img_dir):
-        os.makedirs(img_dir)
-    img_name = os.path.join(img_dir, "{}.npy".format(paths[1]))
-    np.save(img_name, frames_for_save)
+    if opt.dataset_name == 'grid':
+        img_dir = os.path.join(save_root,  paths[0])
+        if not os.path.exists(img_dir):
+            os.makedirs(img_dir)
+        img_name = os.path.join(img_dir, "{}.npy".format(paths[1]))
+        np.save(img_name, frames_for_save)
+    elif opt.dataset_name == 'lrw':
+        dir_paths = paths[0].split('/')
+        img_dir = os.path.join(save_root, os.path.join(dir_paths[-3], dir_paths[-2]))
+        if not os.path.exists(img_dir):
+            os.makedirs(img_dir)
+        img_name = os.path.join(img_dir, "{}.npy".format(dir_paths[-1]))
+        np.save(img_name, frames_for_save)

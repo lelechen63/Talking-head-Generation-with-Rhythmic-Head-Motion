@@ -109,3 +109,60 @@ class SPADEResnetBlock(nn.Module):
         else:
             x_s = x
         return x_s
+
+class SPADEResnetBlockConcat(nn.Module):
+    def __init__(self, fin, fout, norm='batch', hidden_nc=0, conv_ks=3, spade_ks=1, stride=1, conv_params_free=False, norm_params_free=False):
+        super().__init__()        
+        fhidden = min(fin*3, fout)
+        self.learned_shortcut = (fin != fout)        
+        self.stride = stride        
+        Conv2d = generalConv(adaptive=conv_params_free)        
+        sn_ = sn if not conv_params_free else lambda x: x
+
+        # Submodules
+        self.conv_0 = sn_(Conv2d(fin*3, fhidden, conv_ks, stride=stride, padding=1))
+        self.conv_1 = sn_(Conv2d(fhidden*3, fout, conv_ks, padding=1))
+        if self.learned_shortcut:
+            self.conv_s = sn_(Conv2d(fin, fout, 1, stride=stride, bias=False))
+
+        Norm = generalNorm(norm)
+        for i, nhidden in enumerate(hidden_nc):
+            params_free = norm_params_free if i == 0 else False
+            setattr(self, 'bn_0_'+str(i), Norm(fin, hidden_nc=[nhidden], norm=norm, ks=spade_ks, params_free=params_free))
+            setattr(self, 'bn_1_'+str(i), Norm(fhidden, hidden_nc=[nhidden], norm=norm, ks=spade_ks, params_free=params_free))
+        if self.learned_shortcut:
+            self.bn_s = Norm(fin, hidden_nc=hidden_nc, norm=norm, ks=spade_ks, params_free=norm_params_free)  
+
+    def forward(self, x, label=None, conv_weights=[], norm_weights=[]):
+        if not conv_weights: conv_weights = [None]*3
+        if not norm_weights: norm_weights = [None]*3
+        x_s = self._shortcut(x, label, conv_weights[2], norm_weights[2])
+        # for first round
+        dxs = []
+        for lb_id, lb in enumerate(label):
+            if lb is None:
+                continue
+            weights = norm_weights[0] if lb_id == 0 else None
+            dxs.append(actvn(getattr(self, 'bn_0_'+str(lb_id))(x, lb, weights, k=0)))
+        dxs = self.conv_0(torch.cat(dxs, axis=1), conv_weights[0])
+        
+        # for second round
+        out = []
+        for lb_id, lb in enumerate(label):
+            if lb is None:
+                continue
+            weights = norm_weights[1] if lb_id == 0 else None
+            out.append(actvn(getattr(self, 'bn_1_'+str(lb_id))(dxs, lb, weights, k=0)))
+        out = self.conv_1(torch.cat(out, axis=1), conv_weights[1])
+        # combine
+        out = x_s + 1.0*out
+        return out
+
+    def _shortcut(self, x, label, conv_weights, norm_weights):
+        if self.learned_shortcut:
+            x_s = self.conv_s(self.bn_s(x, label, norm_weights), conv_weights)
+        elif self.stride != 1:            
+            x_s = nn.AvgPool2d(3, stride=2, padding=1)(x)
+        else:
+            x_s = x
+        return x_s

@@ -120,8 +120,8 @@ class SPADEResnetBlockConcat(nn.Module):
         sn_ = sn if not conv_params_free else lambda x: x
 
         # Submodules
-        self.conv_0 = sn_(Conv2d(fin*3, fhidden, conv_ks, stride=stride, padding=1))
-        self.conv_1 = sn_(Conv2d(fhidden*3, fout, conv_ks, padding=1))
+        self.conv_0 = sn_(Conv2d(fin, fhidden, conv_ks, stride=stride, padding=1))
+        self.conv_1 = sn_(Conv2d(fhidden, fout, conv_ks, padding=1))
         if self.learned_shortcut:
             self.conv_s = sn_(Conv2d(fin, fout, 1, stride=stride, bias=False))
 
@@ -134,6 +134,8 @@ class SPADEResnetBlockConcat(nn.Module):
             self.bn_s = Norm(fin, hidden_nc=hidden_nc, norm=norm, ks=spade_ks, params_free=norm_params_free)  
 
     def forward(self, x, label=None, conv_weights=[], norm_weights=[]):
+        if not isinstance(label, list):
+            label = [label]
         if not conv_weights: conv_weights = [None]*3
         if not norm_weights: norm_weights = [None]*3
         x_s = self._shortcut(x, label, conv_weights[2], norm_weights[2])
@@ -144,7 +146,8 @@ class SPADEResnetBlockConcat(nn.Module):
                 continue
             weights = norm_weights[0] if lb_id == 0 else None
             dxs.append(actvn(getattr(self, 'bn_0_'+str(lb_id))(x, lb, weights, k=0)))
-        dxs = self.conv_0(torch.cat(dxs, axis=1), conv_weights[0])
+        dxs = sum(dxs) / len(dxs)
+        dxs = self.conv_0(dxs, conv_weights[0])
         
         # for second round
         out = []
@@ -153,7 +156,9 @@ class SPADEResnetBlockConcat(nn.Module):
                 continue
             weights = norm_weights[1] if lb_id == 0 else None
             out.append(actvn(getattr(self, 'bn_1_'+str(lb_id))(dxs, lb, weights, k=0)))
-        out = self.conv_1(torch.cat(out, axis=1), conv_weights[1])
+        # out = self.conv_1(torch.cat(out, axis=1), conv_weights[1])
+        out = sum(out) / len(out)
+        out = self.conv_1(out, conv_weights[1]) 
         # combine
         out = x_s + 1.0*out
         return out

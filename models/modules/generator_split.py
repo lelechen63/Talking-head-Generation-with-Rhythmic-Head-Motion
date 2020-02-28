@@ -54,30 +54,31 @@ class FewShotGenerator(BaseNetwork):
         norm_ref = norm.replace('spade', '')
         input_nc = opt.label_nc if opt.label_nc != 0 else opt.input_nc  #1
         ref_nc = opt.output_nc #3
-        # self.image_encoder = Encoder(norm_ref = norm_ref, 
-        #                             nf=self.nf, ch=self.ch, 
-        #                             n_shot=self.opt.n_shot, 
-        #                             n_downsample_G=self.n_downsample_G, 
-        #                             n_downsample_A=self.n_downsample_A, 
-        #                             isTrain=self.opt.isTrain, 
-        #                             ref_nc=ref_nc)
-        
-        # self.lmark_encoder = Encoder(norm_ref = norm_ref, 
-        #                             nf=self.nf, ch=self.ch, 
-        #                             n_shot=self.opt.n_shot, 
-        #                             n_downsample_G=self.n_downsample_G, 
-        #                             n_downsample_A=self.n_downsample_A, 
-        #                             isTrain=self.opt.isTrain, 
-        #                             ref_nc=input_nc)
-
-        self.encoder = EncoderSelfAtten(norm_ref = norm_ref, 
-                                    nf=self.nf, ch=self.ch, 
-                                    n_shot=self.opt.n_shot, 
-                                    n_downsample_G=self.n_downsample_G, 
-                                    n_downsample_A=self.n_downsample_A, 
-                                    isTrain=self.opt.isTrain, 
-                                    ref_nc=ref_nc,
-                                    lmark_nc=input_nc)
+        if not opt.use_new or opt.transfer_initial:
+            self.image_encoder = Encoder(norm_ref = norm_ref, 
+                                        nf=self.nf, ch=self.ch, 
+                                        n_shot=self.opt.n_shot, 
+                                        n_downsample_G=self.n_downsample_G, 
+                                        n_downsample_A=self.n_downsample_A, 
+                                        isTrain=self.opt.isTrain, 
+                                        ref_nc=ref_nc)
+            
+            self.lmark_encoder = Encoder(norm_ref = norm_ref, 
+                                        nf=self.nf, ch=self.ch, 
+                                        n_shot=self.opt.n_shot, 
+                                        n_downsample_G=self.n_downsample_G, 
+                                        n_downsample_A=self.n_downsample_A, 
+                                        isTrain=self.opt.isTrain, 
+                                        ref_nc=input_nc)
+        if opt.use_new:
+            self.encoder = EncoderSelfAtten(norm_ref = norm_ref, 
+                                        nf=self.nf, ch=self.ch, 
+                                        n_shot=self.opt.n_shot, 
+                                        n_downsample_G=self.n_downsample_G, 
+                                        n_downsample_A=self.n_downsample_A, 
+                                        isTrain=self.opt.isTrain, 
+                                        ref_nc=ref_nc,
+                                        lmark_nc=input_nc)
 
         self.comb_encoder = CombEncoder(norm_ref=norm_ref, ch=self.ch,
                                         n_shot=self.opt.n_shot,
@@ -102,7 +103,7 @@ class FewShotGenerator(BaseNetwork):
             
         ### main branch layers
         for i in reversed(range(n_downsample_G + 1)):
-            if i >= self.n_sc_layers:
+            if i >= self.n_sc_layers or not opt.use_new:
                 setattr(self, 'up_%d' % i, SPADEResnetBlock(ch[i+1], ch[i], norm=norm, hidden_nc=ch_hidden[i], 
                         conv_ks=conv_ks, spade_ks=spade_ks,
                         conv_params_free=False,
@@ -179,9 +180,11 @@ class FewShotGenerator(BaseNetwork):
         atten, ref_idx = self.atten_gen(label, label_ref)    # b x n x hw
 
         # encode image and landmarks separately
-        # x = self.image_encoder(img_ref, atten)
-        # x_label = self.lmark_encoder(label_ref, atten)
-        x, x_label = self.encoder(img_ref, label_ref, atten)
+        if not self.opt.use_new:
+            x = self.image_encoder(img_ref, atten)
+            x_label = self.lmark_encoder(label_ref, atten)
+        else:
+            x, x_label = self.encoder(img_ref, label_ref, atten)
 
         # combine image and landmarks for spade weight
         if self.opt.isTrain or self.opt.n_shot > 1 or t == 0:
@@ -190,6 +193,19 @@ class FewShotGenerator(BaseNetwork):
             encoded_ref = None
 
         return x, encoded_ref, atten, ref_idx
+
+    # transfer parameters from image encoder and landmark encoder to attention encoder
+    def encoder_init(self):
+        # transfer
+        self.encoder.conv1 = self.image_encoder.conv1
+        self.encoder.conv2 = self.lmark_encoder.conv1
+        for i in range(self.n_downsample_G):
+            setattr(self.encoder, 'ref_down_img_%d' % i, getattr(self.image_encoder, 'ref_down_%d' % i))
+            setattr(self.encoder, 'ref_down_lmark_%d' % i, getattr(self.lmark_encoder, 'ref_down_%d' % i))
+
+        # delete
+        self.image_encoder = None
+        self.lmark_encoder = None
 
 # encode image or landmarks
 class Encoder(BaseNetwork):

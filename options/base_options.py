@@ -129,6 +129,9 @@ class BaseOptions():
         parser.add_argument('--fp16', action='store_true')
         parser.add_argument('--distributed', action='store_true', help='distributed training')
         parser.add_argument('--local_rank', type=int, default=0)
+
+        # for model
+        parser.add_argument('--use_new', action='store_true')
         
         self.initialized = True
         return parser

@@ -75,3 +75,6 @@ class SpadeCombineModule(BaseNetwork):
 
     def pick_ref(self, refs, ref_idx):
         return self.warp.pick_ref(refs, ref_idx)
+
+    def trans_init_G(self):
+        self.netG.encoder_init()

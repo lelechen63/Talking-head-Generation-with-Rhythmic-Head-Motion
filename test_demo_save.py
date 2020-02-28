@@ -113,11 +113,12 @@ _file.close()
 
 # save_root = os.path.join('/home/cxu-serve/p1/common/grid_gen')
 save_root = os.path.join('/home/cxu-serve/p1/common/lrw_gen')
-start_id = len(pickle_data) // 3 * 2
+# start_id = len(pickle_data) // 3 * 2
 # end_id = len(pickle_data) // 3 * 2
 # end_id = len(pickle_data)
 # start_id = 0
-end_id = len(pickle_data)
+start_id = 3614
+end_id = len(pickle_data) // 3 * 2
 pick_ids = range(start_id, end_id)
 
 for pick_id in tqdm(pick_ids):
@@ -158,6 +159,8 @@ for pick_id in tqdm(pick_ids):
     # for f_id, f in enumerate(frames):
     #     img = Image.fromarray(f[0])
     #     img.save('example/lrw/{}.png'.format(f_id))
+    # pdb.set_trace()
+
     frames_for_save = np.concatenate(frames, axis=0)
     # save image
     if opt.dataset_name == 'grid':

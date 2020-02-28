@@ -54,8 +54,8 @@
 # --continue_train
 
 CUDA_VISIBLE_DEVICES=1 python train.py --name face8_vox_new_nonlinear --dataset_mode facefore \
---adaptive_spade --warp_ref --warp_ani --spade_combine \
+--adaptive_spade --warp_ref --warp_ani --spade_combine --add_raw_loss \
 --gpu_ids 0 --batchSize 2 --nThreads 0 --niter 1000 --niter_single 1001 \
 --n_shot 8 --n_frames_G 1 \
---dataroot '/home/cxu-serve/p1/common/voxceleb2' --dataset_name vox --save_epoch_freq 3 --display_freq 1000 \
---continue_train
+--dataroot '/home/cxu-serve/p1/common/voxceleb2' --dataset_name vox --save_epoch_freq 1 --display_freq 1 \
+--continue_train --use_new --transfer_initial

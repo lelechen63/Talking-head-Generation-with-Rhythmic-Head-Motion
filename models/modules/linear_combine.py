@@ -36,3 +36,6 @@ class LinearCombineModule(BaseNetwork):
     def set_flow_prev(self):
         self.warp.set_temporal()
         self.flow_temp_is_initalized = True
+
+    def trans_init_G(self):
+        self.netG.encoder_init()

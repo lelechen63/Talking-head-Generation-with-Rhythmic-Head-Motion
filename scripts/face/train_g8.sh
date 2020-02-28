@@ -123,7 +123,7 @@ train_vox_new_nonlinear(){
     --gpu_ids 0,1,2,3,4,5,6,7 --batchSize 80 --nThreads 64 --niter 1000 --niter_single 1001 \
     --n_shot 8 --n_frames_G 1 \
     --dataroot '/data2/lchen63/voxceleb' --dataset_name vox --save_epoch_freq 1 --display_freq 5000 \
-    --continue_train 
+    --continue_train --use_new
 }
 
 # train_vox_nonlinear

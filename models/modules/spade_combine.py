@@ -25,6 +25,11 @@ class SpadeCombineModule(BaseNetwork):
         prev_lmark, prev_img = prev
         flow, weight, img_warp = self.warp.forward_flow(tgt_lmark, warp_ref_lmark, warp_ref_img, ani_lmark, ani_img, prev_lmark, prev_img, ref_idx)
 
+        if self.opt.no_warp:
+            img_warp[0] = warp_ref_img if img_warp[0] is not None else None
+            img_warp[1] = prev_img if img_warp[1] is not None else None
+            img_warp[2] = ani_img if img_warp[2] is not None else None
+
         # SPADE combine
         ds_ref = [None] * 3
         warp_ref, warp_prev, warp_ani = img_warp

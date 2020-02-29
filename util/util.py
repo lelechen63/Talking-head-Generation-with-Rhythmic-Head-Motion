@@ -10,11 +10,12 @@ import numpy as np
 from PIL import Image
 import os
 import cv2
-import math
+
 def get_roi(lmark): #lmark shape (68,2) or (68,3) , tempolate shape(256, 256, 1)
     lmark = lmark.copy()
     tempolate = np.zeros((256, 256 , 1), np.uint8)
-    eyes =[17, 20 , 21, 22, 24,  26, 36, 39,42, 45]
+    eyes =[21, 22, 24,  26, 36, 39,42, 45]
+    # eyes =[36, 37, 39, 41, 42, 43, 45, 46]
     eyes_x = []
     eyes_y = []
     for i in eyes:
@@ -25,10 +26,10 @@ def get_roi(lmark): #lmark shape (68,2) or (68,3) , tempolate shape(256, 256, 1)
     min_y = lmark[eyes[np.argmin(eyes_y)], 1]
     
     max_y = lmark[eyes[np.argmax(eyes_y)], 1]
-    min_x = max(0, int(min_x-10) )
-    max_x = min(255, int(max_x+10) )
-    min_y = max(0, int(min_y-10) )
-    max_y = min(255, int(max_y+10) )
+    min_x = max(0, int(min_x-5) )
+    max_x = min(255, int(max_x+5) )
+    min_y = max(0, int(min_y-5) )
+    max_y = min(255, int(max_y+5) )
 
     tempolate[ int(min_y): int(max_y), int(min_x):int(max_x)] = 1 
     mouth = [48, 50, 51, 54, 57]
@@ -42,48 +43,14 @@ def get_roi(lmark): #lmark shape (68,2) or (68,3) , tempolate shape(256, 256, 1)
     min_y2 = lmark[mouth[np.argmin(mouth_y)], 1]
     max_y2 = lmark[mouth[np.argmax(mouth_y)], 1]  
 
-    min_x2 = max(0, int(min_x2-10) )
-    max_x2 = min(255, int(max_x2+10) )
-    min_y2 = max(0, int(min_y2-10) )
-    max_y2 = min(255, int(max_y2+10) )
+    min_x2 = max(0, int(min_x2-5) )
+    max_x2 = min(255, int(max_x2+5) )
+    min_y2 = max(0, int(min_y2-5) )
+    max_y2 = min(255, int(max_y2+5) )
 
     
     tempolate[int(min_y2):int(max_y2), int(min_x2):int(max_x2)] = 1
     return  tempolate
-def eye_blinking(lmark, rate = 40): #lmark shape (k, 68,2) or (k,68,3) , tempolate shape(256, 256, 1)
-    length = lmark.shape[0]
-    bink_time = math.floor(length / float(rate) )
-    
-    eys =[[37,41],[38,40] ,[43,47],[44,46]]  # [upper, lower] , [left1,left2, right1, right1]
-    
-    for i in range(bink_time):
-
-        print ('+++++')
-        for e in eys:
-            dis =  (np.abs(lmark[0, e[0],:2] -  lmark[0, e[1],:2] ) / 2)
-            print ('--------')
-            # -2 
-            
-            lmark[rate * (i + 1)-2, e[0],:2] += 0.45 * (dis)
-            lmark[rate * (i + 1)-2, e[1],:2] -= 0.45 * (dis)
-            # +2
-            lmark[rate * (i + 1)+2, e[0], :2] += 0.45 * (dis)
-            lmark[rate * (i + 1)+2, e[1], :2] -= 0.45 * (dis)
-
-            # -1
-            lmark[rate * (i + 1)-1, e[0], :2] += 0.85 * (dis)
-            lmark[rate * (i + 1)-1, e[1], :2] -= 0.85 * (dis)
-            # +1
-            lmark[rate * (i + 1)+1, e[0], :2] += 0.8 * (dis)
-            lmark[rate * (i + 1)+1, e[1], :2] -= 0.8 * (dis)
-
-            # 0
-            lmark[rate * (i + 1), e[0], :2] += 0.95 * (dis)
-            lmark[rate * (i + 1), e[1], :2] -= 0.95 * (dis)
-    return lmark
-
-
-
 
 def visualize_label(opt, label_tensor, model=None): 
     if label_tensor.dim() == 5:

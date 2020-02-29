@@ -207,6 +207,7 @@ class BaseModel(torch.nn.Module):
             pretrained_path = '' if not self.isTrain or opt.continue_train else opt.load_pretrain
             self.load_network(self.netG, 'G', opt.which_epoch, pretrained_path)
             if opt.transfer_initial:
+                print('loading for encoder')
                 self.netG.trans_init_G()
             if self.temporal and opt.warp_ref and not self.netG.flow_temp_is_initalized:
                 self.netG.set_flow_prev()

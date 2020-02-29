@@ -19,11 +19,11 @@ train_vox_linear(){
 }
 
 train_grid_linear(){
-    CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 python train.py --name face8_grid_ani_retrain --dataset_mode facefore \
+    CUDA_VISIBLE_DEVICES=1,2,3 python train.py --name face8_grid_ani_ori --dataset_mode facefore \
     --adaptive_spade --warp_ref \
-    --gpu_ids 0,1,2,3,4,5,6,7 --batchSize 12 --nThreads 64 --niter 30 --niter_single 1001 \
+    --gpu_ids 0,1,2 --batchSize 15 --nThreads 8 --niter 1000 --niter_single 1001 \
     --n_shot 1 --n_frames_G 1 --ref_ratio 0 \
-    --dataroot '/home/cxu-serve/p1/common/grid' --dataset_name grid --save_epoch_freq 1 --display_freq 1000 \
+    --dataroot '/home/cxu-serve/p1/common/grid' --dataset_name grid --save_epoch_freq 2 --display_freq 1000 \
     --continue_train
 }
 
@@ -127,7 +127,7 @@ train_vox_new_nonlinear(){
 }
 
 # train_vox_nonlinear
-# train_grid_linear
+train_grid_linear
 # train_grid_nonlinear
 # train_vox_nonlinear_temp
 # train_grid_linear_temp
@@ -137,4 +137,4 @@ train_vox_new_nonlinear(){
 # train_grid_linear_8shot
 # train_vox_nonlinear_comp
 # train_vox_raw_comp
-train_vox_nonlinear
+# train_vox_nonlinear

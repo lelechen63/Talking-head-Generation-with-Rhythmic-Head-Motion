@@ -50,7 +50,7 @@ def train():
                 data.update({'ani_image':None, 'ani_lmark':None, 'cropped_images':None, 'cropped_lmarks':None })
 
             if not opt.no_flow_gt: 
-                data_list = [data['tgt_image'], data['cropped_images'], data['warping_ref'], data['ani_image']]
+                data_list = [data['tgt_mask_images'], data['cropped_images'], data['warping_ref'], data['ani_image']]
                 flow_gt, conf_gt = flowNet(data_list, epoch)
             data_list = [data['tgt_label'], data['tgt_image'], data['tgt_template'], data['cropped_images'], flow_gt, conf_gt]
             data_ref_list = [data['ref_label'], data['ref_image']]
@@ -88,7 +88,7 @@ def train():
             loss_dict = dict(zip(model.module.lossCollector.loss_names, g_losses + d_losses))     
 
             # output_data_list = generated + data_list + [data['ref_label'], data['ref_image']] + data_ani + [data['cropped_lmarks']]
-            output_data_list = [prevs] + [data['ref_image']] + data_ani + data_list
+            output_data_list = [prevs] + [data['ref_image']] + data_ani + data_list + [data['tgt_mask_images']]
 
             if trainer.end_of_iter(loss_dict, output_data_list, model):
                 break        

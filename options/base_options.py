@@ -132,7 +132,9 @@ class BaseOptions():
 
         # for model
         parser.add_argument('--use_new', action='store_true')
-        
+        # for initial
+        parser.add_argument('--transfer_initial', action='store_true', help='initilize by transferring from two encoders')
+
         self.initialized = True
         return parser
 

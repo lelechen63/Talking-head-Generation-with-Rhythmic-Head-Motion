@@ -36,7 +36,7 @@ def add_audio(video_name, audio_dir):
 
 def image_to_video(sample_dir = None, video_name = None):
     
-    command = 'ffmpeg -framerate 25  -i ' + sample_dir +  '/%05d.png -c:v libx264 -y -vf "pad=ceil(iw/2)*2:ceil(ih/2)*2"  ' + video_name 
+    command = 'ffmpeg -framerate 25  -i ' + sample_dir +  '/%05d.jpg -c:v libx264 -y -vf "pad=ceil(iw/2)*2:ceil(ih/2)*2"  ' + video_name 
     #ffmpeg -framerate 25 -i real_%d.png -c:v libx264 -y -vf format=yuv420p real.mp4
     print (command)
     os.system(command)
@@ -243,7 +243,7 @@ for pick_id in tqdm(pick_ids):
 
         img_id = "{}_{}_{}".format(img_path[0].split('/')[-3], img_path[0].split('/')[-2], img_path[0].split('/')[-1][:-4])
         img_dir = os.path.join(save_root,  img_id)
-        img_name = "%05d.png"%data['index'][0]
+        img_name = "%05d.jpg"%data['index'][0]
 
         if not os.path.exists(img_dir):
             os.makedirs(img_dir)

@@ -100,7 +100,7 @@ def save_all_tensors(opt, output_list, model):
     #     ref_label, ref_image, \
     #     warping_ref_lmark, warping_ref, ani_lmark, ani_image, cropped_lmarks = output_list
     prevs, ref_images, warping_ref_lmark, warping_ref, ani_lmark, ani_image,\
-        target_label, target_image, tgt_template, cropped_images, flow_gt, conf_gt = output_list
+        target_label, target_image, tgt_template, cropped_images, flow_gt, conf_gt, tgt_mask_image = output_list
 
     # in prevs
     fake_image = torch.cat(prevs['synthesized_images'], axis=0)
@@ -122,6 +122,7 @@ def save_all_tensors(opt, output_list, model):
         visual_list += [('ref_img_{}'.format(i), util.tensor2im(ref_images[:, i:i+1]))]
     visual_list += [('warping_ref_lmark', util.tensor2im(warping_ref_lmark, tile=True)),
                     ('warping_ref_img', util.tensor2im(warping_ref, tile=True)),
+                    ('warping_target_img', util.tensor2im(tgt_mask_image, tile=True)),
                     ('target_label', util.tensor2im(target_label, tile=True)),
                     ('target_image', util.tensor2im(target_image, tile=True)),
                     ('target_atten_image', util.tensor2im(atten_img, tile=True)),

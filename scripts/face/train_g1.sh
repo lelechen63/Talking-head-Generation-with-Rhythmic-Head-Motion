@@ -58,4 +58,4 @@ CUDA_VISIBLE_DEVICES=1 python train.py --name face8_vox_new_nonlinear --dataset_
 --gpu_ids 0 --batchSize 2 --nThreads 0 --niter 1000 --niter_single 1001 \
 --n_shot 8 --n_frames_G 1 \
 --dataroot '/home/cxu-serve/p1/common/voxceleb2' --dataset_name vox --save_epoch_freq 1 --display_freq 1 \
---continue_train --use_new --transfer_initial
+--continue_train --crop_ref

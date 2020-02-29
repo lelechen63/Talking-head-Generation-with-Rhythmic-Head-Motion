@@ -37,8 +37,5 @@ class TrainOptions(BaseOptions):
         parser.add_argument('--lambda_T', type=float, default=10.0, help='weight for temporal loss')
         parser.add_argument('--lambda_F', type=float, default=10.0, help='weight for flow loss')        
 
-        # for initial
-        parser.add_argument('--transfer_initial', action='store_true', help='initilize by transferring from two encoders')
-
         self.isTrain = True
         return parser

@@ -27,6 +27,7 @@ from scipy.spatial.transform import Rotation as R
 from data.base_dataset import BaseDataset, get_transform
 from data.keypoint2img import interpPoints, drawEdge
 from util.util import openrate
+from util.util import get_roi
 
 import pdb
 
@@ -52,6 +53,7 @@ class FaceForeDemoDataset(BaseDataset):
         parser.add_argument('--ref_front_path', type=str, default=None)
         parser.add_argument('--ref_ani_id', type=int)
         parser.add_argument('--find_largest_mouth', action='store_true', help='find reference image that open mouth in largest ratio')
+        parser.add_argument('--crop_ref', action='store_true')
 
         return parser
 
@@ -135,7 +137,12 @@ class FaceForeDemoDataset(BaseDataset):
             transforms.ToTensor()
         ])
 
+        self.transform_T = transforms.Compose([
+            transforms.Lambda(lambda img: self.__scale_image(img, self.output_shape, Image.BILINEAR)),
+        ])
+
         # define parameters for inference
+        self.ref_lmarks_temp = self.ref_lmarks
         self.ref_video, self.ref_lmarks, self.ref_indices = self.define_inference(self.ref_video, self.ref_lmarks)
 
 
@@ -167,13 +174,22 @@ class FaceForeDemoDataset(BaseDataset):
             # get animation & get cropped ground truth
             ani_lmarks = []
             ani_images = []
+            ani_lmarks_temp = []
 
             for gg in target_id:
                 ani_lmarks.append(self.reverse_rt(self.ref_front[int(self.ref_ani_id)], self.tgt_rt[gg]))
                 ani_lmarks[-1] = np.array(ani_lmarks[-1])
+                ani_lmarks_temp.append(ani_lmarks[-1])
                 ani_images.append(self.tgt_ani_video[gg])
 
             ani_images, ani_lmarks = self.prepare_datas(ani_images, ani_lmarks, list(range(len(target_id))))
+
+            # crop by mask
+            if self.opt.crop_ref:
+                for ani_lmark_id, ani_lmark_temp in enumerate(ani_lmarks_temp):
+                    ani_template = torch.Tensor(self.get_template(ani_lmark_temp, self.transform_T))
+                    ani_template_inter = -ani_images[ani_lmark_id] * ani_template + (1 - ani_template)
+                    ani_images[ani_lmark_id] = ani_images[ani_lmark_id] / ani_template_inter
 
         # get warping reference
         if self.ref_search:
@@ -182,6 +198,15 @@ class FaceForeDemoDataset(BaseDataset):
             warping_ref_ids = self.get_warp_ref(tgt_rt, ref_rt, self.ref_indices, target_id)
             warping_refs = [self.ref_video[w_ref_id] for w_ref_id in warping_ref_ids]
             warping_ref_lmarks = [self.ref_lmarks[w_ref_id] for w_ref_id in warping_ref_ids]
+
+            # crop by mask
+            if self.opt.crop_ref:
+                for warp_id, warp_ref in enumerate(warping_refs):
+                    lmark_id = self.ref_indices[warping_ref_ids[warp_id]]
+                    warp_ref_lmark = self.ref_lmarks_temp[lmark_id]
+                    warp_ref_template = torch.Tensor(self.get_template(warp_ref_lmark, self.transform_T))
+                    warp_ref_template_inter = -warp_ref * warp_ref_template + (1 - warp_ref_template)
+                    warping_refs[warp_id] = warp_ref / warp_ref_template_inter
 
         target_img_path = [os.path.join(self.tgt_video_path[:-4] , '%05d.png'%t_id) for t_id in target_id]
 
@@ -380,3 +405,12 @@ class FaceForeDemoDataset(BaseDataset):
             warp_ref_ids.append(np.argmin(reference_rt_diffs))
 
         return warp_ref_ids
+
+    # preprocess for template
+    def get_template(self, lmark, transform_T):
+        # crop
+        template = get_roi(lmark)
+        template = Image.fromarray(template[:, :, 0], 'L')
+        template = np.asarray(transform_T(template))
+        
+        return template

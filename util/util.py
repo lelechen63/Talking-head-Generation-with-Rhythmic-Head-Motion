@@ -31,7 +31,7 @@ def get_roi(lmark): #lmark shape (68,2) or (68,3) , tempolate shape(256, 256, 1)
     min_y = max(0, int(min_y-5) )
     max_y = min(255, int(max_y+5) )
 
-    tempolate[ int(min_y): int(max_y), int(min_x):int(max_x)] = 1 
+    tempolate[ int(min_y): int(max_y), int(min_x):int(max_x)] = 0
     mouth = [48, 50, 51, 54, 57]
     mouth_x = []
     mouth_y = []

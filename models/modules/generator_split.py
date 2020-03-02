@@ -12,6 +12,9 @@ import numpy as np
 import copy
 import pdb
 
+# demo used
+import util.util as util
+
 from models.networks.base_network import BaseNetwork, batch_conv
 from models.networks.architecture import SPADEResnetBlockConcat, SPADEResnetBlock, SPADEConv2d, actvn
 import torch.nn.utils.spectral_norm as sn
@@ -296,16 +299,16 @@ class EncoderSelfAtten(BaseNetwork):
         ##### cross attention #####(TODO: check dimension)
         x_atten_cat = torch.cat([x, x_label], axis=1)
         x_atten_cat = self.fusion(x_atten_cat)
-        # fuse to two branch
-        x_cat = torch.cat([x, x_atten_cat], axis=1)
-        x = self.fusion1(x_cat)
-        x_label_cat = torch.cat([x_label, x_atten_cat], axis=1)
-        x_label = self.fusion2(x_label_cat)
         #### self attention #####
         x_self_atten = x.view(b//n, n*c, h, w)
         x_self_atten = self.atten1(x_self_atten)
         x_label_self_atten = x_label.view(b//n, n*c, h, w)
         x_label_self_atten = self.atten2(x_label_self_atten)
+        # fuse to two branch
+        x_cat = torch.cat([x, x_atten_cat], axis=1)
+        x = self.fusion1(x_cat)
+        x_label_cat = torch.cat([x_label, x_atten_cat], axis=1)
+        x_label = self.fusion2(x_label_cat)
         ##### ref & tgt attention #####
         x = x.view(b//n, n, c, h*w)
         x = torch.sum(x * atten.unsqueeze(2).expand_as(x), dim=1).view(b//n, c, h, w) + x_self_atten
@@ -389,6 +392,7 @@ class AttenGen(BaseNetwork):
         
         b, c, h, w = atn_key.size()
         b_n = b//n
+
         atn_key = atn_key.view(b_n, n, c, -1)
         atn_query = atn_query.view(b_n, 1, c, -1).expand_as(atn_key)            
                     

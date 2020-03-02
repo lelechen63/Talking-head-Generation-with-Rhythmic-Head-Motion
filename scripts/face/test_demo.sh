@@ -52,8 +52,8 @@ test_model_vox_temp(){
     --how_many $4 \
     --nThreads 0 \
     --dataroot '/home/cxu-serve/p1/common/voxceleb2' \
-    --ref_img_id "0" \
-    --n_shot 1 \
+    --ref_img_id "0,10,20,30,40,50,60,70" \
+    --n_shot 8 \
     --serial_batches \
     --dataset_name vox
 }
@@ -75,7 +75,8 @@ test_model_vox_new(){
     --ref_img_id "0" \
     --n_shot 1 \
     --serial_batches \
-    --dataset_name vox
+    --dataset_name vox \
+    --crop_ref
 }
 
 test_model_grid(){
@@ -100,6 +101,7 @@ test_model_audio(){
     CUDA_VISIBLE_DEVICES=$1 python test_demo_audio.py --name $2 \
     --dataset_mode facefore_demo \
     --adaptive_spade \
+    --warp_ref \
     --example \
     --n_frames_G 1 \
     --which_epoch $3 \
@@ -185,7 +187,8 @@ test_model_lrw(){
     --ref_img_id "0" \
     --n_shot 1 \
     --serial_batches \
-    --dataset_name lrw
+    --dataset_name lrw \
+    --crop_ref
 }
 
 test_model_crema_multi(){
@@ -231,12 +234,15 @@ test_lrw_save(){
 # test_model_vox_temp 2 face8_vox_ani_nonlinear_temp latest 5
 # test_model_vox_temp 1 face8_vox_ani_nonlinear_atten latest 5
 # test_model_vox_temp 1 face8_vox_ani_retrain latest 5
-# test_model_vox_temp 1 face8_vox_ani_nonlinear_continue 4 5
+# test_model_vox_temp 1 face8_vox_ani_nonlinear_continue 9 5
 # test_model_audio 2 latest 5
 # test_model_grid 1 face8_grid_ani_retrain latest 50
 # test_grid_save 2 face8_grid_ani_retrain latest 100
 # test_model_crema 3 face8_crema_linear 50 20
 # test_model_lisa 3 face8_vox_ani_nonlinear_atten latest 3
-# test_model_lrw 1 face8_vox_ani_nonlinear_atten latest 5
+# test_model_lrw 1 face8_vox_ani_nonlinear_continue 9 100
 # test_model_crema_multi 3 face8_crema_linear 50 50
 # test_lrw_save 1 face8_vox_ani_nonlinear_atten latest 100
+# test_model_grid 2 face8_grid_linear_mask 8 5
+# test_model_audio 1 face8_grid_linear_mask latest 20
+test_model_vox_new 1 face8_vox_ani_nonlinear_continue 11 10

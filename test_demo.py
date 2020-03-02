@@ -45,19 +45,20 @@ def get_param(root, pickle_data, pick_id, opt):
     paths = pickle_data[pick_id]
     if opt.dataset_name == 'vox':
         # target
-        opt.tgt_video_path = os.path.join(root, 'unzip/test_video', paths[0], paths[1], paths[2]+"_aligned.mp4")
-        opt.tgt_lmarks_path = os.path.join(root, 'unzip/test_video', paths[0], paths[1], paths[2]+"_aligned.npy")
-        opt.tgt_rt_path = os.path.join(root, 'unzip/test_video', paths[0], paths[1], paths[2]+"_aligned_rt.npy")
-        opt.tgt_ani_path = os.path.join(root, 'unzip/test_video', paths[0], paths[1], paths[2]+"_aligned_ani.mp4")
+        audio_package = 'unzip/test_video'
+        opt.tgt_video_path = os.path.join(root, audio_package, paths[0], paths[1], paths[2]+"_aligned.mp4")
+        opt.tgt_lmarks_path = os.path.join(root, audio_package, paths[0], paths[1], paths[2]+"_aligned.npy")
+        opt.tgt_rt_path = os.path.join(root, audio_package, paths[0], paths[1], paths[2]+"_aligned_rt.npy")
+        opt.tgt_ani_path = os.path.join(root, audio_package, paths[0], paths[1], paths[2]+"_aligned_ani.mp4")
         # reference
         ref_paths = paths
-        opt.ref_front_path = os.path.join(root, 'unzip/test_video', ref_paths[0], ref_paths[1], ref_paths[2]+"_aligned_front.npy")
+        opt.ref_front_path = os.path.join(root, audio_package, ref_paths[0], ref_paths[1], ref_paths[2]+"_aligned_front.npy")
         opt.ref_video_path = opt.tgt_video_path
         opt.ref_lmarks_path = opt.tgt_lmarks_path
         opt.ref_rt_path = opt.tgt_rt_path
         opt.ref_ani_id = int(ref_paths[3])
 
-        audio_tgt_path = os.path.join(root, 'unzip/test_audio', paths[0], paths[1], paths[2]+".m4a")
+        audio_tgt_path = os.path.join(root, audio_package, paths[0], paths[1], paths[2]+".m4a")
 
     elif opt.dataset_name == 'grid':
         # target
@@ -173,9 +174,11 @@ save_root = os.path.join('evaluation_store', save_name, '{}_shot_test'.format(op
 # pick_ids = np.random.choice(list(range(len(pickle_data))), size=opt.how_many)
 end = int(len(pickle_data))
 pick_ids = range(0, end, end//opt.how_many)
+# pick_ids = [100]
 # pick_ids = range(0, opt.how_many)
 # pick_ids = range(0, len(pickle_data))
-# pick_files = ['s14', 's15']
+# pick_files = ['s23', 's29']
+# pick_files = ['s29']
 # pick_files = ['1075_IWL_FEA_XX_', '1090_IOM_FEA_XX_', '1088_ITH_HAP_XX_', '1091_IWL_NEU_XX_', \
 #               '1085_TIE_HAP_XX_', '1075_TIE_HAP_XX_', '1077_WSI_FEA_XX__', '1089_IWL_ANG_XX_']
 # pick_files = np.asarray([['id00081', '2xYrsnvtUWc', '00002'], ['id00081', '2xYrsnvtUWc', '00004'], ['id01000', '0lmrq0quo9M', '00001']])
@@ -186,6 +189,7 @@ pick_ids = range(0, end, end//opt.how_many)
 #                ['id01000', '0lmrq0quo9M', '00001']])
 # pick_ids = range(0, len(pickle_data))
 
+count = 0
 for pick_id in tqdm(pick_ids):
     print('process {} ...'.format(pick_id))
     audio_tgt_path = get_param(root, pickle_data, pick_id, opt)
@@ -197,6 +201,10 @@ for pick_id in tqdm(pick_ids):
     #     continue
     # if not((paths[1] in pick_files[:, 1]) and (paths[0] in pick_files[:, 0]) and (paths[2] in pick_files[:, 2])):
     #     continue
+    # count += 1
+    # if count > opt.how_many:
+    #     break
+
 
     ### setup dataset
     data_loader = CreateDataLoader(opt)

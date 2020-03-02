@@ -182,11 +182,10 @@ class FaceForeDataset(BaseDataset):
         tgt_images, tgt_lmarks, tgt_crop_coords = self.prepare_datas(real_video, lmarks, target_id, transform, transform_L, scale)
 
         # get template for target
-        if self.opt.isTrain:
-            tgt_templates = []
-            for gg in target_id:
-                lmark = lmarks[gg]
-                tgt_templates.append(self.get_template(lmark, transform_T, self.output_shape, tgt_crop_coords))
+        tgt_templates = []
+        for gg in target_id:
+            lmark = lmarks[gg]
+            tgt_templates.append(self.get_template(lmark, transform_T, self.output_shape, tgt_crop_coords))
 
         if self.opt.warp_ani:
         # get animation & get cropped ground truth
@@ -227,10 +226,11 @@ class FaceForeDataset(BaseDataset):
                 warp_ref_template_inter = -warp_ref * warp_ref_template + (1 - warp_ref_template)
                 warping_refs[warp_id] = warp_ref / warp_ref_template_inter
             # for animation
-            for ani_lmark_id, ani_lmark_temp in enumerate(ani_lmarks_back):
-                ani_template = torch.Tensor(self.get_template(ani_lmark_temp, transform_T, self.output_shape, ani_coords))
-                ani_template_inter = -ani_images[ani_lmark_id] * ani_template + (1 - ani_template)
-                ani_images[ani_lmark_id] = ani_images[ani_lmark_id] / ani_template_inter
+            if self.opt.warp_ani:
+                for ani_lmark_id, ani_lmark_temp in enumerate(ani_lmarks_back):
+                    ani_template = torch.Tensor(self.get_template(ani_lmark_temp, transform_T, self.output_shape, ani_coords))
+                    ani_template_inter = -ani_images[ani_lmark_id] * ani_template + (1 - ani_template)
+                    ani_images[ani_lmark_id] = ani_images[ani_lmark_id] / ani_template_inter
             
         # preprocess
         target_img_path  = [os.path.join(video_path[:-4] , '%05d.png'%t_id) for t_id in target_id]
@@ -242,7 +242,8 @@ class FaceForeDataset(BaseDataset):
         if self.opt.isTrain:
             tgt_templates = torch.cat([torch.Tensor(tgt_template).unsqueeze(0).unsqueeze(0) for tgt_template in tgt_templates], axis=0)
         else:
-            tgt_templates = 0
+            tgt_templates = torch.cat([torch.Tensor(tgt_template).unsqueeze(0).unsqueeze(0) for tgt_template in tgt_templates], axis=0)
+            # tgt_templates = 0
 
         warping_refs = torch.cat([warping_ref.unsqueeze(0) for warping_ref in warping_refs], 0)
         warping_ref_lmarks = torch.cat([warping_ref_lmark.unsqueeze(0) for warping_ref_lmark in warping_ref_lmarks], 0)
@@ -254,8 +255,9 @@ class FaceForeDataset(BaseDataset):
 
         # crop eyes and mouth from reference 
         if self.opt.crop_ref:
-            crop_template_inter = -cropped_images * tgt_templates + (1 - tgt_templates)
-            cropped_images = cropped_images / crop_template_inter
+            if self.opt.warp_ani:
+                crop_template_inter = -cropped_images * tgt_templates + (1 - tgt_templates)
+                cropped_images = cropped_images / crop_template_inter
             tgt_template_inter = -tgt_images * tgt_templates + (1 - tgt_templates)
             tgt_mask_images = tgt_images / tgt_template_inter
 
@@ -407,7 +409,10 @@ class FaceForeDataset(BaseDataset):
     def get_template(self, lmark, transform_T, size, crop_coords):
         # crop
         template = get_roi(lmark)
-        template = self.crop(Image.fromarray(template[:, :, 0], 'L'), crop_coords)
+        if self.opt.isTrain:
+            template = self.crop(Image.fromarray(template[:, :, 0], 'L'), crop_coords)
+        else:
+            template = Image.fromarray(template[:, :, 0], 'L')
         template = np.asarray(transform_T(template))
         
         return template
@@ -559,7 +564,9 @@ class FaceForeDataset(BaseDataset):
                 transforms.Lambda(lambda img: self.__scale_image(img, img_params['new_size'], Image.BILINEAR)),
                 transforms.ToTensor()
             ])
-            transform_T = None
+            transform_T = transforms.Compose([
+                transforms.Lambda(lambda img: self.__scale_image(img, img_params['new_size'], Image.BICUBIC)),
+            ])
         
         
         return transform, transform_L, transform_T

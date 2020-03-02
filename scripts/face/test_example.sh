@@ -130,10 +130,32 @@ test_model_8_new(){
     --use_new
 }
 
+test_model_8_continue(){
+    CUDA_VISIBLE_DEVICES=$1 python test_example.py --name $2 \
+    --dataset_mode facefore \
+    --adaptive_spade \
+    --warp_ref \
+    --warp_ani \
+    --add_raw_loss \
+    --spade_combine \
+    --example \
+    --n_frames_G 1 \
+    --which_epoch $3 \
+    --how_many $4 \
+    --nThreads 0 \
+    --dataroot '/home/cxu-serve/p1/common/voxceleb2' \
+    --ref_img_id "0" \
+    --n_shot 1 \
+    --dataset_name vox \
+    --crop_ref
+}
+
 # test_model_8_grid 3 latest 50
 # test_model_8 3 face8_vox_ani_nonlinear latest 50
 # test_model_1 3 latest 50
 # test_model_8_lrs 2 latest 20
 # test_model_8_crema 3 45 50
-test_model_8_new 1 face8_vox_new_nonlinear latest 50
+# test_model_8_new 1 face8_vox_new_nonlinear latest 50
 # test_model_8 1 face8_vox_ani_nonlinear_continue 4 50
+test_model_8 1 face8_vox_ani_nonlinear_atten latest 100
+# test_model_8_continue 1 face8_vox_ani_nonlinear_continue 11 100

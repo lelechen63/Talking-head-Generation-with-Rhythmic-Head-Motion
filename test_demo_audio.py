@@ -36,7 +36,7 @@ def add_audio(video_name, audio_dir):
 
 def image_to_video(sample_dir = None, video_name = None):
     
-    command = 'ffmpeg -framerate 25  -i ' + sample_dir +  '/%05d.png -c:v libx264 -y -vf "pad=ceil(iw/2)*2:ceil(ih/2)*2"  ' + video_name 
+    command = 'ffmpeg -framerate 25  -i ' + sample_dir +  '/%05d.jpg -c:v libx264 -y -vf "pad=ceil(iw/2)*2:ceil(ih/2)*2"  ' + video_name 
     #ffmpeg -framerate 25 -i real_%d.png -c:v libx264 -y -vf format=yuv420p real.mp4
     print (command)
     os.system(command)
@@ -49,21 +49,23 @@ model = create_model(opt)
 model.eval()
 
 # fake_root = "/home/cxu-serve/p1/common/tmp/atnet_raw_pca_test"
-fake_root = '/u/lchen63/Project/face_tracking_detection/eccv2020/sample/atnet_raw_pca_test'
-# files = [f for f in os.listdir(fake_root) if f[-3:]=='npy'][:opt.how_many]
-files = []
-select_fs = ['s14', 's15']
-for f in os.listdir(fake_root):
-    if f[-3:]=='npy' and f.split('__')[0] in select_fs:
-        files.append(f)
-files = files[:opt.how_many]
+# fake_root = '/u/lchen63/Project/face_tracking_detection/eccv2020/sample/atnet_raw_pca_test'
+fake_root = '/u/lchen63/Project/face_tracking_detection/eccv2020/sample/atnet_raw_pca_test_lrw'
+files = [f for f in os.listdir(fake_root) if f[-3:]=='npy'][:opt.how_many]
+# files = []
+# select_fs = ['s14', 's15']
+# for f in os.listdir(fake_root):
+#     if f[-3:]=='npy' and f.split('__')[0] in select_fs:
+#         files.append(f)
+# files = files[:opt.how_many]
 
 # files = ["s13__pbbo3a_front.npy"]
 # files = files[:
 # pdb.set_trace()
 
 real_root = os.path.join(opt.dataroot, 'align')
-audio_root = os.path.join(opt.dataroot, 'audio')
+# audio_root = os.path.join(opt.dataroot, 'audio')
+audio_root = '/home/cxu-serve/p1/common/lrw/audio/'
 save_root = os.path.join('evaluation_store', opt.name, 'fake_lmark')
 
 visualizer = Visualizer(opt)
@@ -75,8 +77,10 @@ for file_id, file in enumerate(tqdm(files)):
 
     print('process {} ...'.format(file))
 
-    paths[0] = file.split('__')[0]
-    paths[1] = file.split('__')[1].split('_')[0]
+    # paths[0] = file.split('__')[0]
+    # paths[1] = file.split('__')[1].split('_')[0]
+    paths = ['s23', 'lrav4p']
+    word, name = file.split('_')[2], file.split('_')[3]
 
     # target
     opt.tgt_video_path = os.path.join(real_root, paths[0], paths[1]+"_crop.mp4")
@@ -84,7 +88,7 @@ for file_id, file in enumerate(tqdm(files)):
     # opt.tgt_lmarks_path = os.path.join(real_root, paths[0], paths[1]+"_original.npy")
     opt.tgt_rt_path = None
     opt.tgt_ani_path = None
-    audio_tgt_path = os.path.join(audio_root, paths[0], paths[1]+".wav")
+    audio_tgt_path = os.path.join(audio_root, word, "test", "{}_{}.wav".format(word, name))
     # reference
     ref_paths = paths
     opt.ref_front_path = None
@@ -134,9 +138,10 @@ for file_id, file in enumerate(tqdm(files)):
         tgt_image = util.tensor2im(data['tgt_image'])
 
 
-        img_id = "{}_{}_{}".format(img_path[0].split('/')[-3], img_path[0].split('/')[-2], img_path[0].split('/')[-1][:-4])
+        # img_id = "{}_{}_{}".format(img_path[0].split('/')[-3], img_path[0].split('/')[-2], img_path[0].split('/')[-1][:-4])
+        img_id = file[:-4]
         img_dir = os.path.join(save_root,  img_id)
-        img_name = "%05d.png"%data['index'][0]
+        img_name = "%05d.jpg"%data['index'][0]
         img_test_dir = os.path.join(save_root, 'test')
 
         if not os.path.exists(img_dir):

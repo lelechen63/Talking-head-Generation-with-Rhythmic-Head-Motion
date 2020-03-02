@@ -245,4 +245,4 @@ test_lrw_save(){
 # test_lrw_save 1 face8_vox_ani_nonlinear_atten latest 100
 # test_model_grid 2 face8_grid_linear_mask 8 5
 # test_model_audio 1 face8_grid_linear_mask latest 20
-test_model_vox_new 1 face8_vox_ani_nonlinear_continue 11 10
+test_model_vox_new 1 face8_vox_ani_nonlinear_continue 14 10

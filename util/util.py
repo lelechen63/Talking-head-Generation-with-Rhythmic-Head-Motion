@@ -11,11 +11,11 @@ from PIL import Image
 import os
 import cv2
 
-def get_roi(lmark): #lmark shape (68,2) or (68,3) , tempolate shape(256, 256, 1)
+def get_roi_backup(lmark, mask_eyes=True, mask_mouth=True): #lmark shape (68,2) or (68,3) , tempolate shape(256, 256, 1)
     lmark = lmark.copy()
     tempolate = np.zeros((256, 256 , 1), np.uint8)
     eyes =[21, 22, 24,  26, 36, 39,42, 45]
-    # eyes =[36, 37, 39, 41, 42, 43, 45, 46]
+    # eyes =[36, 37, 38, 39, 40, 41, 42, 43, 45, 46]
     eyes_x = []
     eyes_y = []
     for i in eyes:
@@ -31,7 +31,7 @@ def get_roi(lmark): #lmark shape (68,2) or (68,3) , tempolate shape(256, 256, 1)
     min_y = max(0, int(min_y-5) )
     max_y = min(255, int(max_y+5) )
 
-    tempolate[ int(min_y): int(max_y), int(min_x):int(max_x)] = 0
+    tempolate[ int(min_y): int(max_y), int(min_x):int(max_x)] = 1 if mask_eyes else 0
     mouth = [48, 50, 51, 54, 57]
     mouth_x = []
     mouth_y = []
@@ -49,7 +49,109 @@ def get_roi(lmark): #lmark shape (68,2) or (68,3) , tempolate shape(256, 256, 1)
     max_y2 = min(255, int(max_y2+5) )
 
     
-    tempolate[int(min_y2):int(max_y2), int(min_x2):int(max_x2)] = 1
+    tempolate[int(min_y2):int(max_y2), int(min_x2):int(max_x2)] = 1 if mask_mouth else 0
+    return  tempolate
+
+def get_roi_small_eyes(lmark, mask_eyes=True, mask_mouth=True): #lmark shape (68,2) or (68,3) , tempolate shape(256, 256, 1)
+    lmark = lmark.copy()
+    tempolate = np.zeros((256, 256 , 1), np.uint8)
+    # eyes =[21, 22, 24,  26, 36, 39,42, 45]
+    l_eyes =[36, 37, 38, 39, 40, 41]
+    r_eyes = [42, 43, 44, 45, 46, 47]
+    l_eyes_x = []
+    l_eyes_y = []
+    for i in l_eyes:
+        l_eyes_x.append(lmark[i,0])
+        l_eyes_y.append(lmark[i,1])
+    min_x = lmark[l_eyes[np.argmin(l_eyes_x)], 0] 
+    max_x = lmark[l_eyes[np.argmax(l_eyes_x)], 0] 
+    min_y = lmark[l_eyes[np.argmin(l_eyes_y)], 1]
+    
+    max_y = lmark[l_eyes[np.argmax(l_eyes_y)], 1]
+    min_x = max(0, int(min_x-2) )
+    max_x = min(255, int(max_x+2) )
+    min_y = max(0, int(min_y-2) )
+    max_y = min(255, int(max_y+2) )
+
+    tempolate[ int(min_y): int(max_y), int(min_x):int(max_x)] = 1
+
+    r_eyes_x = []
+    r_eyes_y = []
+    for i in r_eyes:
+        r_eyes_x.append(lmark[i,0])
+        r_eyes_y.append(lmark[i,1])
+    min_x = lmark[r_eyes[np.argmin(r_eyes_x)], 0] 
+    max_x = lmark[r_eyes[np.argmax(r_eyes_x)], 0] 
+    min_y = lmark[r_eyes[np.argmin(r_eyes_y)], 1]
+    
+    max_y = lmark[r_eyes[np.argmax(r_eyes_y)], 1]
+    min_x = max(0, int(min_x-2) )
+    max_x = min(255, int(max_x+2) )
+    min_y = max(0, int(min_y-2) )
+    max_y = min(255, int(max_y+2) )
+
+    tempolate[ int(min_y): int(max_y), int(min_x):int(max_x)] = 1
+    
+    return  tempolate
+
+def get_roi(lmark, mask_eyes=True, mask_mouth=True): #lmark shape (68,2) or (68,3) , tempolate shape(256, 256, 1)
+    lmark = lmark.copy()
+    tempolate = np.zeros((256, 256 , 1), np.uint8)
+    # eyes =[21, 22, 24,  26, 36, 39,42, 45]
+    l_eyes =[36, 37, 38, 39, 40, 41]
+    r_eyes = [42, 43, 44, 45, 46, 47]
+    l_eyes_x = []
+    l_eyes_y = []
+    for i in l_eyes:
+        l_eyes_x.append(lmark[i,0])
+        l_eyes_y.append(lmark[i,1])
+    min_x = lmark[l_eyes[np.argmin(l_eyes_x)], 0] 
+    max_x = lmark[l_eyes[np.argmax(l_eyes_x)], 0] 
+    min_y = lmark[l_eyes[np.argmin(l_eyes_y)], 1]
+    
+    max_y = lmark[l_eyes[np.argmax(l_eyes_y)], 1]
+    min_x = max(0, int(min_x-2) )
+    max_x = min(255, int(max_x+2) )
+    min_y = max(0, int(min_y-2) )
+    max_y = min(255, int(max_y+2) )
+
+    tempolate[ int(min_y): int(max_y), int(min_x):int(max_x)] = 1
+
+    r_eyes_x = []
+    r_eyes_y = []
+    for i in r_eyes:
+        r_eyes_x.append(lmark[i,0])
+        r_eyes_y.append(lmark[i,1])
+    min_x = lmark[r_eyes[np.argmin(r_eyes_x)], 0] 
+    max_x = lmark[r_eyes[np.argmax(r_eyes_x)], 0] 
+    min_y = lmark[r_eyes[np.argmin(r_eyes_y)], 1]
+    
+    max_y = lmark[r_eyes[np.argmax(r_eyes_y)], 1]
+    min_x = max(0, int(min_x-2) )
+    max_x = min(255, int(max_x+2) )
+    min_y = max(0, int(min_y-2) )
+    max_y = min(255, int(max_y+2) )
+
+    tempolate[ int(min_y): int(max_y), int(min_x):int(max_x)] = 1
+    
+    mouth = [48, 50, 51, 54, 57]
+    mouth_x = []
+    mouth_y = []
+    for i in mouth:
+        mouth_x.append(lmark[i,0])
+        mouth_y.append(lmark[i,1])
+    min_x2 = lmark[mouth[np.argmin(mouth_x)], 0] 
+    max_x2 = lmark[mouth[np.argmax(mouth_x)], 0] 
+    min_y2 = lmark[mouth[np.argmin(mouth_y)], 1]
+    max_y2 = lmark[mouth[np.argmax(mouth_y)], 1]  
+
+    min_x2 = max(0, int(min_x2-5) )
+    max_x2 = min(255, int(max_x2+5) )
+    min_y2 = max(0, int(min_y2-5) )
+    max_y2 = min(255, int(max_y2+5) )
+
+    
+    tempolate[int(min_y2):int(max_y2), int(min_x2):int(max_x2)] = 1 if mask_mouth else 0
     return  tempolate
 
 def visualize_label(opt, label_tensor, model=None): 

@@ -58,7 +58,7 @@ def get_param(root, pickle_data, pick_id, opt):
         opt.ref_rt_path = opt.tgt_rt_path
         opt.ref_ani_id = int(ref_paths[3])
 
-        audio_tgt_path = os.path.join(root, audio_package, paths[0], paths[1], paths[2]+".m4a")
+        audio_tgt_path = os.path.join(root, 'unzip/test_audio', paths[0], paths[1], paths[2]+".m4a")
 
     elif opt.dataset_name == 'grid':
         # target

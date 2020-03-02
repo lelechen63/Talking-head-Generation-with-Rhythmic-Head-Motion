@@ -26,7 +26,7 @@ from torch.utils.data import DataLoader
 from data.base_dataset import BaseDataset, get_transform
 from data.keypoint2img import interpPoints, drawEdge
 from scipy.spatial.transform import Rotation as R
-from util.util import get_roi
+from util.util import get_roi, get_roi_small_eyes
 
 import copy
 import pdb
@@ -178,14 +178,16 @@ class FaceForeDataset(BaseDataset):
         # get reference
         ref_images, ref_lmarks, ref_coords = self.prepare_datas(real_video, lmarks, input_indexs, transform, transform_L, scale)
 
-        # # get target
+        # get target
         tgt_images, tgt_lmarks, tgt_crop_coords = self.prepare_datas(real_video, lmarks, target_id, transform, transform_L, scale)
 
         # get template for target
         tgt_templates = []
+        tgt_templates_eyes = []
         for gg in target_id:
             lmark = lmarks[gg]
-            tgt_templates.append(self.get_template(lmark, transform_T, self.output_shape, tgt_crop_coords))
+            tgt_templates.append(self.get_template(lmark, transform_T, self.output_shape, tgt_crop_coords, mask_eyes=False))
+            tgt_templates_eyes.append(self.get_template(lmark, transform_T, self.output_shape, tgt_crop_coords, only_eyes=True))
 
         if self.opt.warp_ani:
         # get animation & get cropped ground truth
@@ -222,13 +224,13 @@ class FaceForeDataset(BaseDataset):
             for warp_id, warp_ref in enumerate(warping_refs):
                 lmark_id = input_indexs[warping_ref_ids[warp_id]]
                 warp_ref_lmark = lmarks[lmark_id]
-                warp_ref_template = torch.Tensor(self.get_template(warp_ref_lmark, transform_T, self.output_shape, ref_coords))
+                warp_ref_template = torch.Tensor(self.get_template(warp_ref_lmark, transform_T, self.output_shape, ref_coords, mask_eyes=False))
                 warp_ref_template_inter = -warp_ref * warp_ref_template + (1 - warp_ref_template)
                 warping_refs[warp_id] = warp_ref / warp_ref_template_inter
             # for animation
             if self.opt.warp_ani:
                 for ani_lmark_id, ani_lmark_temp in enumerate(ani_lmarks_back):
-                    ani_template = torch.Tensor(self.get_template(ani_lmark_temp, transform_T, self.output_shape, ani_coords))
+                    ani_template = torch.Tensor(self.get_template(ani_lmark_temp, transform_T, self.output_shape, ani_coords, mask_eyes=False))
                     ani_template_inter = -ani_images[ani_lmark_id] * ani_template + (1 - ani_template)
                     ani_images[ani_lmark_id] = ani_images[ani_lmark_id] / ani_template_inter
             
@@ -241,8 +243,10 @@ class FaceForeDataset(BaseDataset):
         tgt_lmarks = torch.cat([tgt_lmark.unsqueeze(0) for tgt_lmark in tgt_lmarks], axis=0)
         if self.opt.isTrain:
             tgt_templates = torch.cat([torch.Tensor(tgt_template).unsqueeze(0).unsqueeze(0) for tgt_template in tgt_templates], axis=0)
+            tgt_templates_eyes = torch.cat([torch.Tensor(tgt_template).unsqueeze(0).unsqueeze(0) for tgt_template in tgt_templates_eyes], axis=0)
         else:
             tgt_templates = torch.cat([torch.Tensor(tgt_template).unsqueeze(0).unsqueeze(0) for tgt_template in tgt_templates], axis=0)
+            tgt_templates_eyes = torch.cat([torch.Tensor(tgt_template).unsqueeze(0).unsqueeze(0) for tgt_template in tgt_templates_eyes], axis=0)
             # tgt_templates = 0
 
         warping_refs = torch.cat([warping_ref.unsqueeze(0) for warping_ref in warping_refs], 0)
@@ -260,6 +264,9 @@ class FaceForeDataset(BaseDataset):
                 cropped_images = cropped_images / crop_template_inter
             tgt_template_inter = -tgt_images * tgt_templates + (1 - tgt_templates)
             tgt_mask_images = tgt_images / tgt_template_inter
+
+        # only eyes
+        # tgt_templates = tgt_templates_eyes
 
         input_dic = {'v_id' : target_img_path, 'tgt_label': tgt_lmarks, 'tgt_template': tgt_templates, 'ref_image':ref_images , 'ref_label': ref_lmarks, \
         'tgt_image': tgt_images,  'target_id': target_id , 'warping_ref': warping_refs , 'warping_ref_lmark': warping_ref_lmarks, 'path': video_path}
@@ -406,9 +413,12 @@ class FaceForeDataset(BaseDataset):
         return img, crop_size
 
     # preprocess for template
-    def get_template(self, lmark, transform_T, size, crop_coords):
+    def get_template(self, lmark, transform_T, size, crop_coords, mask_eyes=True, mask_mouth=True, only_eyes=False):
         # crop
-        template = get_roi(lmark)
+        if only_eyes:
+            template = get_roi_small_eyes(lmark)
+        else:
+            template = get_roi(lmark, mask_eyes, mask_mouth)
         if self.opt.isTrain:
             template = self.crop(Image.fromarray(template[:, :, 0], 'L'), crop_coords)
         else:

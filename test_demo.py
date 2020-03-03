@@ -170,10 +170,13 @@ if opt.dataset_name == 'lrs':
     save_name = 'lrs'
 if opt.dataset_name == 'lrw':
     save_name = 'lrw'
-save_root = os.path.join('evaluation_store', save_name, '{}_shot_test'.format(opt.n_shot))
+# save_root = os.path.join('evaluation_store', save_name, '{}_shot_test'.format(opt.n_shot), 'epoch_{}'.format(opt.which_epoch))
+save_root = os.path.join('evaluation_store', save_name, 'epoch_{}'.format(opt.which_epoch))
 # pick_ids = np.random.choice(list(range(len(pickle_data))), size=opt.how_many)
 end = int(len(pickle_data))
-pick_ids = range(0, end, end//opt.how_many)
+# pick_ids = range(5, end//2-5, (end//2-5)//opt.how_many)
+# pick_ids = range(0, end, end//opt.how_many)
+pick_ids = range(0, end)
 # pick_ids = [100]
 # pick_ids = range(0, opt.how_many)
 # pick_ids = range(0, len(pickle_data))
@@ -259,12 +262,12 @@ for pick_id in tqdm(pick_ids):
         image_pil.save(os.path.join(img_dir, img_name))
 
         # save for test
-        test_syn_image = util.tensor2im(synthesized_image)
-        img_test_dir = os.path.join(save_root, 'test')
-        if not os.path.exists(img_test_dir):
-            os.makedirs(img_test_dir)
-        image_pil = Image.fromarray(test_syn_image)
-        image_pil.save(os.path.join(img_test_dir, img_name))
+        # test_syn_image = util.tensor2im(synthesized_image)
+        # img_test_dir = os.path.join(save_root, 'test')
+        # if not os.path.exists(img_test_dir):
+        #     os.makedirs(img_test_dir)
+        # image_pil = Image.fromarray(test_syn_image)
+        # image_pil.save(os.path.join(img_test_dir, img_name))
 
         # save reference
         if i == 0:
@@ -276,28 +279,28 @@ for pick_id in tqdm(pick_ids):
                 ref_img.save(os.path.join(img_dir, 'reference', 'ref_{}.png').format(ref_img_id))
 
         # save for evaluation
-        if opt.evaluate:
-            if not os.path.exists(os.path.join(img_dir, 'real')):
-                os.makedirs(os.path.join(img_dir, 'real'))
-            img_path = os.path.join(img_dir, 'real', '{}_{}_image.png'.format(data['target_id'][0], 'real'))
-            image_pil = Image.fromarray(tgt_image)
-            image_pil.save(img_path)
+        # if opt.evaluate:
+        #     if not os.path.exists(os.path.join(img_dir, 'real')):
+        #         os.makedirs(os.path.join(img_dir, 'real'))
+        #     img_path = os.path.join(img_dir, 'real', '{}_{}_image.png'.format(data['target_id'][0], 'real'))
+        #     image_pil = Image.fromarray(tgt_image)
+        #     image_pil.save(img_path)
 
-            if not os.path.exists(os.path.join(img_dir, 'synthesized')):
-                os.makedirs(os.path.join(img_dir, 'synthesized'))
-            img_path = os.path.join(img_dir, 'synthesized', '{}_{}_image.png'.format(data['target_id'][0], 'synthesized'))
-            image_pil = Image.fromarray(synthesized_image)
-            image_pil.save(img_path)
+        #     if not os.path.exists(os.path.join(img_dir, 'synthesized')):
+        #         os.makedirs(os.path.join(img_dir, 'synthesized'))
+        #     img_path = os.path.join(img_dir, 'synthesized', '{}_{}_image.png'.format(data['target_id'][0], 'synthesized'))
+        #     image_pil = Image.fromarray(synthesized_image)
+        #     image_pil.save(img_path)
 
         # print('process image... %s' % img_path)
 
     # combine into video (save for compare)
-    v_n = os.path.join(img_dir, 'test.mp4')
-    image_to_video(sample_dir = img_dir, video_name = v_n)
-    add_audio(os.path.join(img_dir, 'test.mp4'), audio_tgt_path)
+    # v_n = os.path.join(img_dir, 'test.mp4')
+    # image_to_video(sample_dir = img_dir, video_name = v_n)
+    # add_audio(os.path.join(img_dir, 'test.mp4'), audio_tgt_path)
     # combine into video (save for test)
-    v_n = os.path.join(img_test_dir, '{}.mp4'.format(img_id))
-    image_to_video(sample_dir = img_test_dir, video_name = v_n)
-    for f in os.listdir(img_test_dir):
-        if f.split('.')[1] != "mp4":
-            os.remove(os.path.join(img_test_dir, f))
+    # v_n = os.path.join(img_test_dir, '{}.mp4'.format(img_id))
+    # image_to_video(sample_dir = img_test_dir, video_name = v_n)
+    # for f in os.listdir(img_test_dir):
+    #     if f.split('.')[1] != "mp4":
+    #         os.remove(os.path.join(img_test_dir, f))

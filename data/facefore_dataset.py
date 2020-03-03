@@ -541,7 +541,8 @@ class FaceForeDataset(BaseDataset):
                 if self.opt.isTrain:
                     warp_ref_ids.append(np.argmax(reference_rt_diffs))
                 else:
-                    warp_ref_ids.append(np.argmin(reference_rt_diffs))
+                    # warp_ref_ids.append(np.argmin(reference_rt_diffs))
+                    warp_ref_ids.append(np.argmax(reference_rt_diffs))
 
         return warp_ref_ids
 

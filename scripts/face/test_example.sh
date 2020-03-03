@@ -150,6 +150,7 @@ test_model_8_continue(){
     --crop_ref
 }
 
+test_model_8_linear 1 latest 200
 # test_model_8_grid 3 latest 50
 # test_model_8 3 face8_vox_ani_nonlinear latest 50
 # test_model_1 3 latest 50
@@ -157,5 +158,5 @@ test_model_8_continue(){
 # test_model_8_crema 3 45 50
 # test_model_8_new 1 face8_vox_new_nonlinear latest 50
 # test_model_8 1 face8_vox_ani_nonlinear_continue 4 50
-test_model_8 1 face8_vox_ani_nonlinear_atten latest 100
+# test_model_8 1 face8_vox_ani_nonlinear_atten latest 100
 # test_model_8_continue 1 face8_vox_ani_nonlinear_continue 11 100

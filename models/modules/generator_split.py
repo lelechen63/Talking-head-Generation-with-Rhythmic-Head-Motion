@@ -87,7 +87,8 @@ class FewShotGenerator(BaseNetwork):
                                         n_shot=self.opt.n_shot,
                                         n_downsample_G=self.n_downsample_G)
 
-        self.atten_gen = AttenGen(norm_ref=norm_ref, input_nc=input_nc, 
+        if not opt.no_atten:
+            self.atten_gen = AttenGen(norm_ref=norm_ref, input_nc=input_nc, 
                                   nf=self.nf, ch=self.ch,
                                   n_shot=self.opt.n_shot,
                                   n_downsample_A=self.n_downsample_A)
@@ -180,7 +181,11 @@ class FewShotGenerator(BaseNetwork):
     ### encode the reference image to get features for weight generation
     def reference_encoding(self, img_ref, label_ref, label, n, t=0):
         # get attention
-        atten, ref_idx = self.atten_gen(label, label_ref)    # b x n x hw
+        if self.opt.no_atten:
+            atten = None
+            ref_idx = None
+        else:
+            atten, ref_idx = self.atten_gen(label, label_ref)    # b x n x hw
 
         # encode image and landmarks separately
         if not self.opt.use_new:
@@ -244,7 +249,10 @@ class Encoder(BaseNetwork):
                 b, c, h, w = x.shape
                 x = x.view(b//n, n, c, h*w)
 
-                x = torch.sum(x * atten.unsqueeze(2).expand_as(x), dim=1).view(b//n, c, h, w)
+                if atten is None:
+                    x = torch.mean(x, dim=1).view(b//n, c, h, w)
+                else:
+                    x = torch.sum(x * atten.unsqueeze(2).expand_as(x), dim=1).view(b//n, c, h, w)
 
         return x
 

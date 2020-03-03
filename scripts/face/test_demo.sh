@@ -238,11 +238,11 @@ test_lrw_save(){
 # test_model_audio 2 latest 5
 # test_model_grid 1 face8_grid_ani_retrain latest 50
 # test_grid_save 2 face8_grid_ani_retrain latest 100
-# test_model_crema 3 face8_crema_linear 50 20
+test_model_crema 3 face8_crema_linear 20 20000
 # test_model_lisa 3 face8_vox_ani_nonlinear_atten latest 3
 # test_model_lrw 1 face8_vox_ani_nonlinear_continue 9 100
 # test_model_crema_multi 3 face8_crema_linear 50 50
 # test_lrw_save 1 face8_vox_ani_nonlinear_atten latest 100
 # test_model_grid 2 face8_grid_linear_mask 8 5
 # test_model_audio 1 face8_grid_linear_mask latest 20
-test_model_vox_new 1 face8_vox_ani_nonlinear_continue 14 10
+# test_model_vox_new 1 face8_vox_ani_nonlinear_continue 15 500

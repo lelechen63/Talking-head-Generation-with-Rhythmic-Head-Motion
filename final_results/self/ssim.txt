@@ -1,0 +1,5 @@
+/home/cxu-serve/p1/common/evaluation/gt/vox_1_shot/id00419_BhODzRhw7XA_00101_aligned_real.mp4	 ssim: 0.7732,	 psnr: 0.7732
+/home/cxu-serve/p1/common/evaluation/gt/vox_1_shot/id00419_S8fiWqrZEew_00216_aligned_real.mp4	 ssim: 0.7895,	 psnr: 0.7895
+/home/cxu-serve/p1/common/evaluation/gt/vox_1_shot/id00812_3OYZYK9sbdA_00019_aligned_real.mp4	 ssim: 0.6435,	 psnr: 0.6435
+/home/cxu-serve/p1/common/evaluation/gt/vox_1_shot/id00812_v9S8ArxXwDU_00375_aligned_real.mp4	 ssim: 0.7029,	 psnr: 0.7029
+/home/cxu-serve/p1/common/evaluation/gt/vox_1_shot/id00817_Dgh0xLWgA0w_00085_aligned_real.mp4	 ssim: 0.7897,	 psnr: 0.7897

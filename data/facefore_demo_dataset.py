@@ -54,6 +54,7 @@ class FaceForeDemoDataset(BaseDataset):
         parser.add_argument('--ref_ani_id', type=int)
         parser.add_argument('--find_largest_mouth', action='store_true', help='find reference image that open mouth in largest ratio')
         parser.add_argument('--crop_ref', action='store_true')
+        parser.add_argument('--no_head_motion', action='store_true')
 
         return parser
 
@@ -145,6 +146,11 @@ class FaceForeDemoDataset(BaseDataset):
         self.ref_lmarks_temp = self.ref_lmarks
         self.ref_video, self.ref_lmarks, self.ref_indices = self.define_inference(self.ref_video, self.ref_lmarks)
 
+        if self.opt.dataset_name == 'lrw':
+            for img_id in range(self.ref_video.shape[0]):
+                mask = self.ref_video[img_id] == 1
+                self.ref_video[img_id] = self.ref_video[img_id] - 2*mask.type(torch.uint8)
+
 
     def __len__(self):
         return len(self.tgt_video) 
@@ -177,10 +183,16 @@ class FaceForeDemoDataset(BaseDataset):
             ani_lmarks_temp = []
 
             for gg in target_id:
-                ani_lmarks.append(self.reverse_rt(self.ref_front[int(self.ref_ani_id)], self.tgt_rt[gg]))
+                if self.opt.no_head_motion:
+                    ani_lmarks.append(self.ref_front[int(self.ref_ani_id)])
+                else:
+                    ani_lmarks.append(self.reverse_rt(self.ref_front[int(self.ref_ani_id)], self.tgt_rt[gg]))
                 ani_lmarks[-1] = np.array(ani_lmarks[-1])
                 ani_lmarks_temp.append(ani_lmarks[-1])
-                ani_images.append(self.tgt_ani_video[gg])
+                if self.opt.no_head_motion:
+                    ani_images.append(self.tgt_ani_video[self.ref_ani_id])
+                else:
+                    ani_images.append(self.tgt_ani_video[gg])
 
             ani_images, ani_lmarks = self.prepare_datas(ani_images, ani_lmarks, list(range(len(target_id))))
 
@@ -212,6 +224,9 @@ class FaceForeDemoDataset(BaseDataset):
 
         tgt_images = torch.cat([tgt_img.unsqueeze(0) for tgt_img in tgt_images], axis=0)
         tgt_lmarks = torch.cat([tgt_lmark.unsqueeze(0) for tgt_lmark in tgt_lmarks], axis=0)
+        if self.opt.dataset_name == 'lrw':
+            mask = tgt_images == 1
+            tgt_images = tgt_images - 2 * mask.type(torch.uint8)
         if self.opt.warp_ani:
             ani_images = torch.cat([ani_image.unsqueeze(0) for ani_image in ani_images], axis=0)
             ani_lmarks = torch.cat([ani_lmark.unsqueeze(0) for ani_lmark in ani_lmarks], axis=0)
@@ -402,7 +417,11 @@ class FaceForeDemoDataset(BaseDataset):
                 reference_rt_diffs.append(ref_rt[t] - target_rt)
             # most similar reference to target
             reference_rt_diffs = np.mean(np.absolute(reference_rt_diffs), axis=1)
-            warp_ref_ids.append(np.argmin(reference_rt_diffs))
+            if self.opt.no_head_motion:
+                warp_ref_ids.append(random.randint(0, len(ref_indexs)-1))
+            else:
+                warp_ref_ids.append(np.argmin(reference_rt_diffs))
+            # warp_ref_ids.append(np.argmax(reference_rt_diffs))
 
         return warp_ref_ids
 

@@ -26,6 +26,18 @@ import pdb
 import warnings
 warnings.simplefilter('ignore')
 
+def get_good_file():
+    pickle_data = []
+    root_path = os.path.join('evaluation_store', 'good')
+    # root_path = "/home/cxu-serve/p1/common/other/lrs_good"
+    files = os.listdir(root_path)
+    for f in files:
+        pickle_data.append(f)
+
+    # pickle_data = pickle_data[len(pickle_data)//2:]
+    return pickle_data
+
+
 def add_audio(video_name, audio_dir):
     command = 'ffmpeg -i ' + video_name  + ' -i ' + audio_dir + ' -vcodec copy  -acodec copy -y  ' + video_name.replace('.mp4','.mov')
     #ffmpeg -i /mnt/disk1/dat/lchen63/lrw/demo/new/resutls/results.mp4 -i /mnt/disk1/dat/lchen63/lrw/demo/new/audio/obama.wav -codec copy -c:v libx264 -c:a aac -b:a 192k  -shortest -y /mnt/disk1/dat/lchen63/lrw/demo/new/resutls/results.mov
@@ -47,16 +59,24 @@ def get_param(root, pickle_data, pick_id, opt):
         # target
         audio_package = 'unzip/test_video'
         opt.tgt_video_path = os.path.join(root, audio_package, paths[0], paths[1], paths[2]+"_aligned.mp4")
-        opt.tgt_lmarks_path = os.path.join(root, audio_package, paths[0], paths[1], paths[2]+"_aligned.npy")
+        if opt.no_head_motion:
+            opt.tgt_lmarks_path = os.path.join(root, audio_package, paths[0], paths[1], paths[2]+"_aligned_front.npy")
+        else:
+            # opt.tgt_lmarks_path = os.path.join(root, audio_package, paths[0], paths[1], paths[2]+"_aligned.npy")
+            # opt.tgt_lmarks_path = os.path.join("/home/cxu-serve/p1/common/other/vox_test", '{}__{}__{}_aligned_front_diff_rotated.npy'.format(paths[0], paths[1], paths[2]))
+            opt.tgt_lmarks_path = os.path.join("/home/cxu-serve/p1/common/other/vox_test", '{}__{}__{}_aligned_front_diff.npy'.format(paths[0], paths[1], paths[2]))
         opt.tgt_rt_path = os.path.join(root, audio_package, paths[0], paths[1], paths[2]+"_aligned_rt.npy")
         opt.tgt_ani_path = os.path.join(root, audio_package, paths[0], paths[1], paths[2]+"_aligned_ani.mp4")
         # reference
         ref_paths = paths
         opt.ref_front_path = os.path.join(root, audio_package, ref_paths[0], ref_paths[1], ref_paths[2]+"_aligned_front.npy")
         opt.ref_video_path = opt.tgt_video_path
-        opt.ref_lmarks_path = opt.tgt_lmarks_path
+        opt.ref_lmarks_path = os.path.join(root, audio_package, paths[0], paths[1], paths[2]+"_aligned.npy")
         opt.ref_rt_path = opt.tgt_rt_path
         opt.ref_ani_id = int(ref_paths[3])
+        if opt.no_head_motion:
+            opt.ref_img_id = str(opt.ref_ani_id)
+            opt.n_shot = 1
 
         audio_tgt_path = os.path.join(root, 'unzip/test_audio', paths[0], paths[1], paths[2]+".m4a")
 
@@ -156,6 +176,8 @@ elif opt.dataset_name == 'crema':
     _file = open(os.path.join(root, 'pickle','train_lmark2img.pkl'), "rb")
 elif opt.dataset_name == 'lrw':
     _file = open(os.path.join(root, 'pickle','test3_lmark2img.pkl'), "rb")
+elif opt.dataset_name == 'lrs':
+    _file = open(os.path.join(root, 'pickle','test2_lmark2img.pkl'), "rb")
 else:
     _file = open(os.path.join(root, 'pickle','test_lmark2img.pkl'), "rb")
 pickle_data = pkl.load(_file)
@@ -164,6 +186,7 @@ _file.close()
 if opt.dataset_name == 'crema':
     pickle_data = pickle_data[int(len(pickle_data)*0.8):]
 # pickle_data = [['id00081', '2xYrsnvtUWc', '00002'], ['id00081', '2xYrsnvtUWc', '00004'], ['id01000', '0lmrq0quo9M', '00001']]
+pickle_files = get_good_file()
 
 save_name = opt.name
 if opt.dataset_name == 'lrs':
@@ -171,11 +194,13 @@ if opt.dataset_name == 'lrs':
 if opt.dataset_name == 'lrw':
     save_name = 'lrw'
 # save_root = os.path.join('evaluation_store', save_name, '{}_shot_test'.format(opt.n_shot), 'epoch_{}'.format(opt.which_epoch))
-save_root = os.path.join('evaluation_store', save_name, 'epoch_{}'.format(opt.which_epoch))
+# save_root = os.path.join('evaluation_store', save_name, '{}_shot_epoch_{}'.format(opt.n_shot, opt.which_epoch))
+save_root = os.path.join('evaluation_store_good_retest', save_name, '{}_shot_epoch_{}'.format(opt.n_shot, opt.which_epoch))
 # pick_ids = np.random.choice(list(range(len(pickle_data))), size=opt.how_many)
+# save_root = os.path.join('audio_result', save_name, '{}_shot_epoch_{}'.format(opt.n_shot, opt.which_epoch))
 end = int(len(pickle_data))
-# pick_ids = range(5, end//2-5, (end//2-5)//opt.how_many)
-# pick_ids = range(0, end, end//opt.how_many)
+# pick_ids = range(1, end-5, (end)//opt.how_many)
+# pick_ids = range(0, end-5, end//opt.how_many)
 pick_ids = range(0, end)
 # pick_ids = [100]
 # pick_ids = range(0, opt.how_many)
@@ -194,10 +219,20 @@ pick_ids = range(0, end)
 
 count = 0
 for pick_id in tqdm(pick_ids):
+    paths = pickle_data[pick_id]
+    if '{}_{}_{}_aligned'.format(paths[0], paths[1], paths[2]) not in pickle_files:
+        continue
+    # pdb.set_trace()
+    # if 'test_{}_{}_crop'.format(paths[0], paths[1][:5]) not in pickle_files:
+    #     continue
+
+    count += 1
+    if count == 20:
+        break
+
     print('process {} ...'.format(pick_id))
     audio_tgt_path = get_param(root, pickle_data, pick_id, opt)
 
-    paths = pickle_data[pick_id]
     # if paths[0] not in pick_files:
     #     continue
     # if paths[0][:-10] not in pick_files:
@@ -295,12 +330,13 @@ for pick_id in tqdm(pick_ids):
         # print('process image... %s' % img_path)
 
     # combine into video (save for compare)
-    # v_n = os.path.join(img_dir, 'test.mp4')
-    # image_to_video(sample_dir = img_dir, video_name = v_n)
-    # add_audio(os.path.join(img_dir, 'test.mp4'), audio_tgt_path)
+    v_n = os.path.join(img_dir, 'test.mp4')
+    image_to_video(sample_dir = img_dir, video_name = v_n)
+    add_audio(os.path.join(img_dir, 'test.mp4'), audio_tgt_path)
     # combine into video (save for test)
-    # v_n = os.path.join(img_test_dir, '{}.mp4'.format(img_id))
+    # v_n = os.path.join(img_test_dir, '{}_fake.mp4'.format(img_id))
     # image_to_video(sample_dir = img_test_dir, video_name = v_n)
+    # add_audio(v_n, audio_tgt_path)
     # for f in os.listdir(img_test_dir):
     #     if f.split('.')[1] != "mp4":
     #         os.remove(os.path.join(img_test_dir, f))

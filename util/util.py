@@ -73,7 +73,7 @@ def get_roi_small_eyes(lmark, mask_eyes=True, mask_mouth=True): #lmark shape (68
     min_y = max(0, int(min_y-2) )
     max_y = min(255, int(max_y+2) )
 
-    tempolate[ int(min_y): int(max_y), int(min_x):int(max_x)] = 1
+    tempolate[ int(min_y): int(max_y), int(min_x):int(max_x)] = 0
 
     r_eyes_x = []
     r_eyes_y = []
@@ -115,7 +115,7 @@ def get_roi(lmark, mask_eyes=True, mask_mouth=True): #lmark shape (68,2) or (68,
     min_y = max(0, int(min_y-2) )
     max_y = min(255, int(max_y+2) )
 
-    tempolate[ int(min_y): int(max_y), int(min_x):int(max_x)] = 1
+    tempolate[ int(min_y): int(max_y), int(min_x):int(max_x)] = 1 if mask_eyes else 0
 
     r_eyes_x = []
     r_eyes_y = []
@@ -132,7 +132,7 @@ def get_roi(lmark, mask_eyes=True, mask_mouth=True): #lmark shape (68,2) or (68,
     min_y = max(0, int(min_y-2) )
     max_y = min(255, int(max_y+2) )
 
-    tempolate[ int(min_y): int(max_y), int(min_x):int(max_x)] = 1
+    tempolate[ int(min_y): int(max_y), int(min_x):int(max_x)] = 1 if mask_eyes else 0
     
     mouth = [48, 50, 51, 54, 57]
     mouth_x = []

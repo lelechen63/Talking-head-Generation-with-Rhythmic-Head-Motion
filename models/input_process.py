@@ -9,6 +9,29 @@ import torch
 import pdb
 
 ############################# input processing ###################################
+def encode_input_finetune(opt, data_list, dummy_bs):
+    if opt.isTrain and data_list[0].get_device() == 0:
+        data_list = remove_dummy_from_tensor(opt, data_list, dummy_bs)
+    tgt_labels, tgt_images, ref_labels, ref_images, warp_ref_lmark, warp_ref_img = data_list
+
+    # target label and image
+    tgt_labels = encode_label(opt, tgt_labels)
+    tgt_images = tgt_images.cuda() if tgt_images is not None else None
+
+    # flownet ground truth
+    # flow_gt = [flow.cuda() if flow is not None else None for flow in flow_gt]
+    # conf_gt = [conf.cuda() if conf is not None else None for conf in conf_gt]
+
+    # reference label and image
+    ref_labels = encode_label(opt, ref_labels)        
+    ref_images = ref_images.cuda()
+
+    # warp reference label and image
+    warp_ref_lmark = encode_label(opt, warp_ref_lmark)        
+    warp_ref_img = warp_ref_img.cuda()
+        
+    return tgt_labels, tgt_images, ref_labels, ref_images, warp_ref_lmark, warp_ref_img
+
 def encode_input(opt, data_list, dummy_bs):
     if opt.isTrain and data_list[0].get_device() == 0:
         data_list = remove_dummy_from_tensor(opt, data_list, dummy_bs)

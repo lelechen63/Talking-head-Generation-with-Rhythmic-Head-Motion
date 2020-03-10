@@ -175,8 +175,8 @@ class Vid2VidModel(BaseModel):
         warp_ref_lmark_t = warp_ref_lmark[:, t]
         prevs = [prevs[0], prevs[2]] # prev_label and prev_fake_image
         prevs = [prev.contiguous().view(b, -1, h, w) if prev is not None else None for prev in prevs]
-        ani_img_t = ani_img[:, t] if self.opt.warp_ani else None
-        ani_lmark_t = ani_lmark[:, t] if self.opt.warp_ani else None
+        ani_img_t = ani_img[:, t] if self.opt.warp_ani and ani_img is not None else None
+        ani_lmark_t = ani_lmark[:, t] if self.opt.warp_ani and ani_lmark is not None else None
 
         return tgt_label, tgt_label_valid, tgt_image, warp_ref_img_t, warp_ref_lmark_t, ani_img_t, ani_lmark_t, prevs
 
@@ -205,7 +205,8 @@ class Vid2VidModel(BaseModel):
                         
         tgt_label_valid, ref_labels_valid = tgt_label[:,-1], ref_labels
         if opt.finetune and self.t == 0:
-            self.finetune(ref_labels, ref_images)
+            self.finetune(ref_labels, ref_images, warp_ref_lmark, warp_ref_img)
+            opt.finetune = False
 
         with torch.no_grad():
             assert self.t == 0
@@ -221,28 +222,32 @@ class Vid2VidModel(BaseModel):
             
         return fake_image, fake_raw_image, warped_image, flow, weight, atn_score, ref_idx, ref_label, ref_image, img_ani
 
-    def finetune(self, ref_labels, ref_images):
+    def finetune(self, ref_labels, ref_images, warp_ref_lmark, warp_ref_img):
         train_names = ['fc', 'conv_img', 'up']        
         params, _ = self.get_train_params(self.netG, train_names)         
         self.optimizer_G = self.get_optimizer(params, for_discriminator=False)        
         
         update_D = True
         if update_D:
-            params = list(self.netD.parameters())
-            if self.add_face_D: params += list(self.netDf.parameters())            
+            params = list(self.netD.parameters())       
             self.optimizer_D = self.get_optimizer(params, for_discriminator=True)
 
-        iterations = 100
+        iterations = 70
         for it in range(1, iterations + 1):            
             idx = np.random.randint(ref_labels.size(1))
             tgt_label, tgt_image = ref_labels[:,idx].unsqueeze(1), ref_images[:,idx].unsqueeze(1)            
 
-            g_losses, generated, prev = self.forward_generator(tgt_label, tgt_image, ref_labels, ref_images)
+            g_losses, generated, prev, _ = self.forward_generator(tgt_label=tgt_label, tgt_image=tgt_image, \
+                                                                  tgt_template=1, tgt_crop_image=None, \
+                                                                  flow_gt=[None]*3, conf_gt=[None]*3, \
+                                                                  ref_labels=ref_labels, ref_images=ref_images, \
+                                                                  warp_ref_lmark=warp_ref_lmark.unsqueeze(1), warp_ref_img=warp_ref_img.unsqueeze(1))
+
             g_losses = loss_backward(self.opt, g_losses, self.optimizer_G)
 
             d_losses = []
             if update_D:
-                d_losses = self.forward_discriminator(tgt_label, tgt_image, ref_labels, ref_images)
+                d_losses, _ = self.forward_discriminator(tgt_label, tgt_image, ref_labels, ref_images, warp_ref_lmark=warp_ref_lmark.unsqueeze(1), warp_ref_img=warp_ref_img.unsqueeze(1))
                 d_losses = loss_backward(self.opt, d_losses, self.optimizer_D)
 
             if (it % 10) == 0: 
@@ -251,3 +256,44 @@ class Vid2VidModel(BaseModel):
                 for k, v in loss_dict.items():
                     if v != 0: message += '%s: %.3f ' % (k, v)
                 print(message)
+
+    def finetune_call(self, tgt_labels, tgt_images, ref_labels, ref_images, warp_ref_lmark, warp_ref_img):
+        tgt_labels, tgt_images, ref_labels, ref_images, warp_ref_lmark, warp_ref_img = \
+            encode_input_finetune(self.opt, data_list=[tgt_labels, tgt_images, ref_labels, ref_images, warp_ref_lmark, warp_ref_img], dummy_bs=0)
+
+        train_names = ['fc', 'conv_img', 'up']
+        params, _ = self.get_train_params(self.netG, train_names)
+        self.optimizer_G = self.get_optimizer(params, for_discriminator=False)
+        
+        update_D = True
+        if update_D:
+            params = list(self.netD.parameters())       
+            self.optimizer_D = self.get_optimizer(params, for_discriminator=True)
+
+        iterations = max(20, self.opt.finetune_shot * 5)
+        # iterations = 0
+        for it in range(1, iterations + 1):
+            idx = np.random.randint(tgt_labels.size(1))
+            tgt_label, tgt_image = tgt_labels[:,idx].unsqueeze(1), tgt_images[:,idx].unsqueeze(1)                
+
+            g_losses, generated, prev, _ = self.forward_generator(tgt_label=tgt_label, tgt_image=tgt_image, \
+                                                                  tgt_template=1, tgt_crop_image=None, \
+                                                                  flow_gt=[None]*3, conf_gt=[None]*3, \
+                                                                  ref_labels=ref_labels, ref_images=ref_images, \
+                                                                  warp_ref_lmark=warp_ref_lmark, warp_ref_img=warp_ref_img)
+
+            g_losses = loss_backward(self.opt, g_losses, self.optimizer_G)
+
+            d_losses = []
+            if update_D:
+                d_losses, _ = self.forward_discriminator(tgt_label, tgt_image, ref_labels, ref_images, warp_ref_lmark=warp_ref_lmark, warp_ref_img=warp_ref_img)
+                d_losses = loss_backward(self.opt, d_losses, self.optimizer_D)
+
+            if (it % 10) == 0: 
+                message = '(iters: %d) ' % it
+                loss_dict = dict(zip(self.lossCollector.loss_names, g_losses + d_losses))
+                for k, v in loss_dict.items():
+                    if v != 0: message += '%s: %.3f ' % (k, v)
+                print(message)
+
+        self.opt.finetune = False

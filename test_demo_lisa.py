@@ -36,7 +36,7 @@ def add_audio(video_name, audio_dir):
 
 def image_to_video(sample_dir = None, video_name = None):
     
-    command = 'ffmpeg -framerate 25  -i ' + sample_dir +  '/%05d.png -c:v libx264 -y -vf "pad=ceil(iw/2)*2:ceil(ih/2)*2"  ' + video_name 
+    command = 'ffmpeg -framerate 25  -i ' + sample_dir +  '/%05d.jpg -c:v libx264 -y -vf "pad=ceil(iw/2)*2:ceil(ih/2)*2"  ' + video_name 
     #ffmpeg -framerate 25 -i real_%d.png -c:v libx264 -y -vf format=yuv420p real.mp4
     print (command)
     os.system(command)
@@ -44,14 +44,56 @@ def image_to_video(sample_dir = None, video_name = None):
 def get_param(root, opt):
     if opt.dataset_name == 'lisa':
         # target
-        opt.tgt_lmarks_path = os.path.join(root, "lisa2_crop_video_original.npy")
-        opt.tgt_rt_path = os.path.join(root, "00003_aligned_rt.npy")
+        opt.tgt_lmarks_path = os.path.join(root, "00216_aligned.npy")
+        opt.tgt_rt_path = os.path.join(root, "00216_aligned_rt.npy")
         opt.tgt_ani_path = os.path.join(root, "lisa2_ani.mp4")
         # reference
         opt.ref_front_path = os.path.join(root, 'lisa2_original_front.npy')
         opt.ref_video_path = os.path.join(root, 'lisa2_crop.png')
         opt.ref_lmarks_path = os.path.join(root, 'lisa2_original.npy')
         opt.ref_rt_path = os.path.join(root, 'lisa2_original_rt.npy')
+        opt.ref_ani_id = 0
+
+        audio_tgt_path = os.path.join(root, "f_f.wav")
+
+    elif opt.dataset_name == 'vincent':
+        # target
+        opt.tgt_lmarks_path = os.path.join(root, "00216_aligned.npy")
+        opt.tgt_rt_path = os.path.join(root, "00216_aligned_rt.npy")
+        opt.tgt_ani_path = os.path.join(root, "vincent2_ani.mp4")
+        # reference
+        opt.ref_front_path = os.path.join(root, 'vincent2_original_front.npy')
+        opt.ref_video_path = os.path.join(root, 'vincent2_crop.png')
+        opt.ref_lmarks_path = os.path.join(root, 'vincent2_original.npy')
+        opt.ref_rt_path = os.path.join(root, 'vincent2_original_rt.npy')
+        opt.ref_ani_id = 0
+
+        audio_tgt_path = os.path.join(root, "f_f.wav")
+
+    elif opt.dataset_name == 'mulan':
+        # target
+        opt.tgt_lmarks_path = os.path.join(root, "00216_aligned.npy")
+        opt.tgt_rt_path = os.path.join(root, "00216_aligned_rt.npy")
+        opt.tgt_ani_path = os.path.join(root, "mulan2_ani.mp4")
+        # reference
+        opt.ref_front_path = os.path.join(root, 'mulan2_original_front.npy')
+        opt.ref_video_path = os.path.join(root, 'mulan2_crop.png')
+        opt.ref_lmarks_path = os.path.join(root, 'mulan2_original.npy')
+        opt.ref_rt_path = os.path.join(root, 'mulan2_original_rt.npy')
+        opt.ref_ani_id = 0
+
+        audio_tgt_path = os.path.join(root, "f_f.wav")
+
+    elif opt.dataset_name == 'david':
+        # target
+        opt.tgt_lmarks_path = os.path.join(root, "00216_aligned.npy")
+        opt.tgt_rt_path = os.path.join(root, "00216_aligned_rt.npy")
+        opt.tgt_ani_path = os.path.join(root, "david_ani.mp4")
+        # reference
+        opt.ref_front_path = os.path.join(root, 'david_original_front.npy')
+        opt.ref_video_path = os.path.join(root, 'david_crop.png')
+        opt.ref_lmarks_path = os.path.join(root, 'david_original.npy')
+        opt.ref_rt_path = os.path.join(root, 'david_original_rt.npy')
         opt.ref_ani_id = 0
 
         audio_tgt_path = os.path.join(root, "f_f.wav")
@@ -67,7 +109,7 @@ model.eval()
 root = opt.dataroot
 
 save_name = opt.name
-save_root = os.path.join('evaluation_store', save_name, '{}_shot_test'.format(opt.n_shot))
+save_root = os.path.join('evaluation_store', save_name, '{}_shot_test_{}'.format(opt.n_shot, opt.dataset_name))
 
 
 audio_tgt_path = get_param(root, opt)
@@ -81,6 +123,8 @@ dataset = data_loader.load_data()
 print('generating image')
 ref_idx_fix = None
 for i, data in enumerate(tqdm(dataset)):
+
+    # pdb.set_trace()
 
     # if i >= 10: break
     if i >= len(dataset): break
@@ -111,8 +155,8 @@ for i, data in enumerate(tqdm(dataset)):
     ]
     compare_image = np.hstack([v for v in visuals if v is not None])
 
-    img_dir = os.path.join(save_root,  'lisa')
-    img_name = "%05d.png"%data['index'][0]
+    img_dir = os.path.join(save_root,  opt.dataset_name)
+    img_name = "%05d.jpg"%data['index'][0]
 
     if not os.path.exists(img_dir):
         os.makedirs(img_dir)
@@ -134,19 +178,19 @@ for i, data in enumerate(tqdm(dataset)):
         for ref_img_id in range(data['ref_image'].shape[1]):
             ref_img = util.tensor2im(data['ref_image'][0, ref_img_id])
             ref_img = Image.fromarray(ref_img)
-            ref_img.save(os.path.join(img_dir, 'reference', 'ref_{}.png').format(ref_img_id))
+            ref_img.save(os.path.join(img_dir, 'reference', 'ref_{}.jpg').format(ref_img_id))
 
     # save for evaluation
     if opt.evaluate:
         if not os.path.exists(os.path.join(img_dir, 'real')):
             os.makedirs(os.path.join(img_dir, 'real'))
-        img_path = os.path.join(img_dir, 'real', '{}_{}_image.png'.format(data['target_id'][0], 'real'))
+        img_path = os.path.join(img_dir, 'real', '{}_{}_image.jpg'.format(data['target_id'][0], 'real'))
         image_pil = Image.fromarray(tgt_image)
         image_pil.save(img_path)
 
         if not os.path.exists(os.path.join(img_dir, 'synthesized')):
             os.makedirs(os.path.join(img_dir, 'synthesized'))
-        img_path = os.path.join(img_dir, 'synthesized', '{}_{}_image.png'.format(data['target_id'][0], 'synthesized'))
+        img_path = os.path.join(img_dir, 'synthesized', '{}_{}_image.jpg'.format(data['target_id'][0], 'synthesized'))
         image_pil = Image.fromarray(synthesized_image)
         image_pil.save(img_path)
 

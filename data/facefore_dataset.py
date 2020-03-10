@@ -46,7 +46,7 @@ class FaceForeDataset(BaseDataset):
 
         # for reference
         parser.add_argument('--ref_img_id', type=str)
-
+        parser.add_argument('--no_head_motion', action='store_true')
 
         return parser
 
@@ -113,7 +113,10 @@ class FaceForeDataset(BaseDataset):
         elif self.opt.dataset_name == 'vox':
             paths = self.data[index]
             video_path = os.path.join(self.root, self.video_bag, paths[0], paths[1], paths[2]+"_aligned.mp4")
-            lmark_path = os.path.join(self.root, self.video_bag, paths[0], paths[1], paths[2]+"_aligned.npy")
+            if self.opt.no_head_motion:
+                lmark_path = os.path.join(self.root, self.video_bag, paths[0], paths[1], paths[2]+"_aligned.npy")
+            else:
+                lmark_path = os.path.join(self.root, self.video_bag, paths[0], paths[1], paths[2]+"_aligned_front.npy")
             ani_path = os.path.join(self.root, self.video_bag, paths[0], paths[1], paths[2]+"_aligned_ani.mp4")
             rt_path = os.path.join(self.root, self.video_bag, paths[0], paths[1], paths[2]+"_aligned_rt.npy")
             front_path = os.path.join(self.root, self.video_bag, paths[0], paths[1], paths[2]+"_aligned_front.npy")

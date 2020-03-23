@@ -27,7 +27,8 @@ from scipy.spatial.transform import Rotation as R
 from data.base_dataset import BaseDataset, get_transform
 from data.keypoint2img import interpPoints, drawEdge
 from util.util import openrate
-from util.util import get_roi
+from util.util import get_roi, get_roi_backup, eye_blinking
+from util import face_utils
 
 import pdb
 
@@ -52,9 +53,11 @@ class FaceForeDemoDataset(BaseDataset):
         parser.add_argument('--ref_rt_path', type=str, default=None)
         parser.add_argument('--ref_front_path', type=str, default=None)
         parser.add_argument('--ref_ani_id', type=int)
+        parser.add_argument('--ref_ani_path', type=str, default=None)
         parser.add_argument('--find_largest_mouth', action='store_true', help='find reference image that open mouth in largest ratio')
         parser.add_argument('--crop_ref', action='store_true')
         parser.add_argument('--no_head_motion', action='store_true')
+        parser.add_argument('--origin_not_require', action='store_true')
 
         return parser
 
@@ -101,8 +104,14 @@ class FaceForeDemoDataset(BaseDataset):
         # read in data
         self.tgt_lmarks = np.load(self.tgt_lmarks_path) #[:,:,:-1]
         self.tgt_video = self.read_videos(self.tgt_video_path)
+
+        # get enough video associate with landmark
+        if len(self.tgt_video) < self.tgt_lmarks.shape[0]:
+            self.tgt_video.extend([self.tgt_video[-1] for i in range(self.tgt_lmarks.shape[0]-len(self.tgt_video))])
+
         self.ref_lmarks = np.load(self.ref_lmarks_path)
         self.ref_video = self.read_videos(self.ref_video_path)
+        # pdb.set_trace()
         if self.opt.warp_ani:
             self.tgt_ani_video = self.read_videos(self.tgt_ani_path)
             self.ref_front = np.load(self.ref_front_path)
@@ -120,11 +129,32 @@ class FaceForeDemoDataset(BaseDataset):
         if self.opt.warp_ani or self.ref_search:
             self.tgt_rt = self.tgt_rt[correct_nums]
 
+        # smooth landmarks
+        for i in range(self.tgt_lmarks.shape[1]):
+            x = self.tgt_lmarks[:, i, 0]
+            x = face_utils.smooth(x, window_len=5)
+            self.tgt_lmarks[: ,i, 0] = x[2:-2]
+            y = self.tgt_lmarks[:, i, 1]
+            y = face_utils.smooth(y, window_len=5)
+            self.tgt_lmarks[: ,i, 1] = y[2:-2]
+
+        # get eyes
+        # self.tgt_lmarks = eye_blinking(self.tgt_lmarks)
+
         correct_nums = self.clean_lmarks(self.ref_lmarks)
         self.ref_lmarks = self.ref_lmarks[correct_nums]
         self.ref_video = np.asarray(self.ref_video)[correct_nums]
         if self.opt.warp_ani or self.ref_search:
             self.ref_rt = self.ref_rt[correct_nums]
+
+        # smooth landmarks
+        for i in range(self.ref_lmarks.shape[1]):
+            x = self.ref_lmarks[:, i, 0]
+            x = face_utils.smooth(x, window_len=5)
+            self.ref_lmarks[: ,i, 0] = x[2:-2]
+            y = self.ref_lmarks[:, i, 1]
+            y = face_utils.smooth(y, window_len=5)
+            self.ref_lmarks[: ,i, 1] = y[2:-2]
 
         # get transform for image and landmark
         self.transform = transforms.Compose([
@@ -203,22 +233,61 @@ class FaceForeDemoDataset(BaseDataset):
                     ani_template_inter = -ani_images[ani_lmark_id] * ani_template + (1 - ani_template)
                     ani_images[ani_lmark_id] = ani_images[ani_lmark_id] / ani_template_inter
 
+            # finetune (double check)
+            if self.opt.finetune and self.opt.origin_not_require:
+                ori_ani_image, ori_ani_lmark, ori_ani_lmarks_temp = [], [], []
+                for ref_idx in self.ref_indices:
+                    ori_ani_lmark.append(self.reverse_rt(self.ref_front[int(self.ref_ani_id)], self.tgt_rt[ref_idx]))
+                    ori_ani_lmark[-1] = np.array(ori_ani_lmark[-1])
+                    ori_ani_lmarks_temp.append(ori_ani_lmark[-1])
+                    ori_ani_image.append(self.tgt_ani_video[ref_idx])
+
+                ori_ani_image, ori_ani_lmark = self.prepare_datas(ori_ani_image, ori_ani_lmark, list(range(len(self.ref_indices))))
+
+                # crop by mask
+                if self.opt.crop_ref:
+                    for ani_lmark_id, ani_lmark_temp in enumerate(ori_ani_lmarks_temp):
+                        ani_template = torch.Tensor(self.get_template(ani_lmark_temp, self.transform_T))
+                        ani_template_inter = -ori_ani_image[ani_lmark_id] * ani_template + (1 - ani_template)
+                        ori_ani_image[ani_lmark_id] = ori_ani_image[ani_lmark_id] / ani_template_inter
+
+            # reference animation
+            elif self.opt.finetune and not self.opt.origin_not_require:
+                ori_ani_image = [cv2.imread(self.opt.ref_ani_path)]
+                ori_ani_lmark_temp = self.ref_lmarks
+                ori_ani_image, ori_ani_lmark = self.prepare_datas(ori_ani_image, ori_ani_lmark_temp, [0])
+
+                # crop by mask
+                if self.opt.crop_ref:
+                    for ani_lmark_id, ani_lmark_temp in enumerate(self.ref_lmarks_temp):
+                        ani_template = torch.Tensor(self.get_template(ani_lmark_temp, self.transform_T))
+                        ani_template_inter = -ori_ani_image[ani_lmark_id] * ani_template + (1 - ani_template)
+                        ori_ani_image[ani_lmark_id] = ori_ani_image[ani_lmark_id] / ani_template_inter
+
         # get warping reference
-        if self.ref_search:
+        if self.ref_search and not self.opt.no_head_motion:
             ref_rt = self.ref_rt[:, :3]
             tgt_rt = self.tgt_rt[:, :3]
             warping_ref_ids = self.get_warp_ref(tgt_rt, ref_rt, self.ref_indices, target_id)
             warping_refs = [self.ref_video[w_ref_id] for w_ref_id in warping_ref_ids]
             warping_ref_lmarks = [self.ref_lmarks[w_ref_id] for w_ref_id in warping_ref_ids]
+        elif self.opt.no_head_motion:
+            ref_rt = self.ref_rt[:, :3]
+            warping_ref_ids = self.get_warp_ref(ref_rt, ref_rt, self.ref_indices, [int(self.ref_ani_id)])
+            warping_refs = [self.ref_video[w_ref_id] for w_ref_id in warping_ref_ids]
+            warping_ref_lmarks = [self.ref_lmarks[w_ref_id] for w_ref_id in warping_ref_ids]
+        else:
+            warping_refs = [self.ref_video[0] for t_id in target_id]
+            warping_ref_lmarks = [self.ref_lmarks[0] for t_id in target_id]
 
-            # crop by mask
-            if self.opt.crop_ref:
-                for warp_id, warp_ref in enumerate(warping_refs):
-                    lmark_id = self.ref_indices[warping_ref_ids[warp_id]]
-                    warp_ref_lmark = self.ref_lmarks_temp[lmark_id]
-                    warp_ref_template = torch.Tensor(self.get_template(warp_ref_lmark, self.transform_T))
-                    warp_ref_template_inter = -warp_ref * warp_ref_template + (1 - warp_ref_template)
-                    warping_refs[warp_id] = warp_ref / warp_ref_template_inter
+        # crop by mask
+        if self.opt.crop_ref:
+            for warp_id, warp_ref in enumerate(warping_refs):
+                lmark_id = self.ref_indices[warping_ref_ids[warp_id]]
+                warp_ref_lmark = self.ref_lmarks_temp[lmark_id]
+                warp_ref_template = torch.Tensor(self.get_template(warp_ref_lmark, self.transform_T))
+                warp_ref_template_inter = -warp_ref * warp_ref_template + (1 - warp_ref_template)
+                warping_refs[warp_id] = warp_ref / warp_ref_template_inter
 
         target_img_path = [os.path.join(self.tgt_video_path[:-4] , '%05d.png'%t_id) for t_id in target_id]
 
@@ -230,17 +299,22 @@ class FaceForeDemoDataset(BaseDataset):
         if self.opt.warp_ani:
             ani_images = torch.cat([ani_image.unsqueeze(0) for ani_image in ani_images], axis=0)
             ani_lmarks = torch.cat([ani_lmark.unsqueeze(0) for ani_lmark in ani_lmarks], axis=0)
-        if self.ref_search:
-            warping_refs = torch.cat([warping_ref.unsqueeze(0) for warping_ref in warping_refs], axis=0)
-            warping_ref_lmarks = torch.cat([warping_ref_lmark.unsqueeze(0) for warping_ref_lmark in warping_ref_lmarks], axis=0)
+            if self.opt.finetune:
+                ori_ani_image = torch.cat([ori_im.unsqueeze(0) for ori_im in ori_ani_image], axis=0)
+                ori_ani_lmark = torch.cat([ori_lm.unsqueeze(0) for ori_lm in ori_ani_lmark], axis=0)
+        # if self.ref_search:
+        warping_refs = torch.cat([warping_ref.unsqueeze(0) for warping_ref in warping_refs], axis=0)
+        warping_ref_lmarks = torch.cat([warping_ref_lmark.unsqueeze(0) for warping_ref_lmark in warping_ref_lmarks], axis=0)
 
         input_dic = {'path': self.tgt_video_path, 'v_id' : target_img_path, 'index':target_id, 'tgt_label': tgt_lmarks, \
             'ref_image':self.ref_video , 'ref_label': self.ref_lmarks, \
             'tgt_image': tgt_images,  'target_id': target_id}
         if self.opt.warp_ani:
             input_dic.update({'ani_image': ani_images, 'ani_lmark': ani_lmarks})
-        if self.ref_search:
-            input_dic.update({'warping_ref': warping_refs, 'warping_ref_lmark': warping_ref_lmarks})
+            if self.opt.finetune:
+                input_dic.update({'ori_ani_image': ori_ani_image, 'ori_ani_lmark': ori_ani_lmark})
+        # if self.ref_search:
+        input_dic.update({'warping_ref': warping_refs, 'warping_ref_lmark': warping_ref_lmarks})
 
         return input_dic
 
@@ -428,7 +502,10 @@ class FaceForeDemoDataset(BaseDataset):
     # preprocess for template
     def get_template(self, lmark, transform_T):
         # crop
-        template = get_roi(lmark)
+        if self.opt.dataset_name == 'grid':
+            template = get_roi_backup(lmark)
+        else:
+            template = get_roi(lmark)
         template = Image.fromarray(template[:, :, 0], 'L')
         template = np.asarray(transform_T(template))
         

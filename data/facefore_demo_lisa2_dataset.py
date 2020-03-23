@@ -51,6 +51,7 @@ class FaceForeDemoLisa2Dataset(BaseDataset):
         parser.add_argument('--ref_lmarks_path', type=str)
         parser.add_argument('--ref_rt_path', type=str, default=None)
         parser.add_argument('--ref_front_path', type=str, default=None)
+        parser.add_argument('--ref_ani_path', type=str, default=None)
         parser.add_argument('--ref_ani_id', type=int)
         parser.add_argument('--find_largest_mouth', action='store_true', help='find reference image that open mouth in largest ratio')
         parser.add_argument('--crop_ref', action='store_true')
@@ -146,6 +147,11 @@ class FaceForeDemoLisa2Dataset(BaseDataset):
         self.ref_lmarks_temp = self.ref_lmarks
         self.ref_video, self.ref_lmarks, self.ref_indices = self.define_inference(self.ref_video, self.ref_lmarks)
 
+        if self.opt.dataset_name == 'picasso':
+            for img_id in range(self.ref_video.shape[0]):
+                mask = self.ref_video[img_id] == 1
+                self.ref_video[img_id] = self.ref_video[img_id] - 2*mask.type(torch.uint8)
+
 
     def __len__(self):
         return len(self.tgt_lmarks) 
@@ -192,6 +198,19 @@ class FaceForeDemoLisa2Dataset(BaseDataset):
                     ani_template_inter = -ani_images[ani_lmark_id] * ani_template + (1 - ani_template)
                     ani_images[ani_lmark_id] = ani_images[ani_lmark_id] / ani_template_inter
 
+            # reference animation
+            if self.opt.finetune:
+                ori_ani_image = [cv2.imread(self.opt.ref_ani_path)]
+                ori_ani_lmark_temp = self.ref_lmarks_temp
+                ori_ani_image, ori_ani_lmark = self.prepare_datas(ori_ani_image, ori_ani_lmark_temp, [0])
+
+                # crop by mask
+                if self.opt.crop_ref:
+                    for ani_lmark_id, ani_lmark_temp in enumerate(self.ref_lmarks_temp):
+                        ani_template = torch.Tensor(self.get_template(ani_lmark_temp, self.transform_T))
+                        ani_template_inter = -ori_ani_image[ani_lmark_id] * ani_template + (1 - ani_template)
+                        ori_ani_image[ani_lmark_id] = ori_ani_image[ani_lmark_id] / ani_template_inter
+
         # get warping reference
         if self.ref_search:
             ref_rt = self.ref_rt[:, :3]
@@ -215,6 +234,9 @@ class FaceForeDemoLisa2Dataset(BaseDataset):
         if self.opt.warp_ani:
             ani_images = torch.cat([ani_image.unsqueeze(0) for ani_image in ani_images], axis=0)
             ani_lmarks = torch.cat([ani_lmark.unsqueeze(0) for ani_lmark in ani_lmarks], axis=0)
+            if self.opt.finetune:
+                ori_ani_image = torch.cat([ori_im.unsqueeze(0) for ori_im in ori_ani_image], axis=0)
+                ori_ani_lmark = torch.cat([ori_lm.unsqueeze(0) for ori_lm in ori_ani_lmark], axis=0)
         if self.ref_search:
             warping_refs = torch.cat([warping_ref.unsqueeze(0) for warping_ref in warping_refs], axis=0)
             warping_ref_lmarks = torch.cat([warping_ref_lmark.unsqueeze(0) for warping_ref_lmark in warping_ref_lmarks], axis=0)
@@ -224,6 +246,8 @@ class FaceForeDemoLisa2Dataset(BaseDataset):
             'target_id': target_id}
         if self.opt.warp_ani:
             input_dic.update({'ani_image': ani_images, 'ani_lmark': ani_lmarks})
+            if self.opt.finetune:
+                input_dic.update({'ori_ani_image': ori_ani_image, 'ori_ani_lmark': ori_ani_lmark})
         if self.ref_search:
             input_dic.update({'warping_ref': warping_refs, 'warping_ref_lmark': warping_ref_lmarks})
 
@@ -357,19 +381,19 @@ class FaceForeDemoLisa2Dataset(BaseDataset):
                 image, crop_size = self.get_image(images[choice], self.transform)
             else:
                 crop_size = self.output_shape
-            # lmark = self.get_keypoints(lmarks[choice].copy(), self.transform_L, crop_size)
+            lmark = self.get_keypoints(lmarks[choice].copy(), self.transform_L, crop_size)
             # get landmark
-            count = 0
-            while True:
-                try:
-                    lmark = self.get_keypoints(lmarks[choice].copy(), self.transform_L, crop_size)
-                    break
-                except:
-                    choice = ((choice + 1)%images.shape[0])
-                    print("what the fuck for {}".format(self.tgt_video_path))
-                    count += 1
-                    if count > 20:
-                        break
+            # count = 0
+            # while True:
+            #     try:
+            #         lmark = self.get_keypoints(lmarks[choice].copy(), self.transform_L, crop_size)
+            #         break
+            #     except:
+            #         choice = ((choice + 1)%images.shape[0])
+            #         print("what the fuck for {}".format(self.tgt_video_path))
+            #         count += 1
+            #         if count > 20:
+            #             break
 
             result_lmarks.append(lmark)
             if images is not None:

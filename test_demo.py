@@ -62,9 +62,9 @@ def get_param(root, pickle_data, pick_id, opt):
         if opt.no_head_motion:
             opt.tgt_lmarks_path = os.path.join(root, audio_package, paths[0], paths[1], paths[2]+"_aligned_front.npy")
         else:
-            # opt.tgt_lmarks_path = os.path.join(root, audio_package, paths[0], paths[1], paths[2]+"_aligned.npy")
+            opt.tgt_lmarks_path = os.path.join(root, audio_package, paths[0], paths[1], paths[2]+"_aligned.npy")
             # opt.tgt_lmarks_path = os.path.join("/home/cxu-serve/p1/common/other/vox_test", '{}__{}__{}_aligned_front_diff_rotated.npy'.format(paths[0], paths[1], paths[2]))
-            opt.tgt_lmarks_path = os.path.join("/home/cxu-serve/p1/common/other/vox_test", '{}__{}__{}_aligned_front_diff.npy'.format(paths[0], paths[1], paths[2]))
+            # opt.tgt_lmarks_path = os.path.join("/home/cxu-serve/p1/common/other/vox_test", '{}__{}__{}_aligned_front_diff.npy'.format(paths[0], paths[1], paths[2]))
         opt.tgt_rt_path = os.path.join(root, audio_package, paths[0], paths[1], paths[2]+"_aligned_rt.npy")
         opt.tgt_ani_path = os.path.join(root, audio_package, paths[0], paths[1], paths[2]+"_aligned_ani.mp4")
         # reference
@@ -186,7 +186,7 @@ _file.close()
 if opt.dataset_name == 'crema':
     pickle_data = pickle_data[int(len(pickle_data)*0.8):]
 # pickle_data = [['id00081', '2xYrsnvtUWc', '00002'], ['id00081', '2xYrsnvtUWc', '00004'], ['id01000', '0lmrq0quo9M', '00001']]
-pickle_files = get_good_file()
+# pickle_files = get_good_file()
 
 save_name = opt.name
 if opt.dataset_name == 'lrs':
@@ -195,13 +195,13 @@ if opt.dataset_name == 'lrw':
     save_name = 'lrw'
 # save_root = os.path.join('evaluation_store', save_name, '{}_shot_test'.format(opt.n_shot), 'epoch_{}'.format(opt.which_epoch))
 # save_root = os.path.join('evaluation_store', save_name, '{}_shot_epoch_{}'.format(opt.n_shot, opt.which_epoch))
-save_root = os.path.join('evaluation_store_good_retest', save_name, '{}_shot_epoch_{}'.format(opt.n_shot, opt.which_epoch))
+save_root = os.path.join('ablation', save_name, '{}_shot_epoch_{}'.format(opt.n_shot, opt.which_epoch))
 # pick_ids = np.random.choice(list(range(len(pickle_data))), size=opt.how_many)
 # save_root = os.path.join('audio_result', save_name, '{}_shot_epoch_{}'.format(opt.n_shot, opt.which_epoch))
 end = int(len(pickle_data))
 # pick_ids = range(1, end-5, (end)//opt.how_many)
-# pick_ids = range(0, end-5, end//opt.how_many)
-pick_ids = range(0, end)
+pick_ids = range(0, end, end//opt.how_many)
+# pick_ids = range(0, end)
 # pick_ids = [100]
 # pick_ids = range(0, opt.how_many)
 # pick_ids = range(0, len(pickle_data))
@@ -220,8 +220,8 @@ pick_ids = range(0, end)
 count = 0
 for pick_id in tqdm(pick_ids):
     paths = pickle_data[pick_id]
-    if '{}_{}_{}_aligned'.format(paths[0], paths[1], paths[2]) not in pickle_files:
-        continue
+    # if '{}_{}_{}_aligned'.format(paths[0], paths[1], paths[2]) not in pickle_files:
+    #     continue
     # pdb.set_trace()
     # if 'test_{}_{}_crop'.format(paths[0], paths[1][:5]) not in pickle_files:
     #     continue

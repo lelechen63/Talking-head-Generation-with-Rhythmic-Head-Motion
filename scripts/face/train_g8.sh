@@ -100,6 +100,15 @@ train_crema_linear(){
     --continue_train
 }
 
+train_crema_nonlinear(){
+    CUDA_VISIBLE_DEVICES=0,1,2 python train.py --name face8_crema_mouth_nonlinear --dataset_mode facefore \
+    --adaptive_spade --warp_ref --spade_combine --add_raw_loss \
+    --gpu_ids 0,1,2 --batchSize 12 --nThreads 8 --niter 100 --niter_single 101 \
+    --n_shot 1 --n_frames_G 1 --ref_ratio 0 \
+    --dataroot '/home/cxu-serve/p1/common/CREMA' --dataset_name crema --save_epoch_freq 10 \
+    --continue_train --crop_ref --find_largest_mouth
+}
+
 train_grid_linear_8shot(){
     CUDA_VISIBLE_DEVICES=0,1,2,3 python train.py --name face8_grid_linear --dataset_mode facefore \
     --adaptive_spade --warp_ref \
@@ -145,13 +154,31 @@ train_vox_nonlinear_nowarp(){
     --continue_train --crop_ref
 }
 
-train_vox_nonlinear_nowarp(){
+train_vox_nonlinear_noatten(){
     CUDA_VISIBLE_DEVICES=7,4,5,6 python train.py --name face8_vox_ani_nonlinear_noatten --dataset_mode facefore \
-    --adaptive_spade --warp_ref --warp_ani --spade_combine --add_raw_loss --no_warp \
+    --adaptive_spade --warp_ref --warp_ani --spade_combine --add_raw_loss \
     --gpu_ids 0,1,2,3 --batchSize 24 --nThreads 64 --niter 1000 --niter_single 1001 \
     --n_shot 8 --n_frames_G 1 \
     --dataroot '/mnt/Data/lchen63/voxceleb' --dataset_name vox --save_epoch_freq 1 --display_freq 1000 \
     --continue_train --crop_ref --no_atten
+}
+
+train_obama_nonlinear(){
+    CUDA_VISIBLE_DEVICES=0,1,2 python train.py --name face8_obama_nonlinear --dataset_mode facefore \
+    --adaptive_spade --warp_ref --warp_ani --spade_combine --add_raw_loss \
+    --gpu_ids 0,1,2 --batchSize 6 --nThreads 8 --niter 5000 --niter_single 5001 \
+    --n_shot 8 --n_frames_G 1 \
+    --dataroot '/home/cxu-serve/p1/common/Obama' --dataset_name obama --save_epoch_freq 50 --display_freq 1000 \
+    --continue_train --crop_ref
+}
+
+train_lrs_nonlinear(){
+    CUDA_VISIBLE_DEVICES=0,1,2 python train.py --name face8_lrs_nonlinear_full --dataset_mode facefore \
+    --adaptive_spade --warp_ref --warp_ani --spade_combine --add_raw_loss \
+    --gpu_ids 0,1,2 --batchSize 6 --nThreads 8 --niter 50 --niter_single 51 \
+    --n_shot 8 --n_frames_G 1 \
+    --dataroot '/home/cxu-serve/p1/common/lrs3/lrs3_v0.4' --dataset_name lrs --save_epoch_freq 1 --display_freq 500 \
+    --continue_train --crop_ref
 }
 
 # train_vox_nonlinear
@@ -168,4 +195,8 @@ train_vox_nonlinear_nowarp(){
 # train_vox_nonlinear
 # train_vox_nonlinear_nowarp
 # train_grid_linear_mask
-train_vox_nonlinear_nowarp
+# train_vox_nonlinear_noatten
+# train_crema_nonlinear
+# train_obama_nonlinear
+# train_lrs_nonlinear
+train_vox_new_nonlinear

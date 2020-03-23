@@ -10,6 +10,8 @@ import numpy as np
 from PIL import Image
 import os
 import cv2
+import math
+import pdb
 
 def get_roi_backup(lmark, mask_eyes=True, mask_mouth=True): #lmark shape (68,2) or (68,3) , tempolate shape(256, 256, 1)
     lmark = lmark.copy()
@@ -115,7 +117,7 @@ def get_roi(lmark, mask_eyes=True, mask_mouth=True): #lmark shape (68,2) or (68,
     min_y = max(0, int(min_y-2) )
     max_y = min(255, int(max_y+2) )
 
-    tempolate[ int(min_y): int(max_y), int(min_x):int(max_x)] = 1 if mask_eyes else 0
+    tempolate[ int(min_y): int(max_y), int(min_x):int(max_x)] = 0 if mask_eyes else 0
 
     r_eyes_x = []
     r_eyes_y = []
@@ -132,7 +134,7 @@ def get_roi(lmark, mask_eyes=True, mask_mouth=True): #lmark shape (68,2) or (68,
     min_y = max(0, int(min_y-2) )
     max_y = min(255, int(max_y+2) )
 
-    tempolate[ int(min_y): int(max_y), int(min_x):int(max_x)] = 1 if mask_eyes else 0
+    tempolate[ int(min_y): int(max_y), int(min_x):int(max_x)] = 0 if mask_eyes else 0
     
     mouth = [48, 50, 51, 54, 57]
     mouth_x = []
@@ -151,7 +153,7 @@ def get_roi(lmark, mask_eyes=True, mask_mouth=True): #lmark shape (68,2) or (68,
     max_y2 = min(255, int(max_y2+5) )
 
     
-    tempolate[int(min_y2):int(max_y2), int(min_x2):int(max_x2)] = 1 if mask_mouth else 0
+    tempolate[int(min_y2):int(max_y2), int(min_x2):int(max_x2)] = 0 if mask_mouth else 0
     return  tempolate
 
 def visualize_label(opt, label_tensor, model=None): 
@@ -348,3 +350,29 @@ def openrate(lmark1):
         
     open_rate1 = np.asarray(open_rate1)
     return open_rate1.mean() 
+
+def eye_blinking(lmark, rate = 10): #lmark shape (k, 68,2) or (k,68,3) , tempolate shape(256, 256, 1)
+    length = lmark.shape[0]
+    bink_time = math.floor(length / float(rate) )
+    eys =[[37,41],[38,40] ,[43,47],[44,46]]  # [upper, lower] , [left1,left2, right1, right1]
+    for i in range(bink_time):
+        print ('+++++')
+        for e in eys:
+            dis =  (np.abs(lmark[0, e[0],:2] -  lmark[0, e[1],:2] ) / 2)
+            print ('--------')
+            # -2
+            lmark[rate * (i + 1)-2, e[0],:2] += 0.45 * (dis)
+            lmark[rate * (i + 1)-2, e[1],:2] -= 0.45 * (dis)
+            # +2
+            lmark[rate * (i + 1)+2, e[0], :2] += 0.45 * (dis)
+            lmark[rate * (i + 1)+2, e[1], :2] -= 0.45 * (dis)
+            # -1
+            lmark[rate * (i + 1)-1, e[0], :2] += 0.85 * (dis)
+            lmark[rate * (i + 1)-1, e[1], :2] -= 0.85 * (dis)
+            # +1
+            lmark[rate * (i + 1)+1, e[0], :2] += 0.8 * (dis)
+            lmark[rate * (i + 1)+1, e[1], :2] -= 0.8 * (dis)
+            # 0
+            lmark[rate * (i + 1), e[0], :2] += 0.95 * (dis)
+            lmark[rate * (i + 1), e[1], :2] -= 0.95 * (dis)
+    return lmark

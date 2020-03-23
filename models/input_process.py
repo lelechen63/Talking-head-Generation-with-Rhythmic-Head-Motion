@@ -12,7 +12,7 @@ import pdb
 def encode_input_finetune(opt, data_list, dummy_bs):
     if opt.isTrain and data_list[0].get_device() == 0:
         data_list = remove_dummy_from_tensor(opt, data_list, dummy_bs)
-    tgt_labels, tgt_images, ref_labels, ref_images, warp_ref_lmark, warp_ref_img = data_list
+    tgt_labels, tgt_images, ref_labels, ref_images, warp_ref_lmark, warp_ref_img, ani_lmark, ani_img = data_list
 
     # target label and image
     tgt_labels = encode_label(opt, tgt_labels)
@@ -30,7 +30,11 @@ def encode_input_finetune(opt, data_list, dummy_bs):
     warp_ref_lmark = encode_label(opt, warp_ref_lmark)        
     warp_ref_img = warp_ref_img.cuda()
         
-    return tgt_labels, tgt_images, ref_labels, ref_images, warp_ref_lmark, warp_ref_img
+    # for animation
+    ani_lmark = encode_label(opt, ani_lmark) if ani_lmark is not None else None
+    ani_img = ani_img.cuda() if ani_img is not None else None
+
+    return tgt_labels, tgt_images, ref_labels, ref_images, warp_ref_lmark, warp_ref_img, ani_lmark, ani_img
 
 def encode_input(opt, data_list, dummy_bs):
     if opt.isTrain and data_list[0].get_device() == 0:

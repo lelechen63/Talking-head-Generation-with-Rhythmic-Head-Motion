@@ -39,7 +39,6 @@ def get_good_file():
     # pickle_data = pickle_data[len(pickle_data)//2:]
     return pickle_data
 
-
 def add_audio(video_name, audio_dir):
     command = 'ffmpeg -i ' + video_name  + ' -i ' + audio_dir + ' -vcodec copy  -acodec copy -y  ' + video_name.replace('.mp4','.mov')
     #ffmpeg -i /mnt/disk1/dat/lchen63/lrw/demo/new/resutls/results.mp4 -i /mnt/disk1/dat/lchen63/lrw/demo/new/audio/obama.wav -codec copy -c:v libx264 -c:a aac -b:a 192k  -shortest -y /mnt/disk1/dat/lchen63/lrw/demo/new/resutls/results.mov
@@ -50,10 +49,32 @@ def add_audio(video_name, audio_dir):
 
 def image_to_video(sample_dir = None, video_name = None):
     
-    command = 'ffmpeg -framerate 30  -i ' + sample_dir +  '/%05d.jpg -c:v libx264 -y -vf "pad=ceil(iw/2)*2:ceil(ih/2)*2"  ' + video_name 
+    command = 'ffmpeg -framerate 25  -i ' + sample_dir +  '/%05d.jpg -c:v libx264 -y -vf "pad=ceil(iw/2)*2:ceil(ih/2)*2"  ' + video_name 
     #ffmpeg -framerate 25 -i real_%d.png -c:v libx264 -y -vf format=yuv420p real.mp4
     print (command)
     os.system(command)
+
+def set_param_for_grid(root, pickle_data, pick_id, opt):
+    if opt.dataset_name == 'grid':
+        # target
+        fake_root = '/u/lchen63/Project/face_tracking_detection/eccv2020/sample/grid_test'
+        opt.tgt_video_path = os.path.join(root, 'align', paths[0], paths[1]+"_crop.mp4")
+        # opt.tgt_lmarks_path = os.path.join(root, 'align', paths[0], paths[1]+"_original.npy")
+        opt.tgt_lmarks_path = os.path.join(fake_root, '{}__{}_front_diff_rotated.npy'.format(paths[0], paths[1]))
+        # opt.tgt_lmarks_path = os.path.join(fake_root, '{}__{}_front_diff_rotated.npy'.format(paths[0], paths[1]))
+        opt.tgt_rt_path = os.path.join(root, 'align', paths[0], paths[1]+ '_rt.npy') 
+        opt.tgt_ani_path = None
+        # reference
+        ref_paths = paths
+        opt.ref_front_path = None
+        opt.ref_video_path = os.path.join(root, 'align', "s14", "brbl5p_crop.mp4")
+        opt.ref_lmarks_path = os.path.join(root, 'align', "s14", "brbl5p_original.npy")
+        opt.ref_rt_path = os.path.join(root, 'align', "s14", 'brbl5p_rt.npy') 
+        opt.ref_ani_id = None
+
+        audio_tgt_path = os.path.join(root, 'audio', paths[0], paths[1]+".wav")
+
+    return audio_tgt_path
 
 def get_param(root, pickle_data, pick_id, opt):
     paths = pickle_data[pick_id]
@@ -84,8 +105,11 @@ def get_param(root, pickle_data, pick_id, opt):
 
     elif opt.dataset_name == 'grid':
         # target
+        fake_root = '/u/lchen63/Project/face_tracking_detection/eccv2020/sample/grid_test'
         opt.tgt_video_path = os.path.join(root, 'align', paths[0], paths[1]+"_crop.mp4")
-        opt.tgt_lmarks_path = os.path.join(root, 'align', paths[0], paths[1]+"_original.npy")
+        # opt.tgt_lmarks_path = os.path.join(root, 'align', paths[0], paths[1]+"_original.npy")
+        opt.tgt_lmarks_path = os.path.join(fake_root, '{}__{}_front_diff_rotated.npy'.format(paths[0], paths[1]))
+        # opt.tgt_lmarks_path = os.path.join(fake_root, '{}__{}_front_diff_rotated.npy'.format(paths[0], paths[1]))
         opt.tgt_rt_path = os.path.join(root, 'align', paths[0], paths[1]+ '_rt.npy') 
         opt.tgt_ani_path = None
         # reference
@@ -147,37 +171,116 @@ def get_param(root, pickle_data, pick_id, opt):
 
         audio_tgt_path = os.path.join(paths[0].replace('video', 'audio')+".wav")
 
+    elif opt.dataset_name == 'obama':
+        # target
+        opt.tgt_video_path = os.path.join(root, 'video', paths[0][:-11]+"_crop2.mp4")
+        # opt.tgt_lmarks_path = os.path.join(root, 'video', paths[0][:-11]+"_original2.npy")
+        # opt.tgt_rt_path = os.path.join(root, 'video', paths[0][:-11]+"_rt2.npy")
+        # opt.tgt_ani_path = os.path.join(root, 'video', paths[0][:-11]+"_ani2.mp4")
+        opt.tgt_lmarks_path = "/home/cxu-serve/p1/common/demo/demo_3_3__rotated.npy"
+        opt.tgt_rt_path = "/home/cxu-serve/p1/common/demo/00025_aligned_rt.npy"
+        opt.tgt_ani_path = "/home/cxu-serve/p1/common/demo/demo_00025_3_3__ani2.mp4"
+        # reference
+        ref_paths = paths
+        # opt.ref_front_path = os.path.join(root, 'video', paths[0][:-11]+"_front2.npy")
+        # opt.ref_video_path = opt.tgt_video_path
+        # opt.ref_lmarks_path = opt.tgt_lmarks_path
+        # opt.ref_rt_path = opt.tgt_rt_path
+        # opt.ref_ani_id = int(paths[1])
+        opt.ref_front_path = os.path.join(root, 'video', paths[0][:-11]+"_front2.npy")
+        opt.ref_video_path = os.path.join(root, 'video', paths[0][:-11]+"_crop2.mp4")
+        opt.ref_lmarks_path = os.path.join(root, 'video', paths[0][:-11]+"_original2.npy")
+        opt.ref_rt_path = os.path.join(root, 'video', paths[0][:-11]+"_rt2.npy")
+        opt.ref_ani_id = int(paths[1])
+
+        audio_tgt_path = os.path.join(root, 'video', paths[0].split('__')[0]+".wav")
+
+    elif opt.dataset_name == 'obama_front':
+        # target
+        opt.tgt_video_path = os.path.join(root, 'video', paths[0][:-11]+"_crop2.mp4")
+        opt.tgt_lmarks_path = os.path.join(root, 'video', paths[0][:-11]+"_front2.npy")
+        opt.tgt_rt_path = os.path.join(root, 'video', paths[0][:-11]+"_rt2.npy")
+        opt.tgt_ani_path = os.path.join(root, 'video', paths[0][:-11]+"_ani2.mp4")
+        # reference
+        ref_paths = paths
+        opt.ref_front_path = os.path.join(root, 'video', paths[0][:-11]+"_front2.npy")
+        opt.ref_video_path = os.path.join(root, 'video', paths[0][:-11]+"_crop2.mp4")
+        opt.ref_lmarks_path = os.path.join(root, 'video', paths[0][:-11]+"_original2.npy")
+        opt.ref_rt_path = os.path.join(root, 'video', paths[0][:-11]+"_rt2.npy")
+        opt.ref_ani_id = int(paths[1])
+
+        audio_tgt_path = os.path.join(root, 'video', paths[0].split('__')[0]+".wav")
+
+
+    elif opt.dataset_name == 'obama_fake':
+        # target
+        opt.tgt_video_path = os.path.join(root, 'video', paths[0][:-11]+"_crop2.mp4")
+        opt.tgt_lmarks_path = "/home/cxu-serve/p1/common/demo/demo_3_3__rotated.npy"
+        opt.tgt_rt_path = "/home/cxu-serve/p1/common/demo/3_3__rt2.npy"
+        opt.tgt_ani_path = os.path.join("/home/cxu-serve/p1/common/demo/demo_3_3__ani2.mp4")
+        # reference
+        ref_paths = paths
+        opt.ref_front_path = os.path.join(root, 'video', paths[0][:-11]+"_front2.npy")
+        opt.ref_video_path = os.path.join(root, 'video', paths[0][:-11]+"_crop2.mp4")
+        opt.ref_lmarks_path = os.path.join(root, 'video', paths[0][:-11]+"_original2.npy")
+        opt.ref_rt_path = os.path.join(root, 'video', paths[0][:-11]+"_rt2.npy")
+        opt.ref_ani_id = int(paths[1])
+
+        opt.n_shot = 128
+        opt.ref_img_id = ''
+        for i in range(0, 128 * 3, 3):
+            opt.ref_img_id += '{},'.format(i)
+        opt.ref_img_id = opt.ref_img_id[:-1]
+
+        audio_tgt_path = os.path.join("/home/cxu-serve/p1/common/demo/demo.wav")
+
+    elif opt.dataset_name == 'other_fake':
+        # target
+        opt.tgt_video_path = "/home/cxu-serve/p1/common/voxceleb2/unzip/test_video/id04094/2sjuXzB2I1M/00025_aligned.mp4"
+        opt.tgt_lmarks_path = "/home/cxu-serve/p1/common/demo/demo_3_3__front.npy"
+        opt.tgt_rt_path = "/home/cxu-serve/p1/common/demo/3_3__rt2.npy"
+        opt.tgt_ani_path = "/home/cxu-serve/p1/common/demo/demo_3_3__ani2.mp4"
+        # reference
+        ref_paths = paths
+        opt.ref_front_path = "/home/cxu-serve/p1/common/voxceleb2/unzip/test_video/id04094/2sjuXzB2I1M/00025_aligned_front.npy"
+        opt.ref_video_path = "/home/cxu-serve/p1/common/voxceleb2/unzip/test_video/id04094/2sjuXzB2I1M/00025_aligned.mp4"
+        opt.ref_lmarks_path = "/home/cxu-serve/p1/common/voxceleb2/unzip/test_video/id04094/2sjuXzB2I1M/00025_aligned.npy"
+        opt.ref_rt_path = "/home/cxu-serve/p1/common/voxceleb2/unzip/test_video/id04094/2sjuXzB2I1M/00025_aligned_rt.npy"
+        opt.ref_ani_id = 243
+
+        # opt.n_shot = 128
+        # opt.ref_img_id = ''
+        # for i in range(0, 128 * 3, 3):
+        #     opt.ref_img_id += '{},'.format(i)
+        # opt.ref_img_id = opt.ref_img_id[:-1]
+
+        audio_tgt_path = os.path.join("/home/cxu-serve/p1/common/demo/demo.wav")
+
     return audio_tgt_path
 
+def sel_data(pickle_data, opt):
+    # option 1
+    # finetune_files = ['KuWXfjyGhk0_00001']
+    # pickle_files = ['KuWXfjyGhk0_00001', 'Mt0PiXLvYlU_00011', 'Ip2SQa50uBI_00001', 'Sa27SUR0Mlo_00002']
+
+    # finetune_data = [data for data in pickle_data if 'align_{}_{}_crop'.format(data[0], data[1]) in finetune_files]
+    # pickle_data = [data for data in pickle_data if 'align_{}_{}_crop'.format(data[0], data[1]) in pickle_files]
+
+    # finetune_ids = [0]
+    # end = len(pickle_data)
+    # pick_ids = range(0, end)
+
+    # option 2
+    finetune_data = [data for data in pickle_data if ('2_1' in data[0] or '2_2' in data[0]) and '11' not in data[0]]
+    pickle_data = [data for data in pickle_data if '3_3' in data[0]]
+
+    finetune_ids = [0]
+    pickle_ids = [0]
+
+    return finetune_data, finetune_ids, pickle_data, pickle_ids
+
+
 opt = TestOptions().parse()
-
-### setup models
-model = create_model(opt)
-model.eval()
-
-root = opt.dataroot
-if opt.dataset_name == 'grid':
-    _file = open(os.path.join(root, 'pickle','test_audio2lmark_grid.pkl'), "rb")
-elif opt.dataset_name == 'crema':
-    _file = open(os.path.join(root, 'pickle','train_lmark2img.pkl'), "rb")
-elif opt.dataset_name == 'lrw':
-    _file = open(os.path.join(root, 'pickle','test3_lmark2img.pkl'), "rb")
-elif opt.dataset_name == 'lrs':
-    _file = open(os.path.join(root, 'pickle','test2_lmark2img.pkl'), "rb")
-else:
-    _file = open(os.path.join(root, 'pickle','test_lmark2img.pkl'), "rb")
-pickle_data = pkl.load(_file)
-_file.close()
-
-if opt.dataset_name == 'crema':
-    pickle_data = pickle_data[int(len(pickle_data)*0.8):]
-# pickle_data = [['id00081', '2xYrsnvtUWc', '00002'], ['id00081', '2xYrsnvtUWc', '00004'], ['id01000', '0lmrq0quo9M', '00001']]
-# pickle_files = get_good_file()
-
-# for finetune
-pickle_data = [data for data in pickle_data if '1075' in data[0] and 'HAP' in data[0]]
-finetune_data = pickle_data
-finetune_id = 0
 
 # preprocess
 save_name = opt.name
@@ -185,29 +288,39 @@ if opt.dataset_name == 'lrs':
     save_name = 'lrs'
 if opt.dataset_name == 'lrw':
     save_name = 'lrw'
-# save_root = os.path.join('evaluation_store', save_name, '{}_shot_test'.format(opt.n_shot), 'epoch_{}'.format(opt.which_epoch))
-# save_root = os.path.join('evaluation_store', save_name, '{}_shot_epoch_{}'.format(opt.n_shot, opt.which_epoch))
-save_root = os.path.join('evaluation_finetune', save_name, 'finetune_{}'.format(opt.finetune_shot), '{}_shot_epoch_{}'.format(opt.n_shot, opt.which_epoch))
-# pick_ids = np.random.choice(list(range(len(pickle_data))), size=opt.how_many)
-# save_root = os.path.join('audio_result', save_name, '{}_shot_epoch_{}'.format(opt.n_shot, opt.which_epoch))
-end = int(len(pickle_data))
-# pick_ids = range(1, end-5, (end)//opt.how_many)
-# pick_ids = range(0, end-5, end//opt.how_many)
-pick_ids = range(0, end)
-# pick_ids = [100]
-# pick_ids = range(0, opt.how_many)
-# pick_ids = range(0, len(pickle_data))
-# pick_files = ['s23', 's29']
-# pick_files = ['s29']
-# pick_files = ['1075_IWL_FEA_XX_', '1090_IOM_FEA_XX_', '1088_ITH_HAP_XX_', '1091_IWL_NEU_XX_', \
-#               '1085_TIE_HAP_XX_', '1075_TIE_HAP_XX_', '1077_WSI_FEA_XX__', '1089_IWL_ANG_XX_']
-# pick_files = np.asarray([['id00081', '2xYrsnvtUWc', '00002'], ['id00081', '2xYrsnvtUWc', '00004'], ['id01000', '0lmrq0quo9M', '00001']])
+if opt.dataset_name == 'obama_fake':
+    save_name = 'obama_fake'
+if opt.dataset_name == 'obama_front':
+    save_name = 'obama_front'
 
-# pick_files = np.asarray([['id04094', '2sjuXzB2I1M', '00025'], \
-#                ['id00081', '2xYrsnvtUWc', '00002'], \
-#                ['id00081', '2xYrsnvtUWc', '00004'], \
-#                ['id01000', '0lmrq0quo9M', '00001']])
-# pick_ids = range(0, len(pickle_data))
+save_root = os.path.join('test', save_name, 'finetune_front_{}'.format(opt.finetune_shot), '{}_shot_epoch_{}'.format(opt.n_shot, opt.which_epoch))
+
+### setup models
+model = create_model(opt)
+model.eval()
+
+# setup dataset
+root = opt.dataroot
+if opt.dataset_name == 'grid' or opt.dataset_name == 'grid_diff':
+    _file = open(os.path.join(root, 'pickle','test_audio2lmark_grid.pkl'), "rb")
+elif opt.dataset_name == 'crema':
+    _file = open(os.path.join(root, 'pickle','train_lmark2img.pkl'), "rb")
+elif opt.dataset_name == 'lrw':
+    _file = open(os.path.join(root, 'pickle','test3_lmark2img.pkl'), "rb")
+elif opt.dataset_name == 'lrs':
+    _file = open(os.path.join(root, 'pickle','test2_lmark2img.pkl'), "rb")
+elif 'obama' in opt.dataset_name:
+    _file = open(os.path.join(root, 'pickle', 'train_lmark2img.pkl'), 'rb')
+else:
+    _file = open(os.path.join(root, 'pickle','test_lmark2img.pkl'), "rb")
+pickle_data = pkl.load(_file)
+_file.close()
+
+if opt.dataset_name == 'crema':
+    pickle_data = pickle_data[int(len(pickle_data)*0.8):]
+
+# for finetune
+finetune_data, finetune_ids, pickle_data, pick_ids = sel_data(pickle_data, opt)
 
 test_ref_id = opt.ref_img_id
 test_shot = opt.n_shot
@@ -219,15 +332,48 @@ for i in range(0, opt.finetune_shot):
     opt.ref_img_id += '{},'.format(i * step)
 opt.ref_img_id = opt.ref_img_id[:-1]
 
-get_param(root, finetune_data, finetune_id, opt)
-data_loader = CreateDataLoader(opt)
-dataset = data_loader.load_data()
-data = next(iter(dataset))
+refs, warps, anis = [], [], []
+for f_id in finetune_ids: 
+    get_param(root, finetune_data, f_id, opt)
+    data_loader = CreateDataLoader(opt)
+    dataset = data_loader.load_data()
+    data = next(iter(dataset))
+    ref_labels, ref_images = data['ref_label'], data['ref_image']
+    warping_ref_lmark, warping_ref = data['warping_ref_lmark'], data['warping_ref']
+    if 'ori_ani_image' in data:
+        anis.append([data['ori_ani_lmark'], data['ori_ani_image']])
+    refs.append([ref_labels, ref_images])
+    warps.append([warping_ref_lmark, warping_ref])
 
-ref_labels, ref_images = data['ref_label'], data['ref_image']
-model.finetune_call(ref_labels, ref_images, \
-                           ref_labels[:,0].unsqueeze(1), ref_images[:,0].unsqueeze(1), \
-                           ref_labels[:,0].unsqueeze(1), ref_images[:,0].unsqueeze(1))
+
+ref_label_list, ref_image_list = [], []
+tgt_label_list, tgt_image_list = [], []
+warp_label_list, warp_image_list = [], []
+ani_label_list, ani_image_list = [], []
+total_iterations = max(15, opt.finetune_shot*2)            # finetune
+opt.n_shot = test_shot
+total_iterations = 0
+for ref, warp in zip(refs, warps):
+    ref_labels, ref_images = ref
+    warping_ref_lmark, warping_ref = warp
+    tgt_label_list.append(ref_labels)
+    tgt_image_list.append(ref_images)
+    ref_label_list.append(ref_labels[:,:opt.n_shot])
+    ref_image_list.append(ref_images[:,:opt.n_shot])
+    warp_label_list.append(warping_ref_lmark)
+    warp_image_list.append(warping_ref)
+if len(anis) != 0:
+    for ani in anis:
+        ani_label_list.append(ani[0])
+        ani_image_list.append(ani[1])
+else:
+    ani_label_list, ani_image_list = None, None
+
+model.finetune_call_multi(tgt_label_list, tgt_image_list, \
+                ref_label_list, ref_image_list, \
+                warp_label_list, warp_image_list, \
+                ani_label_list, ani_image_list, \
+                iterations=total_iterations)
 
 img_path = data['path']
 img_id = "finetune_{}_{}_{}".format(img_path[0].split('/')[-3], img_path[0].split('/')[-2], img_path[0].split('/')[-1][:-4])
@@ -235,18 +381,32 @@ img_dir = os.path.join(save_root,  img_id)
 
 if not os.path.exists(img_dir):
         os.makedirs(img_dir)
-for ref_img_id in range(ref_images.shape[1]):
-    ref_img = util.tensor2im(ref_images[0, ref_img_id])
-    ref_label = util.tensor2im(ref_labels[0, ref_img_id])
-    save_img = np.hstack([ref_img, ref_label])
-    save_img = Image.fromarray(save_img)
-    save_img.save(os.path.join(img_dir, 'ref_{}.png').format(ref_img_id))
+for ref_id in range(len(refs)):
+    ref_labels, ref_images = refs[ref_id]
+    for ref_img_id in range(ref_images.shape[1]):
+        ref_img = util.tensor2im(ref_images[0, ref_img_id])
+        ref_label = util.tensor2im(ref_labels[0, ref_img_id])
+        save_list = [ref_img, ref_label]
+        if ani_label_list is not None:
+            ani = anis[ref_id]
+            ani_img = util.tensor2im(ani[0][0, ref_img_id]) 
+            ani_label = util.tensor2im(ani[1][0, ref_img_id])
+            save_list.append(ani_img)
+            save_list.append(ani_label)
+        save_img = np.hstack(save_list)
+        save_img = Image.fromarray(save_img)
+        save_img.save(os.path.join(img_dir, '{}_ref_{}.png').format(ref_id, ref_img_id))
+
+# model.save_networks('finetune')
 
 # test
 opt.ref_img_id = test_ref_id
 opt.n_shot = test_shot
 count = 0
-pick_ids = [0,1]
+# pick_ids = [3,5,7,9,11,12,13,14,15,16]
+# pick_ids = [17,18,19,20,21,22,23,24,25,26]
+# pick_ids = [0,1]
+pick_ids = [0]
 for pick_id in tqdm(pick_ids):
     paths = pickle_data[pick_id]
     # if '{}_{}_{}_aligned'.format(paths[0], paths[1], paths[2]) not in pickle_files:
@@ -254,13 +414,23 @@ for pick_id in tqdm(pick_ids):
     # pdb.set_trace()
     # if 'test_{}_{}_crop'.format(paths[0], paths[1][:5]) not in pickle_files:
     #     continue
+    # if 'align_{}_{}_crop'.format(paths[0], paths[1]) not in pickle_files:
+    #     continue
+    # if '{}_{}'.format(paths[0], paths[1]) not in pickle_files:
+    #     continue
 
-    count += 1
-    if count == 20:
-        break
+    # count += 1
+    # if count == 20:
+    #     break
 
     print('process {} ...'.format(pick_id))
     audio_tgt_path = get_param(root, pickle_data, pick_id, opt)
+    # audio_tgt_path = set_param_for_grid(root, pickle_data, pick_id, opt)
+
+    # if 's14' in paths[0]:
+    #     audio_tgt_path = get_param(root, pickle_data, pick_id, opt)
+    # elif 's15' in paths[0]:
+    #     audio_tgt_path = set_param_for_grid(root, pickle_data, pick_id, opt)
 
     # if paths[0] not in pick_files:
     #     continue
@@ -284,7 +454,7 @@ for pick_id in tqdm(pick_ids):
     # ref_idx_fix = torch.zeros([opt.batchSize])
     ref_idx_fix = None
     for i, data in enumerate(dataset):
-        # if i >= 10: break
+        if i >= 500: break
         if i >= len(dataset): break
         img_path = data['path']
         if not opt.warp_ani:
@@ -292,6 +462,8 @@ for pick_id in tqdm(pick_ids):
         if "warping_ref" not in data:
             data.update({'warping_ref': data['ref_image'][:, :1], 'warping_ref_lmark': data['ref_label'][:, :1]})
         # data.update({'warping_ref': data['ref_image'][:, :1], 'warping_ref_lmark': data['ref_label'][:, :1]})
+
+        # pdb.set_trace()
 
         img_path = data['path']
         data_list = [data['tgt_label'], data['tgt_image'], None, None, None, None, \

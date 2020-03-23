@@ -156,7 +156,7 @@ class FewShotGenerator(BaseNetwork):
     ### generate weights based on the encoded features
     def weight_generation(self, img_ref, label_ref, label, t=0):
         b, n, c, h, w = img_ref.size()
-        img_ref, label_ref = img_ref.view(b*n, -1, h, w), label_ref.view(b*n, -1, h, w)                               
+        img_ref, label_ref = img_ref.view(b*n, -1, h, w), label_ref.view(b*n, -1, h, w)
 
         # encode image and landmark
         x, encoded_ref, atn, ref_idx = self.reference_encoding(img_ref, label_ref, label, n, t)

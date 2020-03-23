@@ -128,9 +128,10 @@ class LossCollector(BaseModel):
 
     def compute_weight_losses(self, weight, warped_image, tgt_image, tgt_crop_image):         
         loss_W = self.Tensor(1).fill_(0)
-        # loss_W += self.compute_weight_loss(weight[0], warped_image[0], tgt_image)        
-        # loss_W += self.compute_weight_loss(weight[1], warped_image[1], tgt_image)
-        # loss_W += self.compute_weight_loss(weight[2], warped_image[2], tgt_crop_image)
+        if self.opt.use_weight_loss:
+            loss_W += self.compute_weight_loss(weight[0], warped_image[0], tgt_image)        
+            loss_W += self.compute_weight_loss(weight[1], warped_image[1], tgt_image)
+            loss_W += self.compute_weight_loss(weight[2], warped_image[2], tgt_crop_image)
         
         return loss_W
 
@@ -158,12 +159,12 @@ class LossCollector(BaseModel):
         return loss_G_GAN_Feat
 
 
-    def compute_L1_loss(self, syn_image, tgt_image, l1_ratio=10):
-        loss_l1 = self.criterionGen(syn_image, tgt_image) * l1_ratio
+    def compute_L1_loss(self, syn_image, tgt_image):
+        loss_l1 = self.criterionGen(syn_image, tgt_image) * self.opt.face_l1
         return loss_l1
 
-    def atten_L1_loss(self, syn_image, tgt_image, tgt_template, atten_ratio=1000):
-        loss_atten = self.criterionGen(syn_image * tgt_template, tgt_image * tgt_template) * atten_ratio
+    def atten_L1_loss(self, syn_image, tgt_image, tgt_template):
+        loss_atten = self.criterionGen(syn_image * tgt_template, tgt_image * tgt_template) * self.opt.mask_l1
         return loss_atten
 
 def loss_backward(opt, losses, optimizer):    

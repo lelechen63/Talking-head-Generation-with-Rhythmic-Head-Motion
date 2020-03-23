@@ -27,6 +27,8 @@ from data.base_dataset import BaseDataset, get_transform
 from data.keypoint2img import interpPoints, drawEdge
 from scipy.spatial.transform import Rotation as R
 from util.util import get_roi, get_roi_small_eyes
+from util import face_utils
+from util.util import openrate
 
 import copy
 import pdb
@@ -43,10 +45,12 @@ class FaceForeDataset(BaseDataset):
         parser.add_argument('--worst_ref_prob', type=float, default=0.75, help='probability to select worst reference image')
         parser.add_argument('--ref_ratio', type=float, default=0.25, help='ratio to select reference images')
         parser.add_argument('--crop_ref', action='store_true')
+        parser.add_argument('--find_largest_mouth', action='store_true', help='find reference image that open mouth in largest ratio')
 
         # for reference
         parser.add_argument('--ref_img_id', type=str)
         parser.add_argument('--no_head_motion', action='store_true')
+        parser.add_argument('--for_finetune', action='store_true')
 
         return parser
 
@@ -136,7 +140,7 @@ class FaceForeDataset(BaseDataset):
             lmark_path = os.path.join(self.root, self.video_bag, paths[0], paths[1]+ '_original.npy') 
             ani_path = os.path.join(self.root, self.video_bag, paths[0], paths[1]+"_ani.mp4")
             rt_path = os.path.join(self.root, self.video_bag, paths[0], paths[1]+ '_rt.npy') 
-            front_path = os.path.join(self.root, self.video_bag, paths[0], paths[1]+ '_front.npy') 
+            front_path = os.path.join(self.root, self.video_bag, paths[0], paths[1]+ '_front.npy')
             ani_id = int(paths[2])
 
         elif self.opt.dataset_name == 'crema':
@@ -146,6 +150,16 @@ class FaceForeDataset(BaseDataset):
             rt_path = os.path.join(self.root, self.video_bag, paths[0][:-10] + '_rt.npy') 
             front_path = os.path.join(self.root, self.video_bag, paths[0][:-10] + '_front.npy') 
         
+        elif self.opt.dataset_name == 'obama':
+            paths = self.data[index]
+            video_path = os.path.join(self.root, self.video_bag, paths[0][:-11] + '_crop2.mp4')
+            lmark_path = os.path.join(self.root, self.video_bag, paths[0][:-11] + '_original2.npy')
+            ani_path = os.path.join(self.root, self.video_bag, paths[0][:-11]+"_ani2.mp4")
+            rt_path = os.path.join(self.root, self.video_bag, paths[0][:-11] + '_rt2.npy') 
+            front_path = os.path.join(self.root, self.video_bag, paths[0][:-11] + '_front2.npy') 
+
+            ani_id = int(paths[1])
+
         # read in data
         self.video_path = video_path
         lmarks = np.load(lmark_path)#[:,:,:-1]
@@ -161,19 +175,36 @@ class FaceForeDataset(BaseDataset):
         real_video = np.asarray(real_video)[cor_num]
         rt = rt[cor_num]
         
+        # smooth landmarks
+        for i in range(lmarks.shape[1]):
+            x = lmarks[:, i, 0]
+            x = face_utils.smooth(x, window_len=5)
+            lmarks[: ,i, 0] = x[2:-2]
+            y = lmarks[:, i, 1]
+            y = face_utils.smooth(y, window_len=5)
+            lmarks[: ,i, 1] = y[2:-2]
+
         if self.opt.warp_ani:
             # animation
             ani_video = self.read_videos(ani_path)
             # clean data
             ani_video = np.asarray(ani_video)[cor_num]
+
         v_length = len(real_video)
 
         # sample index of frames for embedding network
         if self.opt.ref_ratio is not None:
             input_indexs, target_id = self.get_image_index_ratio(self.n_frames_total, v_length)
+        elif self.opt.for_finetune:
+            input_indexs, target_id = self.get_image_index_finetune(self.n_frames_total, lmarks=lmarks)
         else:
             input_indexs, target_id = self.get_image_index(self.n_frames_total, v_length)
     
+        # whether get open mouth
+        if self.opt.find_largest_mouth:
+            result_indexs = self.get_open_mouth(lmarks)
+            input_indexs = result_indexs if result_indexs is not None else input_indexs
+
         # define scale
         scale = self.define_scale()
         transform, transform_L, transform_T = self.get_transforms()
@@ -189,7 +220,7 @@ class FaceForeDataset(BaseDataset):
         tgt_templates_eyes = []
         for gg in target_id:
             lmark = lmarks[gg]
-            tgt_templates.append(self.get_template(lmark, transform_T, self.output_shape, tgt_crop_coords, mask_eyes=False))
+            tgt_templates.append(self.get_template(lmark, transform_T, self.output_shape, tgt_crop_coords))
             tgt_templates_eyes.append(self.get_template(lmark, transform_T, self.output_shape, tgt_crop_coords, only_eyes=True))
 
         if self.opt.warp_ani:
@@ -227,13 +258,13 @@ class FaceForeDataset(BaseDataset):
             for warp_id, warp_ref in enumerate(warping_refs):
                 lmark_id = input_indexs[warping_ref_ids[warp_id]]
                 warp_ref_lmark = lmarks[lmark_id]
-                warp_ref_template = torch.Tensor(self.get_template(warp_ref_lmark, transform_T, self.output_shape, ref_coords, mask_eyes=False))
+                warp_ref_template = torch.Tensor(self.get_template(warp_ref_lmark, transform_T, self.output_shape, ref_coords))
                 warp_ref_template_inter = -warp_ref * warp_ref_template + (1 - warp_ref_template)
                 warping_refs[warp_id] = warp_ref / warp_ref_template_inter
             # for animation
             if self.opt.warp_ani:
                 for ani_lmark_id, ani_lmark_temp in enumerate(ani_lmarks_back):
-                    ani_template = torch.Tensor(self.get_template(ani_lmark_temp, transform_T, self.output_shape, ani_coords, mask_eyes=False))
+                    ani_template = torch.Tensor(self.get_template(ani_lmark_temp, transform_T, self.output_shape, ani_coords))
                     ani_template_inter = -ani_images[ani_lmark_id] * ani_template + (1 - ani_template)
                     ani_images[ani_lmark_id] = ani_images[ani_lmark_id] / ani_template_inter
             
@@ -345,6 +376,49 @@ class FaceForeDataset(BaseDataset):
             ref_indices = [int(i) for i in ref_indices]
 
         return ref_indices, target_ids
+
+    # get index for target and reference by ratio method (only for one shot now)
+    def get_image_index_finetune(self, n_frames_total, lmarks=None):
+        assert n_frames_total == 1
+
+        # get reference index (not only for one shot)
+        if self.opt.find_largest_mouth:
+            assert lmarks is not None
+            openrates = []
+            for i in range(len(lmarks)):
+                openrates.append(openrate(lmarks[i]))
+            openrates = np.asarray(openrates)
+            max_index = np.argsort(openrates)
+            ref_indices = max_index[:self.opt.n_shot]
+        else:
+            ref_indices = self.opt.ref_img_id.split(',')
+        ref_indices = [int(i) for i in ref_indices]
+
+        # random select reference indexs for finetune
+        assert len(ref_indices) >= self.opt.finetune_shot and len(ref_indices) >= n_frames_total
+        choice_num = len(ref_indices) if len(ref_indices) <= self.opt.finetune_shot+n_frames_total \
+                                      else self.opt.finetune_shot+n_frames_total
+        finetune_ref_idxs = np.random.choice(len(ref_indices), choice_num, replace=False)
+
+        finetune_ref_indices = ref_indices[finetune_ref_idxs[:self.opt.finetune_shot]]
+        target_ids = ref_indices[finetune_ref_idxs[-n_frames_total:]]
+
+        return finetune_ref_indices, target_ids
+
+    # whether get open mouth
+    def get_open_mouth(self, lmarks):
+        # random set number
+        ref_indices = None
+        if np.random.rand() >= 0.6:
+            openrates = []
+            for i in range(len(lmarks)):
+                openrates.append(openrate(lmarks[i]))
+            openrates = np.asarray(openrates)
+            max_index = np.argsort(openrates)
+            ref_indices = max_index[:self.opt.n_shot*8]
+            sel_ids = np.random.choice(self.opt.n_shot*8, self.opt.n_shot)
+            ref_indices = ref_indices[sel_ids]
+        return ref_indices
 
     # load in all frames from video
     def read_videos(self, video_path):
@@ -627,16 +701,16 @@ class FaceForeDataset(BaseDataset):
         
         elif self.opt.dataset_name == 'lrs':
             if opt.isTrain:
-                _file = open(os.path.join(self.root, 'pickle','dev_lmark2img.pkl'), "rb")
+                _file = open(os.path.join(self.root, 'pickle','test3_lmark2img.pkl'), "rb")
                 self.data = pkl.load(_file)
                 _file.close()
             else :
-                _file = open(os.path.join(self.root, 'pickle','test_lmark2img.pkl'), "rb")
+                _file = open(os.path.join(self.root, 'pickle','test3_lmark2img.pkl'), "rb")
                 self.data = pkl.load(_file)
                 _file.close()
 
             if opt.isTrain:
-                self.video_bag = 'unzip/dev_video'
+                self.video_bag = 'test'
             else:
                 self.video_bag = 'test'
 
@@ -656,3 +730,15 @@ class FaceForeDataset(BaseDataset):
             else:
                 self.video_bag = 'VideoFlash'
                 self.data = self.data[int(0.8*len(self.data)):]
+
+        elif self.opt.dataset_name == 'obama':
+            _file = open(os.path.join(self.root, 'pickle','train_lmark2img.pkl'), "rb")
+            self.data = pkl.load(_file)
+            _file.close()
+            if opt.isTrain:
+                self.data = [d for d in self.data if '3__' not in d[0]]
+            else:
+                self.data = [d for d in self.data if '3__' in d[0]]
+
+            self.data = [d for d in self.data if ('1_1' not in d[0] and '1_2' not in d[0] and '1_3' not in d[0]) or '11_' in d[0]]
+            self.video_bag = 'video'

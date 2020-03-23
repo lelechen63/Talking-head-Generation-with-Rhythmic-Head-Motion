@@ -6,6 +6,7 @@
 # https://nvlabs.github.io/few-shot-vid2vid/License.txt
 import torch
 import numpy as np
+from tqdm import tqdm
 
 import models.networks as networks
 from models.base_model import BaseModel
@@ -86,8 +87,8 @@ class Vid2VidModel(BaseModel):
         loss_G_VGG = self.lossCollector.compute_VGG_losses(fake_image, fake_raw_image, img_ani, tgt_image)
 
         # L1 loss
-        loss_l1 = self.lossCollector.compute_L1_loss(syn_image=fake_image, tgt_image=tgt_image, l1_ratio=0)
-        loss_atten = self.lossCollector.atten_L1_loss(syn_image=fake_image, tgt_image=tgt_image, tgt_template=tgt_template, atten_ratio=0)
+        loss_l1 = self.lossCollector.compute_L1_loss(syn_image=fake_image, tgt_image=tgt_image)
+        loss_atten = self.lossCollector.atten_L1_loss(syn_image=fake_image, tgt_image=tgt_image, tgt_template=tgt_template)
 
         flow, weight, flow_gt, conf_gt, warped_image, tgt_image, tgt_crop_image = \
             self.reshape([flow, weight, flow_gt, conf_gt, warped_image, tgt_image, tgt_crop_image])             
@@ -96,7 +97,6 @@ class Vid2VidModel(BaseModel):
 
         # add W
         loss_W = self.lossCollector.compute_weight_losses(weight, warped_image, tgt_image, tgt_crop_image)
-        # loss_W = 0
         
         loss_list = [loss_G_GAN, loss_G_GAN_Feat, loss_G_VGG, # GAN + VGG loss
                      loss_GT_GAN, loss_GT_GAN_Feat,           # temporal GAN loss
@@ -204,9 +204,9 @@ class Vid2VidModel(BaseModel):
             self.t += 1        
                         
         tgt_label_valid, ref_labels_valid = tgt_label[:,-1], ref_labels
-        if opt.finetune and self.t == 0:
-            self.finetune(ref_labels, ref_images, warp_ref_lmark, warp_ref_img)
-            opt.finetune = False
+        # if opt.finetune and self.t == 0:
+        #     self.finetune(ref_labels, ref_images, warp_ref_lmark, warp_ref_img)
+        #     opt.finetune = False
 
         with torch.no_grad():
             assert self.t == 0
@@ -222,7 +222,7 @@ class Vid2VidModel(BaseModel):
             
         return fake_image, fake_raw_image, warped_image, flow, weight, atn_score, ref_idx, ref_label, ref_image, img_ani
 
-    def finetune(self, ref_labels, ref_images, warp_ref_lmark, warp_ref_img):
+    def finetune(self, ref_labels, ref_images, warp_ref_lmark, warp_ref_img, ani_img, ani_lmark):
         train_names = ['fc', 'conv_img', 'up']        
         params, _ = self.get_train_params(self.netG, train_names)         
         self.optimizer_G = self.get_optimizer(params, for_discriminator=False)        
@@ -257,9 +257,9 @@ class Vid2VidModel(BaseModel):
                     if v != 0: message += '%s: %.3f ' % (k, v)
                 print(message)
 
-    def finetune_call(self, tgt_labels, tgt_images, ref_labels, ref_images, warp_ref_lmark, warp_ref_img):
-        tgt_labels, tgt_images, ref_labels, ref_images, warp_ref_lmark, warp_ref_img = \
-            encode_input_finetune(self.opt, data_list=[tgt_labels, tgt_images, ref_labels, ref_images, warp_ref_lmark, warp_ref_img], dummy_bs=0)
+    def finetune_call(self, tgt_labels, tgt_images, ref_labels, ref_images, warp_ref_lmark, warp_ref_img, ani_lmark=None, ani_img=None):
+        tgt_labels, tgt_images, ref_labels, ref_images, warp_ref_lmark, warp_ref_img, ani_lmark, ani_img = \
+            encode_input_finetune(self.opt, data_list=[tgt_labels, tgt_images, ref_labels, ref_images, warp_ref_lmark, warp_ref_img, ani_lmark, ani_img], dummy_bs=0)
 
         train_names = ['fc', 'conv_img', 'up']
         params, _ = self.get_train_params(self.netG, train_names)
@@ -270,23 +270,42 @@ class Vid2VidModel(BaseModel):
             params = list(self.netD.parameters())       
             self.optimizer_D = self.get_optimizer(params, for_discriminator=True)
 
-        iterations = max(20, self.opt.finetune_shot * 5)
+        iterations = max(10, self.opt.finetune_shot * 10)
         # iterations = 0
         for it in range(1, iterations + 1):
             idx = np.random.randint(tgt_labels.size(1))
-            tgt_label, tgt_image = tgt_labels[:,idx].unsqueeze(1), tgt_images[:,idx].unsqueeze(1)                
+            tgt_label, tgt_image = tgt_labels[:,idx].unsqueeze(1), tgt_images[:,idx].unsqueeze(1)
+            
+            ref_labels_finetune, ref_images_finetune = ref_labels, ref_images
+            warp_ref_lmark_finetune, warp_ref_img_finetune = warp_ref_lmark, warp_ref_img
+            ani_lmark_finetune, ani_img_finetune = ani_lmark, ani_img
+
+            if ani_img is not None:
+                assert ani_img.shape[1] == ani_lmark.shape[1] == tgt_labels.shape[1]
+                ani_img_finetune = ani_img[:, idx].unsqueeze(1)
+                ani_lmark_finetune = ani_lmark[:, idx].unsqueeze(1)
+            if self.opt.n_shot < ref_labels.shape[1]:
+                idxs = np.random.choice(ref_labels.shape[1], self.opt.n_shot)
+                ref_labels_finetune = ref_labels[:, idxs]
+                ref_images_finetune = ref_images[:, idxs]
+            if warp_ref_lmark.shape[1] > 1:
+                if self.opt.n_shot >= ref_labels.shape[1]:
+                    idxs = np.random.choice(ref_labels.shape[1], self.opt.n_shot)
+                warp_ref_lmark_finetune = warp_ref_lmark[:, idxs[0]].unsqueeze(1)
+                warp_ref_img_finetune = warp_ref_img[:, idxs[0]].unsqueeze(1)
 
             g_losses, generated, prev, _ = self.forward_generator(tgt_label=tgt_label, tgt_image=tgt_image, \
                                                                   tgt_template=1, tgt_crop_image=None, \
                                                                   flow_gt=[None]*3, conf_gt=[None]*3, \
-                                                                  ref_labels=ref_labels, ref_images=ref_images, \
-                                                                  warp_ref_lmark=warp_ref_lmark, warp_ref_img=warp_ref_img)
+                                                                  ref_labels=ref_labels_finetune, ref_images=ref_images_finetune, \
+                                                                  warp_ref_lmark=warp_ref_lmark_finetune, warp_ref_img=warp_ref_img_finetune, \
+                                                                  ani_lmark=ani_lmark_finetune, ani_img=ani_img_finetune)
 
             g_losses = loss_backward(self.opt, g_losses, self.optimizer_G)
 
             d_losses = []
             if update_D:
-                d_losses, _ = self.forward_discriminator(tgt_label, tgt_image, ref_labels, ref_images, warp_ref_lmark=warp_ref_lmark, warp_ref_img=warp_ref_img)
+                d_losses, _ = self.forward_discriminator(tgt_label, tgt_image, ref_labels_finetune, ref_images_finetune, warp_ref_lmark=warp_ref_lmark_finetune, warp_ref_img=warp_ref_img_finetune)
                 d_losses = loss_backward(self.opt, d_losses, self.optimizer_D)
 
             if (it % 10) == 0: 
@@ -295,5 +314,71 @@ class Vid2VidModel(BaseModel):
                 for k, v in loss_dict.items():
                     if v != 0: message += '%s: %.3f ' % (k, v)
                 print(message)
+
+        self.opt.finetune = False
+
+    def finetune_call_multi(self, tgt_label_list, tgt_image_list, ref_label_list, ref_image_list, warp_ref_lmark_list, warp_ref_img_list, ani_lmark_list=None, ani_img_list=None, iterations=0):
+        train_names = ['fc', 'conv_img', 'up']
+        params, _ = self.get_train_params(self.netG, train_names)
+        self.optimizer_G = self.get_optimizer(params, for_discriminator=False)
+        
+        update_D = True
+        if update_D:
+            params = list(self.netD.parameters())       
+            self.optimizer_D = self.get_optimizer(params, for_discriminator=True)
+
+        for iteration in tqdm(range(iterations)):
+            for data_id in tqdm(range(len(tgt_label_list))):
+                tgt_labels, tgt_images, ref_labels, ref_images, warp_ref_lmark, warp_ref_img, ani_lmark, ani_img = \
+                    encode_input_finetune(self.opt, data_list=[tgt_label_list[data_id], tgt_image_list[data_id], \
+                                                               ref_label_list[data_id], ref_image_list[data_id], \
+                                                               warp_ref_lmark_list[data_id], warp_ref_img_list[data_id], \
+                                                               ani_lmark_list[data_id] if ani_lmark_list is not None else None, \
+                                                               ani_img_list[data_id] if ani_img_list is not None else None],
+                                                               dummy_bs=0)
+
+                idx = np.random.randint(tgt_labels.size(1))
+                tgt_label, tgt_image = tgt_labels[:,idx].unsqueeze(1), tgt_images[:,idx].unsqueeze(1)
+                
+                ref_labels_finetune, ref_images_finetune = ref_labels, ref_images
+                warp_ref_lmark_finetune, warp_ref_img_finetune = warp_ref_lmark, warp_ref_img
+                ani_lmark_finetune, ani_img_finetune = ani_lmark, ani_img
+
+                if ani_img is not None:
+                    assert ani_img.shape[1] == ani_lmark.shape[1] == tgt_labels.shape[1]
+                    ani_img_finetune = ani_img[:, idx].unsqueeze(1)
+                    ani_lmark_finetune = ani_lmark[:, idx].unsqueeze(1)
+                if self.opt.n_shot < ref_labels.shape[1]:
+                    idxs = np.random.choice(ref_labels.shape[1], self.opt.n_shot)
+                    ref_labels_finetune = ref_labels[:, idxs]
+                    ref_images_finetune = ref_images[:, idxs]
+                if warp_ref_lmark.shape[1] > 1:
+                    if self.opt.n_shot >= ref_labels.shape[1]:
+                        idxs = np.random.choice(ref_labels.shape[1], self.opt.n_shot)
+                    warp_ref_lmark_finetune = warp_ref_lmark[:, idxs[0]].unsqueeze(1)
+                    warp_ref_img_finetune = warp_ref_img[:, idxs[0]].unsqueeze(1)
+
+                g_losses, generated, prev, _ = self.forward_generator(tgt_label=tgt_label, tgt_image=tgt_image, \
+                                                                        tgt_template=1, tgt_crop_image=None, \
+                                                                        flow_gt=[None]*3, conf_gt=[None]*3, \
+                                                                        ref_labels=ref_labels_finetune, ref_images=ref_images_finetune, \
+                                                                        warp_ref_lmark=warp_ref_lmark_finetune, warp_ref_img=warp_ref_img_finetune, \
+                                                                        ani_lmark=ani_lmark_finetune, ani_img=ani_img_finetune)
+
+                # pdb.set_trace()
+
+                g_losses = loss_backward(self.opt, g_losses, self.optimizer_G)
+
+                d_losses = []
+                if update_D:
+                    d_losses, _ = self.forward_discriminator(tgt_label, tgt_image, ref_labels_finetune, ref_images_finetune, warp_ref_lmark=warp_ref_lmark_finetune, warp_ref_img=warp_ref_img_finetune)
+                    d_losses = loss_backward(self.opt, d_losses, self.optimizer_D)
+
+            if (iteration % 10) == 0: 
+                message = '(iters: %d) ' % iteration
+                loss_dict = dict(zip(self.lossCollector.loss_names, g_losses + d_losses))
+                for k, v in loss_dict.items():
+                    if v != 0: message += '%s: %.3f ' % (k, v)
+                    print(message)
 
         self.opt.finetune = False

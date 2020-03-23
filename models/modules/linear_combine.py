@@ -20,6 +20,13 @@ class LinearCombineModule(BaseNetwork):
         if not no_warp:
             prev_lmark, prev_img = prev
             img_final, flow, weight, img_warp, img_ani = self.warp(fake_raw_img, tgt_lmark, warp_ref_lmark, warp_ref_img, ani_lmark, ani_img, prev_lmark, prev_img)
+
+            # no warping for image
+            if self.opt.no_warp:
+                img_warp[0] = warp_ref_img if img_warp[0] is not None else None
+                img_warp[1] = prev_img if img_warp[1] is not None else None
+                img_warp[2] = ani_img if img_warp[2] is not None else None
+
         else:
             img_final = fake_raw_img
             flow = [None] * 3

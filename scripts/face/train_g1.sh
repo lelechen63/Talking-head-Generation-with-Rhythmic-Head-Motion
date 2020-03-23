@@ -67,9 +67,23 @@
 # --dataroot '/home/cxu-serve/p1/common/voxceleb2' --dataset_name vox --save_epoch_freq 1 --display_freq 1 \
 # --continue_train --crop_ref
 
-CUDA_VISIBLE_DEVICES=1 python train.py --name face8_vox_new_nonlinear --dataset_mode facefore \
+# CUDA_VISIBLE_DEVICES=1 python train.py --name face8_vox_new_nonlinear --dataset_mode facefore \
+# --adaptive_spade --warp_ref --warp_ani --spade_combine --add_raw_loss \
+# --gpu_ids 0 --batchSize 2 --nThreads 0 --niter 1000 --niter_single 1001 \
+# --n_shot 8 --n_frames_G 1 \
+# --dataroot '/home/cxu-serve/p1/common/voxceleb2' --dataset_name vox --save_epoch_freq 1 --display_freq 1 \
+# --continue_train --no_atten
+
+# CUDA_VISIBLE_DEVICES=0 python train.py --name face8_crema_mouth_nonlinear_L1 --dataset_mode facefore \
+# --adaptive_spade --warp_ref --spade_combine --add_raw_loss \
+# --gpu_ids 0 --batchSize 2 --nThreads 0 --niter 50 --niter_single 51 \
+# --n_shot 8 --n_frames_G 1 --ref_ratio 0 \
+# --dataroot '/home/cxu-serve/p1/common/CREMA' --dataset_name crema --save_epoch_freq 1 \
+# --continue_train --crop_ref --find_largest_mouth
+
+CUDA_VISIBLE_DEVICES=0 python train.py --name face8_lrs_nonlinear --dataset_mode facefore \
 --adaptive_spade --warp_ref --warp_ani --spade_combine --add_raw_loss \
---gpu_ids 0 --batchSize 2 --nThreads 0 --niter 1000 --niter_single 1001 \
+--gpu_ids 0 --batchSize 3 --nThreads 0 --niter 20 --niter_single 21 \
 --n_shot 8 --n_frames_G 1 \
---dataroot '/home/cxu-serve/p1/common/voxceleb2' --dataset_name vox --save_epoch_freq 1 --display_freq 1 \
---continue_train --no_atten
+--dataroot '/home/cxu-serve/p1/common/lrs3/lrs3_v0.4' --dataset_name lrs --save_epoch_freq 2 --display_freq 1 \
+--continue_train --crop_ref

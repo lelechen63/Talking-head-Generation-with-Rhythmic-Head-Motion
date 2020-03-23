@@ -110,12 +110,15 @@ class BaseOptions():
         parser.add_argument('--lambda_flow', type=float, default=10.0, help='weight for flow')        
         parser.add_argument('--lambda_weight', type=float, default=10.0, help='weight for flow mask')
         parser.add_argument('--lambda_vgg', type=float, default=10.0, help='weight for vgg loss')        
-        parser.add_argument('--lambda_face', type=float, default=10.0, help='weight for face region')        
+        parser.add_argument('--lambda_face', type=float, default=10.0, help='weight for face region')      
+        parser.add_argument('--face_l1', type=float, default=0, help='weight of l1 loss for entire face')
+        parser.add_argument('--mask_l1', type=float, default=0, help='weight of l1 loss for mask area')  
 
         parser.add_argument('--no_ganFeat_loss', action='store_true', help='if specified, do *not* use discriminator feature matching loss')
         parser.add_argument('--no_vgg_loss', action='store_true', help='if specified, do *not* use VGG feature matching loss')
         parser.add_argument('--no_TTUR', action='store_true', help='Use TTUR training scheme')
         parser.add_argument('--add_raw_loss', action='store_true', help='loss for raw image in spade combine')
+        parser.add_argument('--use_weight_loss', action='store_true', help='if specified, use weight loss')
 
         # for optimizer
         parser.add_argument('--lr', type=float, default=0.0004, help='initial learning rate for adam')

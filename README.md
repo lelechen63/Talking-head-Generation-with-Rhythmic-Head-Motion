@@ -87,6 +87,42 @@ CUDA_VISIBLE_DEVICES=[cuda Ids] python test_demo.py --name face8_vox_ani \
 
 Except similar flags as training, you can use `--ref_img_id` to indicates index of sample frames, and `--n_shot` to specific number of sample frames.
 
+For demo testing, you can run the following example script:
+
+```
+bash test_demo_example.sh
+```
+
+The detail is shown below:
+
+```
+CUDA_VISIBLE_DEVICES=$1 python test_demo_example.py --name face8_vox_ani_nonlinear \
+--dataset_mode facefore_demo \
+--adaptive_spade \
+--warp_ref \
+--warp_ani \
+--add_raw_loss \
+--spade_combine \
+--example \
+--n_frames_G 1 \
+--which_epoch $2 \
+--how_many $3 \
+--nThreads 0 \
+--dataroot '/home/cxu-serve/p1/common/voxceleb2' \
+--ref_dataroot '/home/cxu-serve/p1/common/voxceleb2' \
+--ref_img_id "0" \
+--n_shot 1 \
+--serial_batches \
+--dataset_name vox \
+--tgt_video_path "/home/cxu-serve/p1/common/voxceleb2/unzip/test_video/id00017/01dfn2spqyE/00001_aligned.mp4" \
+--ref_dataset vox \
+--ref_video_path "/home/cxu-serve/p1/common/voxceleb2/unzip/test_video/id00017/01dfn2spqyE/00001_aligned.mp4" \
+--ref_ani_id 10 \
+--finetune
+```
+
+`--dataset_name`, `--tgt_video_path` and `--dataroot` refers to directory of target video, while `--ref_dataset`, `--ref_video_path` and `--ref_dataroot` refers to directory of reference video. You can use `--ref_img_id` to select specific frames from reference video as sample images. More related path can be seen in code of "test_demo_example.py", and we encourage user to read that.
+
 ## Future
 
 Demo test method and more detail will be update in following days.

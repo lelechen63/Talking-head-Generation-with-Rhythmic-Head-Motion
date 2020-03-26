@@ -118,9 +118,9 @@ class FaceForeDataset(BaseDataset):
             paths = self.data[index]
             video_path = os.path.join(self.root, self.video_bag, paths[0], paths[1], paths[2]+"_aligned.mp4")
             if self.opt.no_head_motion:
-                lmark_path = os.path.join(self.root, self.video_bag, paths[0], paths[1], paths[2]+"_aligned.npy")
-            else:
                 lmark_path = os.path.join(self.root, self.video_bag, paths[0], paths[1], paths[2]+"_aligned_front.npy")
+            else:
+                lmark_path = os.path.join(self.root, self.video_bag, paths[0], paths[1], paths[2]+"_aligned.npy")
             ani_path = os.path.join(self.root, self.video_bag, paths[0], paths[1], paths[2]+"_aligned_ani.mp4")
             rt_path = os.path.join(self.root, self.video_bag, paths[0], paths[1], paths[2]+"_aligned_rt.npy")
             front_path = os.path.join(self.root, self.video_bag, paths[0], paths[1], paths[2]+"_aligned_front.npy")

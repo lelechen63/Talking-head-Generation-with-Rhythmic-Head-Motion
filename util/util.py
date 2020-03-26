@@ -117,7 +117,7 @@ def get_roi(lmark, mask_eyes=True, mask_mouth=True): #lmark shape (68,2) or (68,
     min_y = max(0, int(min_y-2) )
     max_y = min(255, int(max_y+2) )
 
-    tempolate[ int(min_y): int(max_y), int(min_x):int(max_x)] = 0 if mask_eyes else 0
+    tempolate[ int(min_y): int(max_y), int(min_x):int(max_x)] = 1 if mask_eyes else 0
 
     r_eyes_x = []
     r_eyes_y = []
@@ -134,7 +134,7 @@ def get_roi(lmark, mask_eyes=True, mask_mouth=True): #lmark shape (68,2) or (68,
     min_y = max(0, int(min_y-2) )
     max_y = min(255, int(max_y+2) )
 
-    tempolate[ int(min_y): int(max_y), int(min_x):int(max_x)] = 0 if mask_eyes else 0
+    tempolate[ int(min_y): int(max_y), int(min_x):int(max_x)] = 1 if mask_eyes else 0
     
     mouth = [48, 50, 51, 54, 57]
     mouth_x = []
@@ -153,7 +153,7 @@ def get_roi(lmark, mask_eyes=True, mask_mouth=True): #lmark shape (68,2) or (68,
     max_y2 = min(255, int(max_y2+5) )
 
     
-    tempolate[int(min_y2):int(max_y2), int(min_x2):int(max_x2)] = 0 if mask_mouth else 0
+    tempolate[int(min_y2):int(max_y2), int(min_x2):int(max_x2)] = 1 if mask_mouth else 0
     return  tempolate
 
 def visualize_label(opt, label_tensor, model=None): 

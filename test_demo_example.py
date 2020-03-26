@@ -41,7 +41,7 @@ def image_to_video(sample_dir = None, video_name = None):
 def set_tgt_param(root, opt):
     if opt.dataset_name == 'vox':
         assert opt.tgt_video_path is not None
-        opt.tgt_lmarks_path = opt.tgt_video_path[:-12]+"_aligned_front.npy"
+        opt.tgt_lmarks_path = opt.tgt_video_path[:-12]+"_aligned.npy"
         opt.tgt_rt_path = opt.tgt_video_path[:-12]+"_aligned_rt.npy"
         opt.tgt_ani_path = opt.tgt_video_path[:-12]+"_aligned_ani.mp4"
     elif opt.dataset_name == 'grid':
@@ -53,9 +53,11 @@ def set_tgt_param(root, opt):
 def set_ref_param(root, opt):
     if opt.dataset_name == 'vox':
         assert opt.ref_video_path is not None
-        opt.ref_front_path = opt.ref_video_path[:-12]+"_aligned_front.npy"
+        opt.ref_front_path = opt.ref_video_path[:-12]+"_aligned.npy"
         opt.ref_lmarks_path = opt.ref_video_path[:-12]+"_aligned.npy"
         opt.ref_rt_path = opt.ref_video_path[:-12]+"_aligned_rt.npy"
+        if opt.finetune:
+            opt.ref_ani_path = opt.ref_video_path[:-12]+"_aligned_ani.mp4"
     elif opt.dataset_name == 'grid':
         assert opt.ref_video_path is not None
         opt.ref_front_path = None
@@ -64,40 +66,10 @@ def set_ref_param(root, opt):
 
 def get_audio_path(opt):
     if opt.dataset_name == 'vox':
-        audio_path = opt.tgt_video_path.replace('video', 'audio')[:-12]+'wav'
+        audio_path = opt.tgt_video_path.replace('video', 'audio')[:-12]+'.wav'
     elif opt.dataset_name == 'grid':
-        audio_path = opt.tgt_video_path.replace('video', 'audio')[:-9]+'wav'
+        audio_path = opt.tgt_video_path.replace('video', 'audio')[:-9]+'.wav'
     return audio_path
-
-def get_param(root, pickle_data, pick_id, opt):
-    paths = pickle_data[pick_id]
-    if opt.dataset_name == 'vox':
-        # target
-        audio_package = 'unzip/test_video'
-        opt.tgt_video_path = os.path.join(root, audio_package, paths[0], paths[1], paths[2]+"_aligned.mp4")
-        if opt.no_head_motion:
-            opt.tgt_lmarks_path = os.path.join(root, audio_package, paths[0], paths[1], paths[2]+"_aligned_front.npy")
-        else:
-            # opt.tgt_lmarks_path = os.path.join(root, audio_package, paths[0], paths[1], paths[2]+"_aligned.npy")
-            # opt.tgt_lmarks_path = os.path.join("/home/cxu-serve/p1/common/other/vox_test", '{}__{}__{}_aligned_front_diff_rotated.npy'.format(paths[0], paths[1], paths[2]))
-            opt.tgt_lmarks_path = os.path.join("/home/cxu-serve/p1/common/other/vox_test", '{}__{}__{}_aligned_front_diff.npy'.format(paths[0], paths[1], paths[2]))
-        opt.tgt_rt_path = os.path.join(root, audio_package, paths[0], paths[1], paths[2]+"_aligned_rt.npy")
-        opt.tgt_ani_path = os.path.join(root, audio_package, paths[0], paths[1], paths[2]+"_aligned_ani.mp4")
-        # reference
-        ref_paths = paths
-        opt.ref_front_path = os.path.join(root, audio_package, ref_paths[0], ref_paths[1], ref_paths[2]+"_aligned_front.npy")
-        opt.ref_video_path = opt.tgt_video_path
-        opt.ref_lmarks_path = os.path.join(root, audio_package, paths[0], paths[1], paths[2]+"_aligned.npy")
-        opt.ref_rt_path = opt.tgt_rt_path
-        opt.ref_ani_id = int(ref_paths[3])
-        if opt.no_head_motion:
-            opt.ref_img_id = str(opt.ref_ani_id)
-            opt.n_shot = 1
-
-        audio_tgt_path = os.path.join(root, 'unzip/test_audio', paths[0], paths[1], paths[2]+".m4a")
-
-    return audio_tgt_path
-
 
 opt = TestOptions().parse()
 
@@ -107,12 +79,8 @@ if opt.dataset_name == 'lrs':
     save_name = 'lrs'
 if opt.dataset_name == 'lrw':
     save_name = 'lrw'
-if opt.dataset_name == 'obama_fake':
-    save_name = 'obama_fake'
-if opt.dataset_name == 'obama_front':
-    save_name = 'obama_front'
 
-save_root = os.path.join('test', save_name, 'finetune_front_{}'.format(opt.finetune_shot), '{}_shot_epoch_{}'.format(opt.n_shot, opt.which_epoch))
+save_root = os.path.join('test', save_name, 'finetune_front_{}'.format(opt.n_shot), '{}_shot_epoch_{}'.format(opt.n_shot, opt.which_epoch))
 
 ### setup models
 model = create_model(opt)
@@ -142,11 +110,11 @@ for i, data in enumerate(dataset):
 
     # finetune
     if i == 0 and opt.finetune:
-        iteration = max(10, opt.finetune_shot * 10)
+        iteration = max(10, opt.n_shot * 10)
         model.finetune_call_multi(tgt_label_list=[data['ref_label']], tgt_image_list=[data['ref_image']],\
                                   ref_label_list=[data['ref_label']], ref_image_list=[data['ref_image']], \
                                   warp_ref_lmark_list=[data['warping_ref_lmark']], warp_ref_img_list=[data['warping_ref']], \
-                                  ani_lmark_list=[data['ani_lmark']], ani_img_list=[data['ani_image']], \
+                                  ani_lmark_list=[data['ori_ani_lmark']], ani_img_list=[data['ori_ani_image']], \
                                   iterations=iteration)
 
     img_path = data['path']
@@ -196,9 +164,10 @@ for i, data in enumerate(dataset):
         for ref_img_id in range(data['ref_image'].shape[1]):
             ref_img = util.tensor2im(data['ref_image'][0, ref_img_id])
             ref_img = Image.fromarray(ref_img)
-            ref_img.save(os.path.join(img_dir, 'reference', 'ref_{}.png').format(ref_img_id))
+            ref_img.save(os.path.join(img_dir, 'reference', 'ref_{}.jpg').format(ref_img_id))
 
 # combine into video (save for compare)
 v_n = os.path.join(img_dir, 'test.mp4')
 image_to_video(sample_dir = img_dir, video_name = v_n)
+audio_path = get_audio_path(opt)
 add_audio(os.path.join(img_dir, 'test.mp4'), audio_path)

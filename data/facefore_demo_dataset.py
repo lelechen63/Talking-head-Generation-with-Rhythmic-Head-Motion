@@ -176,6 +176,10 @@ class FaceForeDemoDataset(BaseDataset):
         self.ref_lmarks_temp = self.ref_lmarks
         self.ref_video, self.ref_lmarks, self.ref_indices = self.define_inference(self.ref_video, self.ref_lmarks)
 
+        # reference animation
+        # if self.ref_ani_path[-3:] == 'mp4':
+        #     self.ref_ani_video = 
+
         if self.opt.dataset_name == 'lrw':
             for img_id in range(self.ref_video.shape[0]):
                 mask = self.ref_video[img_id] == 1
@@ -255,6 +259,7 @@ class FaceForeDemoDataset(BaseDataset):
             elif self.opt.finetune and not self.opt.origin_not_require:
                 ori_ani_image = [cv2.imread(self.opt.ref_ani_path)]
                 ori_ani_lmark_temp = self.ref_lmarks
+                pdb.set_trace()
                 ori_ani_image, ori_ani_lmark = self.prepare_datas(ori_ani_image, ori_ani_lmark_temp, [0])
 
                 # crop by mask

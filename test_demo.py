@@ -67,6 +67,8 @@ def get_param(root, pickle_data, pick_id, opt):
             # opt.tgt_lmarks_path = os.path.join("/home/cxu-serve/p1/common/other/vox_test", '{}__{}__{}_aligned_front_diff.npy'.format(paths[0], paths[1], paths[2]))
         opt.tgt_rt_path = os.path.join(root, audio_package, paths[0], paths[1], paths[2]+"_aligned_rt.npy")
         opt.tgt_ani_path = os.path.join(root, audio_package, paths[0], paths[1], paths[2]+"_aligned_ani.mp4")
+        opt.tgt_audio_path = os.path.join(root, 'unzip/test_audio', paths[0], paths[1], paths[2]+".wav")
+
         # reference
         ref_paths = paths
         opt.ref_front_path = os.path.join(root, audio_package, ref_paths[0], ref_paths[1], ref_paths[2]+"_aligned_front.npy")
@@ -78,7 +80,7 @@ def get_param(root, pickle_data, pick_id, opt):
             opt.ref_img_id = str(opt.ref_ani_id)
             opt.n_shot = 1
 
-        audio_tgt_path = os.path.join(root, 'unzip/test_audio', paths[0], paths[1], paths[2]+".m4a")
+        audio_tgt_path = os.path.join(root, 'unzip/test_audio', paths[0], paths[1], paths[2]+".wav")
 
     elif opt.dataset_name == 'grid':
         # target
@@ -271,11 +273,13 @@ for pick_id in tqdm(pick_ids):
                     data['warping_ref'].squeeze(1) if data['warping_ref'] is not None else None, \
                     data['ani_lmark'].squeeze(1) if opt.warp_ani else None, \
                     data['ani_image'].squeeze(1) if opt.warp_ani else None, \
-                    None, None, None]
+                    None, None, None, \
+                    data['tgt_audio'] if opt.audio_drive else None]
         synthesized_image, fake_raw_img, warped_img, _, weight, _, _, _, _, _ = model(data_list, ref_idx_fix=ref_idx_fix)
         
         # save compare
         visuals = [
+            util.tensor2im(data['tgt_gt_label']), \
             util.tensor2im(data['tgt_label']), \
             util.tensor2im(data['tgt_image']), \
             util.tensor2im(synthesized_image), \

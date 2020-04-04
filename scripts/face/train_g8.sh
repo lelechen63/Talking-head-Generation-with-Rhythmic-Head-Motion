@@ -65,9 +65,9 @@ train_vox_nonlinear(){
 }
 
 train_vox_nonlinear_noani(){
-    CUDA_VISIBLE_DEVICES=0,1,2,3 python train.py --name face8_vox_ani_nonlinear_noani --dataset_mode facefore \
+    CUDA_VISIBLE_DEVICES=1,2,3 python train.py --name face8_vox_ani_nonlinear_noani --dataset_mode facefore \
     --adaptive_spade --warp_ref --spade_combine --add_raw_loss \
-    --gpu_ids 0,1,2,3 --batchSize 8 --nThreads 8 --niter 1000 --niter_single 1001 \
+    --gpu_ids 0,1,2 --batchSize 6 --nThreads 8 --niter 1000 --niter_single 1001 \
     --n_shot 8 --n_frames_G 1 \
     --dataroot '/home/cxu-serve/p1/common/voxceleb2' --dataset_name vox --save_epoch_freq 1 \
     --continue_train --crop_ref
@@ -191,6 +191,15 @@ train_lrs_nonlinear(){
     --continue_train --crop_ref
 }
 
+train_vox_audio_nonlinear(){
+    CUDA_VISIBLE_DEVICES=1,2,3 python train.py --name face8_vox_audio_nonlinear --dataset_mode facefore \
+    --adaptive_spade --warp_ref --spade_combine --add_raw_loss \
+    --gpu_ids 0,1,2 --batchSize 6 --nThreads 8 --niter 1000 --niter_single 1001 \
+    --n_shot 8 --n_frames_G 1 \
+    --dataroot '/home/cxu-serve/p1/common/voxceleb2' --dataset_name vox --save_epoch_freq 1 --display_freq 5000 \
+    --continue_train --crop_ref --audio_drive --add_mouth_D
+}
+
 # train_vox_nonlinear
 # train_grid_linear
 # train_grid_nonlinear
@@ -210,4 +219,5 @@ train_lrs_nonlinear(){
 # train_obama_nonlinear
 # train_lrs_nonlinear
 # train_vox_new_nonlinear
-train_vox_nonlinear_noani
+# train_vox_nonlinear_noani
+train_vox_audio_nonlinear

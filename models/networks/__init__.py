@@ -15,6 +15,7 @@ from models.networks.generator import *
 from models.modules.linear_combine import LinearCombineModule
 from models.modules.spade_combine import SpadeCombineModule
 
+import pdb
 
 def modify_commandline_options(parser, is_train):
     opt, _ = parser.parse_known_args()
@@ -25,7 +26,9 @@ def modify_commandline_options(parser, is_train):
         if opt.which_model_netD == 'multiscale':
             parser = MultiscaleDiscriminator.modify_commandline_options(parser, is_train)
         elif opt.which_model_netD == 'n_layers':
-            parser = NLayerDiscriminator.modify_commandline_options(parser, is_train)    
+            parser = NLayerDiscriminator.modify_commandline_options(parser, is_train)
+        elif opt.which_model_netD == 'syncframe':
+            parser = SepDiscriminator.modify_commandline_options(parser, is_train)
     return parser
     
 def define_G(opt):    
@@ -50,6 +53,13 @@ def define_D(opt, input_nc, ndf, n_layers_D, norm='spectralinstance', subarch='n
         netD = MultiscaleDiscriminator(opt, input_nc, ndf, n_layers_D, norm_layer, subarch, num_D, getIntermFeat, stride, gpu_ids)
     elif opt.which_model_netD == 'n_layers':
         netD = NLayerDiscriminator(input_nc, ndf, n_layers_D, norm_layer, getIntermFeat)
+    elif opt.which_model_netD == 'syncframe':
+        if subarch == 'sync':
+            netD = SyncDiscriminator(opt, 88, ndf, 256, 4, 5)
+        elif subarch == 'frame':
+            netD = FrameDiscriminator(opt, 256, input_nc, ndf, 6)
+        elif subarch == 'syncframe':
+            netD = SepDiscriminator(opt, ndf, 256, 1920)
     else:
         raise('unknown type discriminator %s!' % opt.which_model_netD)
         

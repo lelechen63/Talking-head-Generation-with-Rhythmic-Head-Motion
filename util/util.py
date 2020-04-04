@@ -156,6 +156,23 @@ def get_roi(lmark, mask_eyes=True, mask_mouth=True): #lmark shape (68,2) or (68,
     tempolate[int(min_y2):int(max_y2), int(min_x2):int(max_x2)] = 1 if mask_mouth else 0
     return  tempolate
 
+def get_abso_mouth(lmark):
+    left_x, left_y = lmark[48][:-1]
+    right_x, right_y = lmark[54][:-1]
+    mid_x = (left_x+right_x)/2.0
+    mid_y = (left_y+right_y)/2.0
+
+    left = max(0, int(mid_x-40))
+    right = min(255, int(mid_x+40))
+    up = max(0, int(mid_y-40))
+    bottom = min(255, int(mid_y+40))
+
+    template = np.zeros((256, 256 , 1), np.uint8)
+    template[up:bottom, left:right] = 1
+
+    return template
+
+
 def visualize_label(opt, label_tensor, model=None): 
     if label_tensor.dim() == 5:
         label_tensor = label_tensor[-1]

@@ -9,6 +9,7 @@ import torch.nn as nn
 from torch.nn import init
 import torch.nn.functional as F
 import numpy as np
+import math
 
 import pdb
 
@@ -161,3 +162,7 @@ class BaseNetwork(nn.Module):
         b, c, _, _ = x.size()
         x = x.view(b*c, -1)        
         return x
+
+    def calculate_padding(self, kernel_size, stride=1, in_size=0):
+        out_size = math.ceil(float(in_size) / float(stride))
+        return int((out_size - 1) * stride + kernel_size - in_size)

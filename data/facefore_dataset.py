@@ -22,11 +22,12 @@ import sys
 # sys.path.insert(1, '../utils')
 # from .. import utils
 from torch.utils.data import DataLoader
+from scipy.io import wavfile
 
 from data.base_dataset import BaseDataset, get_transform
 from data.keypoint2img import interpPoints, drawEdge
 from scipy.spatial.transform import Rotation as R
-from util.util import get_roi, get_roi_small_eyes
+from util.util import get_roi, get_roi_small_eyes, get_abso_mouth
 from util import face_utils
 from util.util import openrate
 
@@ -46,6 +47,7 @@ class FaceForeDataset(BaseDataset):
         parser.add_argument('--ref_ratio', type=float, default=0.25, help='ratio to select reference images')
         parser.add_argument('--crop_ref', action='store_true')
         parser.add_argument('--find_largest_mouth', action='store_true', help='find reference image that open mouth in largest ratio')
+        parser.add_argument('--audio_append', type=int, default=1, help='number of chunck to append')
 
         # for reference
         parser.add_argument('--ref_img_id', type=str)
@@ -81,6 +83,8 @@ class FaceForeDataset(BaseDataset):
                      [[42,43,44,45], [45,46,47,42]],                   # left eye
                      [range(48, 55), [54,55,56,57,58,59,48], range(60, 65), [64,65,66,67,60]], # mouth and tongue
                     ]
+        if self.opt.audio_drive:
+            self.part_list = self.part_list[:-1]
         
         self.load_pickle(opt)
 
@@ -124,8 +128,19 @@ class FaceForeDataset(BaseDataset):
             ani_path = os.path.join(self.root, self.video_bag, paths[0], paths[1], paths[2]+"_aligned_ani.mp4")
             rt_path = os.path.join(self.root, self.video_bag, paths[0], paths[1], paths[2]+"_aligned_rt.npy")
             front_path = os.path.join(self.root, self.video_bag, paths[0], paths[1], paths[2]+"_aligned_front.npy")
-
+            if self.opt.audio_drive:
+                audio_path = os.path.join(self.root, self.audio_bag, paths[0], paths[1], paths[2]+'.wav')
+                fps = 25
             ani_id = paths[3]
+
+            if self.opt.use_new_D:
+                check_new_person = False
+                while(not check_new_person):
+                    paths_mismatch = self.data[random.randint(0, len(self.data)-1)]
+                    if paths_mismatch[0] != paths[0]:
+                        check_new_person = True
+                        mis_video_path = os.path.join(self.root, self.video_bag, paths_mismatch[0], paths_mismatch[1], paths_mismatch[2]+"_aligned.mp4")
+
         elif self.opt.dataset_name == 'grid':
             paths = self.data[index]
             video_path = os.path.join(self.root, self.video_bag, paths[0], paths[1] + '_crop.mp4')
@@ -164,16 +179,32 @@ class FaceForeDataset(BaseDataset):
         self.video_path = video_path
         lmarks = np.load(lmark_path)#[:,:,:-1]
         real_video = self.read_videos(video_path)
+        if self.opt.use_new_D:
+            mis_video = self.read_videos(mis_video_path)
+        if self.opt.audio_drive:
+            fs, mfcc = wavfile.read(audio_path)
+            chunck_size = int(fs / fps)
         
         if self.opt.dataset_name == 'face':
             lmarks = lmarks[:-1]
         else:
             front = np.load(front_path)
             rt = np.load(rt_path)
-        cor_num = self.clean_lmarks(lmarks)
+        cor_num, wro_nums = self.clean_lmarks(lmarks)
         lmarks = lmarks[cor_num]
         real_video = np.asarray(real_video)[cor_num]
         rt = rt[cor_num]
+        # audio
+        if self.opt.audio_drive:
+            # clean
+            if wro_nums.shape[0] != 0:
+                mfcc = self.clean_audio(chunck_size, mfcc, wro_nums)
+            
+            # append
+            left_append = mfcc[:self.opt.audio_append*chunck_size]
+            right_append = mfcc[-(self.opt.audio_append+1)*chunck_size:]
+            mfcc = np.insert(mfcc, 0, left_append, axis=0)
+            mfcc = np.insert(mfcc, -1, right_append, axis=0)
         
         # smooth landmarks
         for i in range(lmarks.shape[1]):
@@ -215,13 +246,42 @@ class FaceForeDataset(BaseDataset):
         # get target
         tgt_images, tgt_lmarks, tgt_crop_coords = self.prepare_datas(real_video, lmarks, target_id, transform, transform_L, scale)
 
+        # mismatch image
+        if self.opt.use_new_D:
+            # mismatch for reference D
+            mis_tgt_images = [\
+                self.prepare_datas(mis_video, None, \
+                                   [random.randint(0, len(mis_video)-1)], transform, transform_L, \
+                                   scale, crop_coords=tgt_crop_coords)[0][0]]
+            # mismatch for lmark D
+            rt_sum = np.zeros_like(rt[:, 0])
+            for gg in target_id:
+                cur_rt = rt[:, :3] - rt[gg, :3]
+                rt_sum += np.mean(np.absolute(cur_rt), axis=1)
+            rt_sum[target_id] = 0
+            mis_id = np.argmax(rt_sum)
+            mis_tgt_images.append(self.prepare_datas(\
+                real_video, None, [mis_id], transform, transform_L, scale, crop_coords=tgt_crop_coords)[0][0])
+            # mismatch for audio D
+            openrates = np.asarray([openrate(lmark) for lmark in lmarks])
+            openrates_comp = np.zeros_like(openrates)
+            for gg in target_id:
+                openrates_comp += np.absolute(openrates - openrates[gg])
+            mis_id = np.argmax(openrates_comp)
+            mis_img, _, _ = self.prepare_datas(\
+                real_video, lmarks, [mis_id], transform, transform_L, scale, crop_coords=tgt_crop_coords)
+            mis_template = [self.get_template(lmarks[mis_id], transform_T, self.output_shape, tgt_crop_coords, only_mouth=True)]
+            mis_tgt_images.append(mis_img[0])
+
         # get template for target
         tgt_templates = []
         tgt_templates_eyes = []
+        tgt_templates_mouth = []
         for gg in target_id:
             lmark = lmarks[gg]
             tgt_templates.append(self.get_template(lmark, transform_T, self.output_shape, tgt_crop_coords))
             tgt_templates_eyes.append(self.get_template(lmark, transform_T, self.output_shape, tgt_crop_coords, only_eyes=True))
+            tgt_templates_mouth.append(self.get_template(lmark, transform_T, self.output_shape, tgt_crop_coords, only_mouth=True))
 
         if self.opt.warp_ani:
         # get animation & get cropped ground truth
@@ -251,6 +311,7 @@ class FaceForeDataset(BaseDataset):
         warping_ref_ids = self.get_warp_ref(rt, input_indexs, target_id)
         warping_refs = [ref_images[w_ref_id] for w_ref_id in warping_ref_ids]
         warping_ref_lmarks = [ref_lmarks[w_ref_id] for w_ref_id in warping_ref_ids]
+        ori_warping_refs = copy.deepcopy(warping_refs)
         
         # get template for warp reference and animation
         if self.opt.crop_ref:
@@ -268,6 +329,19 @@ class FaceForeDataset(BaseDataset):
                     ani_template_inter = -ani_images[ani_lmark_id] * ani_template + (1 - ani_template)
                     ani_images[ani_lmark_id] = ani_images[ani_lmark_id] / ani_template_inter
             
+        # get audio for reference and target
+        if self.opt.audio_drive:
+            # ref_mfcc = []
+            tgt_mfcc = []
+            # for ind in input_indexs:
+            #     ref_mfcc.append(\
+            #         mfcc[ind*chunck_size:\
+            #             (ind+2*self.opt.audio_append+1)*chunck_size])
+            for ind in target_id:
+                tgt_mfcc.append(\
+                    mfcc[ind*chunck_size:\
+                        (ind+2*self.opt.audio_append+1)*chunck_size])
+
         # preprocess
         target_img_path  = [os.path.join(video_path[:-4] , '%05d.png'%t_id) for t_id in target_id]
 
@@ -278,18 +352,25 @@ class FaceForeDataset(BaseDataset):
         if self.opt.isTrain:
             tgt_templates = torch.cat([torch.Tensor(tgt_template).unsqueeze(0).unsqueeze(0) for tgt_template in tgt_templates], axis=0)
             tgt_templates_eyes = torch.cat([torch.Tensor(tgt_template).unsqueeze(0).unsqueeze(0) for tgt_template in tgt_templates_eyes], axis=0)
+            tgt_templates_mouth = torch.cat([torch.Tensor(tgt_template).unsqueeze(0).unsqueeze(0) for tgt_template in tgt_templates_mouth], axis=0)
         else:
             tgt_templates = torch.cat([torch.Tensor(tgt_template).unsqueeze(0).unsqueeze(0) for tgt_template in tgt_templates], axis=0)
             tgt_templates_eyes = torch.cat([torch.Tensor(tgt_template).unsqueeze(0).unsqueeze(0) for tgt_template in tgt_templates_eyes], axis=0)
-            # tgt_templates = 0
+            tgt_templates_mouth = torch.cat([torch.Tensor(tgt_template).unsqueeze(0).unsqueeze(0) for tgt_template in tgt_templates_mouth], axis=0)
 
         warping_refs = torch.cat([warping_ref.unsqueeze(0) for warping_ref in warping_refs], 0)
         warping_ref_lmarks = torch.cat([warping_ref_lmark.unsqueeze(0) for warping_ref_lmark in warping_ref_lmarks], 0)
+        ori_warping_refs = torch.cat([ori_warping_ref.unsqueeze(0) for ori_warping_ref in ori_warping_refs], 0)
         if self.opt.warp_ani:
             ani_images = torch.cat([ani_image.unsqueeze(0) for ani_image in ani_images], 0)
             ani_lmarks = torch.cat([ani_lmark.unsqueeze(0) for ani_lmark in ani_lmarks], 0)
             cropped_images = torch.cat([cropped_image.unsqueeze(0) for cropped_image in cropped_images], 0)
             cropped_lmarks = torch.cat([cropped_lmark.unsqueeze(0) for cropped_lmark in cropped_lmarks], 0)
+
+        # mismatch
+        if self.opt.use_new_D:
+            mis_tgt_images = torch.cat([mis_tgt_img.unsqueeze(0) for mis_tgt_img in mis_tgt_images], 0)
+            mis_template = torch.cat([torch.Tensor(mis_temp).unsqueeze(0).unsqueeze(0) for mis_temp in mis_template], 0)
 
         # crop eyes and mouth from reference 
         if self.opt.crop_ref:
@@ -301,15 +382,28 @@ class FaceForeDataset(BaseDataset):
 
         # only eyes
         # tgt_templates = tgt_templates_eyes
+        # corp mouth only for template
+        if self.opt.audio_drive:
+            tgt_templates = tgt_templates_mouth
+
+        # audio
+        if self.opt.audio_drive:
+            # ref_mfcc = torch.cat([chunck.unsqueeze(0) for chunck in ref_mfcc])
+            tgt_mfcc = torch.cat([torch.Tensor(chunck).unsqueeze(0).unsqueeze(0) for chunck in tgt_mfcc])
 
         input_dic = {'v_id' : target_img_path, 'tgt_label': tgt_lmarks, 'tgt_template': tgt_templates, 'ref_image':ref_images , 'ref_label': ref_lmarks, \
-        'tgt_image': tgt_images,  'target_id': target_id , 'warping_ref': warping_refs , 'warping_ref_lmark': warping_ref_lmarks, 'path': video_path}
+        'tgt_image': tgt_images,  'target_id': target_id , 'warping_ref': warping_refs , 'warping_ref_lmark': warping_ref_lmarks, \
+        'ori_warping_refs': ori_warping_refs, 'path': video_path}
         if self.opt.warp_ani:
             input_dic.update({'ani_image': ani_images, 'ani_lmark': ani_lmarks, 'cropped_images': cropped_images, 'cropped_lmarks' :cropped_lmarks })
         if self.opt.crop_ref:
             input_dic.update({'tgt_mask_images': tgt_mask_images})
         else:
             input_dic.update({'tgt_mask_images': tgt_images})
+        if self.opt.audio_drive:
+            input_dic.update({'tgt_audio': tgt_mfcc})
+        if self.opt.use_new_D:
+            input_dic.update({'mis_tgt_img': mis_tgt_images, 'mis_template':mis_template})
 
         return input_dic
 
@@ -321,8 +415,16 @@ class FaceForeDataset(BaseDataset):
         check_lmarks = np.logical_and((min_x != max_x), (min_y != max_y))
 
         correct_nums = np.where(check_lmarks)[0]
+        wrong_nums = np.where(check_lmarks!=True)[0]
 
-        return correct_nums
+        return correct_nums, wrong_nums
+
+    # clean mfcc base on nums
+    def clean_audio(self, chunck_size, mfcc, wro_nums):
+        delete_indices = []
+        for num in wro_nums:
+            delete_indices += list(range(num*chunck_size, (num+1)*chunck_size))
+        return np.delete(mfcc, delete_indices, axis=0)
 
     # get index for target and reference
     def get_image_index(self, n_frames_total, cur_seq_len, max_t_step=4):            
@@ -490,10 +592,12 @@ class FaceForeDataset(BaseDataset):
         return img, crop_size
 
     # preprocess for template
-    def get_template(self, lmark, transform_T, size, crop_coords, mask_eyes=True, mask_mouth=True, only_eyes=False):
+    def get_template(self, lmark, transform_T, size, crop_coords, mask_eyes=True, mask_mouth=True, only_eyes=False, only_mouth=False):
         # crop
         if only_eyes:
             template = get_roi_small_eyes(lmark)
+        elif only_mouth:
+            template = get_abso_mouth(lmark)
         else:
             template = get_roi(lmark, mask_eyes, mask_mouth)
         if self.opt.isTrain:
@@ -524,6 +628,9 @@ class FaceForeDataset(BaseDataset):
         result_images = []
         for choice in choice_ids:
             image, crop_size = self.get_image(images[choice], transform, self.output_shape, crop_coords)
+            result_images.append(image)
+            if lmarks is None:
+                continue
             # get landmark
             count = 0
             while True:
@@ -538,7 +645,7 @@ class FaceForeDataset(BaseDataset):
                         break
                     
             result_lmarks.append(lmark)
-            result_images.append(image)
+            
 
         return result_images, result_lmarks, crop_coords
 
@@ -682,8 +789,10 @@ class FaceForeDataset(BaseDataset):
 
             if opt.isTrain:
                 self.video_bag = 'unzip/dev_video'
+                self.audio_bag = 'unzip/dev_audio'
             else:
                 self.video_bag = 'unzip/test_video'
+                self.audio_bag = 'unzip/test_audio'
         elif self.opt.dataset_name == 'grid':
             if opt.isTrain:
                 _file = open(os.path.join(self.root, 'pickle', 'train_audio2lmark_grid.pkl'), "rb")

@@ -10,6 +10,9 @@ from util.util import get_roi
 from models.base_model import BaseModel
 import models.networks as networks
 from models.input_process import *
+from pytorch_msssim import msssim
+
+import pdb
 
 class LossCollector(BaseModel):
     def name(self):
@@ -31,27 +34,31 @@ class LossCollector(BaseModel):
             self.old_lr = opt.lr
                 
             # define loss functions
-            self.criterionGAN = networks.GANLoss(opt.gan_mode, tensor=self.Tensor, opt=opt)            
+            self.criterionGAN = networks.GANLoss(opt.gan_mode, tensor=self.Tensor, opt=opt)
             self.criterionFeat = torch.nn.L1Loss()
             self.criterionFlow = networks.MaskedL1Loss()
             self.criterionGen = torch.nn.L1Loss()
-            if not opt.no_vgg_loss:             
+            if not opt.no_vgg_loss:
                 self.criterionVGG = networks.VGGLoss(opt, self.gpu_ids)
         
             # Names so we can breakout loss
-            self.loss_names_G = ['G_GAN', 'G_GAN_Feat', 'G_VGG', 'GT_GAN', 'GT_GAN_Feat', 
+            self.loss_names_G = ['G_GAN', 'G_GAN_Feat', \
+                                 'G_VGG', 'GM_VGG', \
+                                 'GT_GAN', 'GT_GAN_Feat', \
+                                 'GM_GAN', 'GM_GAN_Feat', \
+                                 'ssmi', 'ssmi_M', \
                                  'F_Flow', 'F_Warp', 'L1_Loss', 'Atten_L1_Loss', 'W']
-            self.loss_names_D = ['D_real', 'D_fake', 'DT_real', 'DT_fake'] 
+            self.loss_names_D = ['D_real', 'D_fake', 'DM_real', 'DM_fake', 'DT_real', 'DT_fake'] 
             self.loss_names = self.loss_names_G + self.loss_names_D
 
-    def discriminate(self, netD, tgt_label, fake_image, tgt_image, ref_image, for_discriminator):                
-        tgt_concat = torch.cat([fake_image, tgt_image], dim=0)        
+    def discriminate(self, netD, tgt_label, fake_image, tgt_image, ref_image, for_discriminator):
+        tgt_concat = torch.cat([fake_image, tgt_image], dim=0)
         if tgt_label is not None:
             tgt_concat = torch.cat([tgt_label.repeat(2, 1, 1, 1), tgt_concat], dim=1)
             
         if ref_image is not None:             
             ref_image = ref_image.repeat(2, 1, 1, 1)
-            if self.concat_ref_for_D:                
+            if self.concat_ref_for_D:
                 tgt_concat = torch.cat([ref_image, tgt_concat], dim=1)
                 ref_image = None        
 
@@ -95,6 +102,46 @@ class LossCollector(BaseModel):
             return losses
    
         return losses
+
+    def compute_mouth_losses(self, nets, data_list, for_discriminator):
+        tgt_image, fake_image = data_list
+        netDm = nets
+        if isinstance(fake_image, list):
+            fake_image = [x for x in fake_image if x is not None]
+            losses = [self.compute_mouth_losses(nets, [real_i, fake_i], for_discriminator) \
+                for fake_i, real_i in zip(fake_image, tgt_image)]
+            return [sum([item[i] for item in losses]) for i in range(len(losses[0]))]
+
+        tgt_image, fake_image = self.reshape([tgt_image, fake_image])
+
+        # discriminator loss
+        losses = self.discriminate(netDm, None, fake_image, tgt_image, None, for_discriminator)
+
+        return losses
+
+    def compute_new_GAN_losses(self, netD, data_list, is_real):
+        tgt_img, ref_img, lmark = self.reshape(data_list[:-1], for_temporal=False)
+        audio = data_list[-1].reshape(-1, 1, data_list[-1].shape[-1])
+        preds, losses = netD(tgt_img, ref_img, lmark, audio, is_real)
+        return preds, losses
+
+    def compute_mismatch_GAN_losses(self, netD, data_list):
+        tgt_ref_mis_img, tgt_lmark_mis_img, tgt_audio_mis_img, ref_img, lmark = self.reshape(data_list[:-1], for_temporal=False)
+        audio = data_list[-1].reshape(-1, 1, data_list[-1].shape[-1])
+        ref_mis_preds, ref_mis_losses = netD(tgt_ref_mis_img, ref_img, None, None, is_real=False)
+        lmark_mis_preds, lmark_mis_losses = netD(tgt_lmark_mis_img, None, lmark, None, is_real=False)
+        audio_mis_preds, audio_mis_losses = netD(tgt_audio_mis_img, None, None, audio, is_real=False)
+
+        preds = [ref_mis_preds[0], lmark_mis_preds[1], audio_mis_preds[2]]
+        losses = [ref_mis_losses[0], lmark_mis_losses[1], audio_mis_losses[2]]
+
+        return preds, losses
+
+    def compute_new_mouth_losses(self, netDm, data_list, is_real):
+        tgt_img = self.reshape(data_list[:-1], for_temporal=False)[0]
+        audio = data_list[-1].reshape(-1, 1, data_list[-1].shape[-1])
+        preds, losses = netDm(tgt_img, audio, is_real)
+        return preds, losses
 
     def compute_VGG_losses(self, fake_image, fake_raw_image, img_ani, tgt_image):
         loss_G_VGG = self.Tensor(1).fill_(0)
@@ -166,6 +213,12 @@ class LossCollector(BaseModel):
     def atten_L1_loss(self, syn_image, tgt_image, tgt_template):
         loss_atten = self.criterionGen(syn_image * tgt_template, tgt_image * tgt_template) * self.opt.mask_l1
         return loss_atten
+
+    def compute_msssim_loss(self, tgt_image, syn_image):
+        tgt_image, syn_image = self.reshape([tgt_image, syn_image], for_temporal=False)
+        loss = 1 - msssim(tgt_image, syn_image)
+        return loss
+
 
 def loss_backward(opt, losses, optimizer):    
     losses = [ torch.mean(x) if not isinstance(x, int) else x for x in losses ]

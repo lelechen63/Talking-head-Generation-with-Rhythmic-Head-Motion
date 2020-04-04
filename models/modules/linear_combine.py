@@ -11,7 +11,7 @@ class LinearCombineModule(BaseNetwork):
         self.warp = WarpModule(opt, opt.n_frames_G)
         self.flow_temp_is_initalized = False
 
-    def forward(self, tgt_lmark, ref_lmarks, ref_imgs, prev, warp_ref_img, warp_ref_lmark, ani_img, ani_lmark, t=0, ref_idx_fix=None):
+    def forward(self, tgt_lmark, ref_lmarks, ref_imgs, prev, warp_ref_img, warp_ref_lmark, ani_img, ani_lmark, audio=None, t=0, ref_idx_fix=None):
         # generate image
         fake_raw_img, atn, ref_idx = self.netG(label=tgt_lmark, label_refs=ref_lmarks, img_refs=ref_imgs, t=t)
 

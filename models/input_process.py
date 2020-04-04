@@ -40,7 +40,8 @@ def encode_input(opt, data_list, dummy_bs):
     if opt.isTrain and data_list[0].get_device() == 0:
         data_list = remove_dummy_from_tensor(opt, data_list, dummy_bs)
     tgt_label, tgt_image, tgt_template, tgt_crop_image, flow_gt, conf_gt, ref_label, ref_image, \
-        warp_ref_lmark, warp_ref_img, ani_lmark, ani_img, prev_label, prev_real_image, prev_image = data_list
+        warp_ref_lmark, warp_ref_img, ori_warping_refs, ani_lmark, ani_img, prev_label, prev_real_image, prev_image, \
+        audio, mis_tgt_image, mis_template = data_list
 
     # target label and image
     tgt_label = encode_label(opt, tgt_label)
@@ -64,9 +65,16 @@ def encode_input(opt, data_list, dummy_bs):
     # warp reference label and image
     warp_ref_lmark = encode_label(opt, warp_ref_lmark)        
     warp_ref_img = warp_ref_img.cuda()
+    ori_warping_refs = ori_warping_refs.cuda()
         
+    # audio
+    audio = audio.cuda() if audio is not None else None
+    mis_tgt_image = mis_tgt_image.cuda() if mis_tgt_image is not None else None
+    mis_template = mis_template.cuda() if mis_template is not None else None
+
     return tgt_label, tgt_image, tgt_template, tgt_crop_image, flow_gt, conf_gt, ref_label, ref_image, warp_ref_lmark, \
-        warp_ref_img, ani_lmark, ani_img, prev_label, prev_real_image, prev_image
+        warp_ref_img, ori_warping_refs, ani_lmark, ani_img, prev_label, prev_real_image, prev_image, audio, mis_tgt_image, \
+        mis_template
 
 def encode_label(opt, label_map):
     size = label_map.size()

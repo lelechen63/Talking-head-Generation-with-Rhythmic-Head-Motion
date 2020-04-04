@@ -55,7 +55,15 @@ def train():
             data_list = [data['tgt_label'], data['tgt_image'], data['tgt_template'], data['cropped_images'], flow_gt, conf_gt]
             data_ref_list = [data['ref_label'], data['ref_image']]
             data_prev = [None, None, None]
-            data_ani = [data['warping_ref_lmark'], data['warping_ref'], data['ani_lmark'], data['ani_image']]
+            data_ani = [data['warping_ref_lmark'], data['warping_ref'], data['ori_warping_refs'], data['ani_lmark'], data['ani_image']]
+            if opt.audio_drive:
+                data_audio = [data['tgt_audio']]
+            else:
+                data_audio = [None]
+            if opt.use_new_D:
+                data_mismatch = [data['mis_tgt_img'], data['mis_template']]
+            else:
+                data_mismatch = [None, None]
 
             ############## Forward Pass ######################
             prevs = {"raw_images":[], "synthesized_images":[], \
@@ -67,7 +75,7 @@ def train():
             for t in range(0, n_frames_total, n_frames_load):
                 
                 data_list_t = get_data_t(data_list, n_frames_load, t) + data_ref_list + \
-                              get_data_t(data_ani, n_frames_load, t) + data_prev
+                              get_data_t(data_ani, n_frames_load, t) + data_prev + data_audio + data_mismatch
 
                 # get new previous flow loss
                 # if t != 0:
@@ -88,10 +96,11 @@ def train():
             loss_dict = dict(zip(model.module.lossCollector.loss_names, g_losses + d_losses))     
 
             # output_data_list = generated + data_list + [data['ref_label'], data['ref_image']] + data_ani + [data['cropped_lmarks']]
-            output_data_list = [prevs] + [data['ref_image']] + data_ani + data_list + [data['tgt_mask_images']]
+            output_data_list = [prevs] + [data['ref_image']] + data_ani + data_list + [data['tgt_mask_images']] + data_mismatch
 
             if trainer.end_of_iter(loss_dict, output_data_list, model):
                 break        
+            pdb.set_trace()
 
         trainer.end_of_epoch(model)
 

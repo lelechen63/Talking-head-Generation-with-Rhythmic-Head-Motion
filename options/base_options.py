@@ -103,6 +103,8 @@ class BaseOptions():
         parser.add_argument('--gan_mode', type=str, default='hinge', help='(ls|original|hinge)')        
         parser.add_argument('--add_face_D', action='store_true', help='add additional discriminator for face region')
         parser.add_argument('--adaptive_D_layers', type=int, default=1, help='number of adaptive layers in discriminator')
+        parser.add_argument('--add_mouth_D', action='store_true', help='add additional discriminator for mouth region')
+        parser.add_argument('--use_new_D', action='store_true', help='use self designed discriminator for image')
 
         parser.add_argument('--lambda_kld', type=float, default=0.0, help='weight for KLD loss')
         parser.add_argument('--lambda_feat', type=float, default=10.0, help='weight for feature matching loss')
@@ -110,7 +112,9 @@ class BaseOptions():
         parser.add_argument('--lambda_flow', type=float, default=10.0, help='weight for flow')        
         parser.add_argument('--lambda_weight', type=float, default=10.0, help='weight for flow mask')
         parser.add_argument('--lambda_vgg', type=float, default=10.0, help='weight for vgg loss')        
-        parser.add_argument('--lambda_face', type=float, default=10.0, help='weight for face region')      
+        parser.add_argument('--lambda_face', type=float, default=10.0, help='weight for face region')     
+        parser.add_argument('--lambda_mouth', type=float, default=3.0, help='weight for mouth region')
+        parser.add_argument('--lambda_mouth_vgg', type=float, default=10.0, help='weight for VGG loss in mouth region')
         parser.add_argument('--face_l1', type=float, default=0, help='weight of l1 loss for entire face')
         parser.add_argument('--mask_l1', type=float, default=0, help='weight of l1 loss for mask area')  
 
@@ -137,6 +141,8 @@ class BaseOptions():
         parser.add_argument('--use_new', action='store_true')
         parser.add_argument('--no_warp', action='store_true')
         parser.add_argument('--no_atten', action='store_true')
+        parser.add_argument('--audio_drive', action='store_true', help='if specified, audio directly drive mouth')
+
         # for initial
         parser.add_argument('--transfer_initial', action='store_true', help='initilize by transferring from two encoders')
 

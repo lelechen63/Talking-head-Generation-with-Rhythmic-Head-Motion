@@ -97,9 +97,9 @@ class Vid2VidModel(BaseModel):
             loss_G_GAN = [sum(losses_fake), sum(losses_fake_raw)]
             loss_G_GAN = sum(loss_G_GAN) / len(loss_G_GAN)
             # ms-ssim loss
-            ssmi_fake = self.lossCollector.compute_msssim_loss(tgt_image, fake_image)
-            ssmi_fake_raw = self.lossCollector.compute_msssim_loss(tgt_image, fake_raw_image)
-            loss_ssmi = sum([ssmi_fake, ssmi_fake_raw]) / 2
+            # ssmi_fake = self.lossCollector.compute_msssim_loss(tgt_image, fake_image)
+            # ssmi_fake_raw = self.lossCollector.compute_msssim_loss(tgt_image, fake_raw_image)
+            # loss_ssmi = sum([ssmi_fake, ssmi_fake_raw]) / 2
 
         # for mouth discriminator
         loss_GM_GAN, loss_GM_GAN_Feat = self.Tensor(1).fill_(0), self.Tensor(1).fill_(0)
@@ -113,14 +113,15 @@ class Vid2VidModel(BaseModel):
             loss_GM_GAN = [losses_fake_mouth, losses_fake_raw_mouth]
             loss_GM_GAN = sum(loss_GM_GAN) / len(loss_GM_GAN) * self.opt.lambda_mouth
             # ms-ssim loss
-            ssmi_fake_M = self.lossCollector.compute_msssim_loss(self.crop_template(tgt_image, tgt_template), \
-                                                                 self.crop_template(fake_image, tgt_template))
-            ssmi_fake_raw_M = self.lossCollector.compute_msssim_loss(self.crop_template(tgt_image, tgt_template), \
-                                                                 self.crop_template(fake_raw_image, tgt_template))
-            loss_M_ssmi = sum([ssmi_fake_M, ssmi_fake_raw_M]) / 2
+            # ssmi_fake_M = self.lossCollector.compute_msssim_loss(self.crop_template(tgt_image, tgt_template), \
+            #                                                      self.crop_template(fake_image, tgt_template))
+            # ssmi_fake_raw_M = self.lossCollector.compute_msssim_loss(self.crop_template(tgt_image, tgt_template), \
+            #                                                      self.crop_template(fake_raw_image, tgt_template))
+            # loss_M_ssmi = sum([ssmi_fake_M, ssmi_fake_raw_M]) / 2
 
         # VGG loss
         loss_G_VGG = self.lossCollector.compute_VGG_losses(fake_image, fake_raw_image, img_ani, tgt_image)
+        loss_GM_VGG = self.Tensor(1).fill_(0)
         if self.opt.add_mouth_D:
             loss_GM_VGG = self.lossCollector.compute_VGG_losses(self.crop_template(fake_image, tgt_template), \
                                                            self.crop_template(fake_raw_image, tgt_template), \
@@ -279,9 +280,9 @@ class Vid2VidModel(BaseModel):
             left, right = np.min(cors[0]), np.max(cors[0])
             up, bottom = np.min(cors[1]), np.max(cors[1])
             crop_img = image_temp[temp_id:temp_id+1, :, left:right, up:bottom]
-            cropped_images.append(F.upsample(crop_img, size=[88, 88]))
+            cropped_images.append(F.upsample(crop_img, size=[64, 64]))
         
-        result = torch.cat(cropped_images).view(b, t, ch, 88, 88)
+        result = torch.cat(cropped_images).view(b, t, ch, 64, 64)
 
         return result
 

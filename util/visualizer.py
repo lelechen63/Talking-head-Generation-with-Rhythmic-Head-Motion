@@ -95,6 +95,7 @@ class Visualizer():
         if self.tf_log: # show images in tensorboard output
             img_summaries = []
             for label, image_numpy in visuals.items():
+                if image_numpy is None: continue
                 # Write the image to a string
                 try:
                     s = StringIO()

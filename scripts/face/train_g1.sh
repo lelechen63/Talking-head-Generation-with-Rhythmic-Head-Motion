@@ -83,9 +83,9 @@
 
 CUDA_VISIBLE_DEVICES=0 python train.py --name face8_vox_test --dataset_mode facefore \
 --adaptive_spade --warp_ref --spade_combine --add_raw_loss \
---gpu_ids 0 --batchSize 1 --nThreads 0 --niter 20 --niter_single 21 \
+--gpu_ids 0 --batchSize 2 --nThreads 0 --niter 20 --niter_single 21 \
 --n_shot 8 --n_frames_G 1 \
---lambda_flow 0.2 --lambda_vgg 2 \
+--lambda_flow 0.2 --lambda_vgg 2 --lambda_mouth_vgg 1 \
 --dataroot '/home/cxu-serve/p1/common/voxceleb2' --dataset_name vox --save_epoch_freq 2 --display_freq 1000 \
 --which_model_netD 'syncframe' \
 --continue_train --crop_ref --audio_drive --add_mouth_D --use_new_D

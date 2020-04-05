@@ -100,7 +100,8 @@ def train():
 
             if trainer.end_of_iter(loss_dict, output_data_list, model):
                 break        
-            pdb.set_trace()
+
+            # pdb.set_trace()
 
         trainer.end_of_epoch(model)
 

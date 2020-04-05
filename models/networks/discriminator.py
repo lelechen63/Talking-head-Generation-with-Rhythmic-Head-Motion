@@ -232,16 +232,17 @@ class SyncDiscriminator(BaseNetwork):
         nf = ndf
         for i in range(n_layers-1):
             nf_pref = nf
-            nf = min(2 * nf, 512)
+            nf = min(2 * nf, 256)
+            padw = self.calculate_padding(kw, stride, img_final_size) // 2
             img_encoder.append([nn.Conv2d(nf_pref, nf, kernel_size=kw, stride=stride, padding=padw),
                         nn.BatchNorm2d(nf),
                         nn.LeakyReLU(0.3, False)])
             img_final_size = (img_final_size - kw + 2 * padw) // stride + 1
         # conv
-        padw = self.calculate_padding(kw, 1, img_size) // 2
         for i in range(tot_layers-n_layers):
             nf_pref = nf
-            nf = min(2 * nf, 512)
+            nf = min(2 * nf, 256)
+            padw = self.calculate_padding(kw, 1, img_final_size) // 2
             img_encoder.append([nn.Conv2d(nf_pref, nf, kernel_size=kw, stride=1, padding=padw),
                         nn.BatchNorm2d(nf),
                         nn.LeakyReLU(0.3, False)])
@@ -250,14 +251,12 @@ class SyncDiscriminator(BaseNetwork):
         nf = ndf
         for i in range(tot_layers-1):
             nf_pref = nf
-            nf = min(2 * nf, 512)
+            nf = min(2 * nf, 256)
             audio_encoder.append([nn.Conv1d(nf_pref, nf, kernel_size=audioW, stride=2, padding=0, dilation=1),
                         nn.BatchNorm1d(nf),
                         nn.LeakyReLU(0.3, False)])
             audio_final_size = (audio_final_size - audioW) // 2 + 1
 
-        # img_final_size = int(img_size // stride**n_layers)
-        img_encoder.append([nn.Conv2d(nf, nf_final, kernel_size=img_final_size, stride=1, padding=0), nn.Tanh()])
         audio_encoder.append([nn.Conv1d(nf, nf_final, kernel_size=41, stride=1, padding=0), nn.Tanh()])
 
         for i in range(len(img_encoder)):
@@ -265,8 +264,21 @@ class SyncDiscriminator(BaseNetwork):
         for i in range(len(audio_encoder)):
             setattr(self, 'audio_encoder_'+str(i), nn.Sequential(*audio_encoder[i]))
 
-        self.slp = nn.Linear(nf_final*2, 1, bias=True)
-        self.loss_fun = nn.BCELoss()
+        # self.slp = nn.Linear(nf_final*2, 1, bias=True)
+        padw = self.calculate_padding(kw, 2, img_final_size) // 2
+        self.comb_conv_1 = nn.Sequential(*[nn.Conv2d(nf_final*2, 512, kernel_size=kw, stride=2, padding=padw),
+                                           nn.BatchNorm2d(nf_final*2),
+                                           nn.LeakyReLU(0.3, False)])
+        img_final_size = (img_final_size - kw + 2 * padw) // 2 + 1
+
+        padw = self.calculate_padding(kw, 2, img_final_size) // 2
+        self.comb_conv_2 = nn.Sequential(*[nn.Conv2d(512, 512, kernel_size=kw, stride=2, padding=padw),
+                                           nn.BatchNorm2d(nf_final*2),
+                                           nn.LeakyReLU(0.3, False)])
+        img_final_size = (img_final_size - kw + 2 * padw) // 2 + 1
+
+        self.comb_conv_cls = nn.Conv2d(512, 1, kernel_size=img_final_size, stride=1, padding=0)
+        self.loss_fun = nn.MSELoss()
 
         # other parameter
         self.img_layers = len(img_encoder)
@@ -278,67 +290,74 @@ class SyncDiscriminator(BaseNetwork):
         # encode
         for i in range(self.img_layers):
             img_f = getattr(self, 'img_encoder_'+str(i))(img_f)
+            # pdb.set_trace()
         for i in range(self.audio_layers):
             audio_f = getattr(self, 'audio_encoder_'+str(i))(audio_f)
 
-        # single layer perception
-        fea = torch.cat([img_f.squeeze(-1).squeeze(-1), audio_f.squeeze(-1)], axis=1)
-        pred = self.slp(fea)
-
+        # reshape audio
+        audio_f = audio_f.unsqueeze(-1).repeat([1, 1, img_f.shape[2], img_f.shape[3]])
+        fea = torch.cat([img_f, audio_f], axis=1)
+        fea = self.comb_conv_1(fea)
+        fea = self.comb_conv_2(fea)
+        fea = self.comb_conv_cls(fea)
+        fea = fea.view(fea.shape[0], -1)
+        
         # loss
-        pred = F.sigmoid(pred)
-        target = torch.zeros_like(pred).cuda(pred.get_device())
+        target = torch.zeros_like(fea).cuda(fea.get_device())
         if is_real:
             target += 1
-        loss = self.loss_fun(pred, target)
+        loss = self.loss_fun(fea, target)
 
-        return pred, loss
+        return fea, loss
 
 class FrameDiscriminator(BaseNetwork):
     def __init__(self, opt, img_size=256, ch=6, ndf=64, n_layers=6, kw=4, stride=2):
         super(FrameDiscriminator, self).__init__()
         # define structure
+        img_final_size = img_size
         padw = self.calculate_padding(kw, stride, img_size) // 2
         discriminator = [[nn.Conv2d(ch, ndf, kernel_size=kw, stride=stride, padding=padw),
                         nn.BatchNorm2d(ndf),
                         nn.LeakyReLU(0.3, False)]]
+        img_final_size = (img_final_size - kw + 2 * padw) // stride + 1
 
         nf = ndf
         for i in range(n_layers-1):
             nf_prev = nf
-            nf = 2 * nf
+            nf = min(512, 2 * nf)
             discriminator.append([nn.Conv2d(nf_prev, nf, kernel_size=kw, stride=stride, padding=padw),
                         nn.BatchNorm2d(nf),
                         nn.LeakyReLU(0.3, False)])
+            img_final_size = (img_final_size - kw + 2 * padw) // stride + 1
+
+        discriminator.append([nn.Conv2d(nf, 1, kernel_size=img_final_size, stride=1, padding=0)])
 
         for i in range(len(discriminator)):
             setattr(self, 'layer_'+str(i), nn.Sequential(*discriminator[i]))
 
-        in_plane = nf * (img_size // (stride ** n_layers)) ** 2
-        self.fc = nn.Linear(in_plane, 1, bias=True)
-
-        self.loss_fun = nn.BCELoss()
+        self.loss_fun = nn.MSELoss()
         self.n_layers = len(discriminator)
 
     def forward(self, concat_img, is_real=True):
         fea = concat_img
         for i in range(self.n_layers):
             fea = getattr(self, 'layer_'+str(i))(fea)
+            # pdb.set_trace()
+
         fea = fea.reshape(fea.shape[0], -1)
-        pred = F.sigmoid(self.fc(fea))
-        target = torch.zeros_like(pred).cuda(pred.get_device())
+        target = torch.zeros_like(fea).cuda(fea.get_device())
 
         if is_real:
             target += 1
-        loss = self.loss_fun(pred, target)
-        return pred, loss
+        loss = self.loss_fun(fea, target)
+        return fea, loss
 
 class SepDiscriminator(BaseNetwork):
     def __init__(self, opt, ndf, img_size=256, audio_size=1920):
         super(SepDiscriminator, self).__init__()
         self.ref_img_D = FrameDiscriminator(opt, ch=6, ndf=ndf)
         self.lmark_img_D = FrameDiscriminator(opt, ch=4, ndf=ndf)
-        self.audio_img_D = SyncDiscriminator(opt, ndf=ndf)
+        self.audio_img_D = SyncDiscriminator(opt, ndf=ndf, n_layers=4)
 
     def forward(self, img, ref_img, lmark, audio, is_real=True):
         ref_pred, lmark_pred, audio_pred = None, None ,None

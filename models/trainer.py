@@ -124,18 +124,18 @@ def save_all_tensors(opt, output_list, model):
         atten_img = model.module.crop_template(target_image, tgt_template)
         atten_fake_img = model.module.crop_template(fake_image.unsqueeze(1), tgt_template[-1:])
         atten_raw_img = model.module.crop_template(fake_raw_image.unsqueeze(1), tgt_template[-1:])
-        mis_atten_img = model.module.crop_template(mismatch_image[:, 2:], mismatch_template)
+        mis_atten_img = model.module.crop_template(mismatch_image[-1:, 2:], mismatch_template[-1:])
     except:
         try:
             atten_img = model.crop_template(target_image, tgt_template)
             atten_fake_img = model.crop_template(fake_image.unsqueeze(1), tgt_template[-1:])
             atten_raw_img = model.crop_template(fake_raw_image.unsqueeze(1), tgt_template[-1:])
-            mis_atten_img = model.crop_template(mismatch_image[:, 2:], mismatch_template)
+            mis_atten_img = model.crop_template(mismatch_image[-1:, 2:], mismatch_template[-1:])
         except:
             atten_img = model.model.module.crop_template(target_image, tgt_template)
             atten_fake_img = model.model.module.crop_template(fake_image.unsqueeze(1), tgt_template[-1:])
             atten_raw_img = model.model.module.crop_template(fake_raw_image.unsqueeze(1), tgt_template[-1:])
-            mis_atten_img = model.model.module.crop_template(mismatch_image[:, 2:], mismatch_template)
+            mis_atten_img = model.model.module.crop_template(mismatch_image[-1:, 2:], mismatch_template[-1:])
 
     visual_list = []
     for i in range(opt.n_shot):
@@ -147,9 +147,9 @@ def save_all_tensors(opt, output_list, model):
                     ('target_label', util.tensor2im(target_label, tile=True)),
                     ('target_image', util.tensor2im(target_image, tile=True)),
                     ('target_atten_image', util.tensor2im(atten_img, tile=True)),
-                    ('mismatch_ref_image', util.tensor2im(mismatch_image[:, 0], tile=True)),
-                    ('mismatch_lmark_image', util.tensor2im(mismatch_image[:, 1], tile=True)),
-                    ('mismatch_audio_image', util.tensor2im(mismatch_image[:, 2], tile=True)),
+                    ('mismatch_ref_image', util.tensor2im(mismatch_image[-1, 0], tile=True)),
+                    ('mismatch_lmark_image', util.tensor2im(mismatch_image[-1, 1], tile=True)),
+                    ('mismatch_audio_image', util.tensor2im(mismatch_image[-1, 2], tile=True)),
                     ('mismatch_atten_image', util.tensor2im(mis_atten_img, tile=True)),
                     ('synthesized_image', util.tensor2im(fake_image, tile=True)),
                     ('synthesized_atten_image', util.tensor2im(atten_fake_img, tile=True)),

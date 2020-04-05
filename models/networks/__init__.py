@@ -55,7 +55,7 @@ def define_D(opt, input_nc, ndf, n_layers_D, norm='spectralinstance', subarch='n
         netD = NLayerDiscriminator(input_nc, ndf, n_layers_D, norm_layer, getIntermFeat)
     elif opt.which_model_netD == 'syncframe':
         if subarch == 'sync':
-            netD = SyncDiscriminator(opt, 88, ndf, 256, 4, 5)
+            netD = SyncDiscriminator(opt, 64, ndf, 256, 2, 5)
         elif subarch == 'frame':
             netD = FrameDiscriminator(opt, 256, input_nc, ndf, 6)
         elif subarch == 'syncframe':

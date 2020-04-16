@@ -172,13 +172,18 @@ class BaseModel(torch.nn.Module):
             if self.concat_ref_for_D:
                 netD_input_nc *= 2
             if opt.use_new_D:
-                self.netD = networks.define_D(opt, opt.input_nc, opt.ndf, opt.n_layers_D, subarch='syncframe')
+                # self.netD = networks.define_D(opt, opt.input_nc, opt.ndf, opt.n_layers_D, subarch='syncframe')
+                self.netD = networks.define_D(opt, netD_input_nc, opt.ndf, opt.n_layers_D, opt.norm_D, opt.netD_subarch, 
+                                          opt.num_D, not opt.no_ganFeat_loss, gpu_ids=self.gpu_ids)    
             else:
                 self.netD = networks.define_D(opt, netD_input_nc, opt.ndf, opt.n_layers_D, opt.norm_D, opt.netD_subarch, 
                                           opt.num_D, not opt.no_ganFeat_loss, gpu_ids=self.gpu_ids)            
 
             if self.opt.add_mouth_D:
-                self.netDm = networks.define_D(opt, opt.output_nc, opt.ndf, opt.n_layers_D, subarch='sync')
+                # self.netDm = networks.define_D(opt, opt.output_nc, opt.ndf, opt.n_layers_D, subarch='sync')
+                self.netDm = networks.define_D(opt, opt.output_nc, opt.ndf, opt.n_layers_D, opt.norm_D, \
+                                               subarch='mouth', getIntermFeat=not opt.no_ganFeat_loss)
+                self.netDm.set_audio_encoder(self.netD.audio_img_D.get_audio_encoder())
 
         self.temporal = False
         self.netDT = None             

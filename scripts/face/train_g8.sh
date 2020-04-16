@@ -205,10 +205,10 @@ train_vox_audio_nonlinear_newD(){
     --adaptive_spade --warp_ref --spade_combine --add_raw_loss \
     --gpu_ids 0,1,2 --batchSize 6 --nThreads 8 --niter 1000 --niter_single 1001 \
     --n_shot 8 --n_frames_G 1 \
-    --lambda_flow 1 --lambda_vgg 2 --lambda_mouth_vgg 2 \
+    --lambda_flow 1 --lambda_vgg 2 --lambda_mouth_vgg 10 --n_layers_D 3 \
     --dataroot '/home/cxu-serve/p1/common/voxceleb2' --dataset_name vox --save_epoch_freq 1 --display_freq 1000 \
-    --which_model_netD 'syncframe' \
-    --crop_ref --audio_drive --add_mouth_D --use_new_D --tf_log \
+    --which_model_netD 'sepfea' \
+    --crop_ref --audio_drive --use_new_D --add_mouth_D \
     --continue_train
 }
 

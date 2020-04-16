@@ -197,7 +197,7 @@ if opt.dataset_name == 'lrw':
     save_name = 'lrw'
 # save_root = os.path.join('evaluation_store', save_name, '{}_shot_test'.format(opt.n_shot), 'epoch_{}'.format(opt.which_epoch))
 # save_root = os.path.join('evaluation_store', save_name, '{}_shot_epoch_{}'.format(opt.n_shot, opt.which_epoch))
-save_root = os.path.join('ablation', save_name, '{}_shot_epoch_{}'.format(opt.n_shot, opt.which_epoch))
+save_root = os.path.join('ijcv_result', save_name, '{}_shot_epoch_{}'.format(opt.n_shot, opt.which_epoch))
 # pick_ids = np.random.choice(list(range(len(pickle_data))), size=opt.how_many)
 # save_root = os.path.join('audio_result', save_name, '{}_shot_epoch_{}'.format(opt.n_shot, opt.which_epoch))
 end = int(len(pickle_data))
@@ -228,9 +228,9 @@ for pick_id in tqdm(pick_ids):
     # if 'test_{}_{}_crop'.format(paths[0], paths[1][:5]) not in pickle_files:
     #     continue
 
-    count += 1
-    if count == 20:
-        break
+    # count += 1
+    # if count == 20:
+    #     break
 
     print('process {} ...'.format(pick_id))
     audio_tgt_path = get_param(root, pickle_data, pick_id, opt)
@@ -265,21 +265,24 @@ for pick_id in tqdm(pick_ids):
         if "warping_ref" not in data:
             data.update({'warping_ref': data['ref_image'][:, :1], 'warping_ref_lmark': data['ref_label'][:, :1]})
         # data.update({'warping_ref': data['ref_image'][:, :1], 'warping_ref_lmark': data['ref_label'][:, :1]})
+        # data['tgt_audio'] = None
 
         img_path = data['path']
         data_list = [data['tgt_label'], data['tgt_image'], None, None, None, None, \
                     data['ref_label'], data['ref_image'], \
                     data['warping_ref_lmark'].squeeze(1) if data['warping_ref_lmark'] is not None else None, \
                     data['warping_ref'].squeeze(1) if data['warping_ref'] is not None else None, \
+                    None, \
                     data['ani_lmark'].squeeze(1) if opt.warp_ani else None, \
                     data['ani_image'].squeeze(1) if opt.warp_ani else None, \
                     None, None, None, \
-                    data['tgt_audio'] if opt.audio_drive else None]
+                    data['tgt_audio'] if opt.audio_drive and data['tgt_audio'] is not None else None, \
+                    None, None]
         synthesized_image, fake_raw_img, warped_img, _, weight, _, _, _, _, _ = model(data_list, ref_idx_fix=ref_idx_fix)
         
         # save compare
         visuals = [
-            util.tensor2im(data['tgt_gt_label']), \
+            util.tensor2im(data['tgt_gt_label']) if 'tgt_gt_label' in data else util.tensor2im(data['tgt_label']), \
             util.tensor2im(data['tgt_label']), \
             util.tensor2im(data['tgt_image']), \
             util.tensor2im(synthesized_image), \

@@ -66,7 +66,7 @@ class Trainer():
         # visuals = save_all_tensors(opt, output_list, model)
         # self.visualizer.display_current_results(visuals, epoch, total_steps)
 
-        ### display output images        
+        ### display output images
         if is_master() and self.save:
             visuals = save_all_tensors(opt, output_list, model)
             self.visualizer.display_current_results(visuals, epoch, total_steps)

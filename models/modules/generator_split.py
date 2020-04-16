@@ -108,8 +108,8 @@ class FewShotGenerator(BaseNetwork):
         ### main branch layers
         for i in reversed(range(n_downsample_G + 1)):
             hidden_nc = ch_hidden[i]
-            if self.opt.audio_drive:
-                hidden_nc = hidden_nc + [ch_hidden[i][-1]]
+            # if self.opt.audio_drive:
+            #     hidden_nc = hidden_nc + [ch_hidden[i][-1]]
             if i >= self.n_sc_layers or not opt.use_new:
                 setattr(self, 'up_%d' % i, SPADEResnetBlock(ch[i+1], ch[i], norm=norm, hidden_nc=hidden_nc, 
                         conv_ks=conv_ks, spade_ks=spade_ks,
@@ -586,3 +586,31 @@ class AudioEncoder(BaseNetwork):
         features = h.unsqueeze(-2).expand(h.shape[0], reshape_size[0], reshape_size[0]).unsqueeze(1)
 
         return features
+
+# combine audio feature with landmark feature
+class LabelAudioEmbeder(BaseNetwork):
+    def __init__(self, opt):
+        super().__init__()
+        self.opt = opt
+        activation = nn.LeakyReLU(0.2, True)
+        nf = opt.ngf
+        nf_max = 1024
+        self.n_downsample_S = opt.n_downsample_G
+        ch = [min(nf_max, nf * (2 ** i)) for i in range(self.n_downsample_S+1)]
+
+        # embeder
+        for i in range(self.n_downsample_S+1):
+            layer = [nn.Conv2d(ch[i]*2, ch[i], kernel_size=3, stride=1, padding=1), activation]
+            setattr(self, 'embeder_%d' % i, nn.Sequential(*layer))
+
+        # debug
+        self.ch = ch
+
+    def forward(self, lmarks, audios):
+        res = []
+        for i in range(self.n_downsample_S+1):
+            in_d = torch.cat([lmarks[i], audios[i]], axis=1)
+            cur_res = getattr(self, 'embeder_%d' % i)(in_d)
+            res.append(cur_res)
+
+        return res

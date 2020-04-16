@@ -290,7 +290,6 @@ class SyncDiscriminator(BaseNetwork):
         # encode
         for i in range(self.img_layers):
             img_f = getattr(self, 'img_encoder_'+str(i))(img_f)
-            # pdb.set_trace()
         for i in range(self.audio_layers):
             audio_f = getattr(self, 'audio_encoder_'+str(i))(audio_f)
 
@@ -342,7 +341,6 @@ class FrameDiscriminator(BaseNetwork):
         fea = concat_img
         for i in range(self.n_layers):
             fea = getattr(self, 'layer_'+str(i))(fea)
-            # pdb.set_trace()
 
         fea = fea.reshape(fea.shape[0], -1)
         target = torch.zeros_like(fea).cuda(fea.get_device())
@@ -376,3 +374,83 @@ class SepDiscriminator(BaseNetwork):
         losses = [ref_loss, lmark_loss, audio_loss]
 
         return preds, losses
+
+class SepFeaDiscriminator(BaseNetwork):
+    def __init__(self, opt, ndf, n_layers, norm_layer, getIntermFeat, stride):
+        super(SepFeaDiscriminator, self).__init__()
+        self.ref_img_D = NLayerDiscriminator(input_nc=6, ndf=ndf, n_layers=n_layers, norm_layer=norm_layer, getIntermFeat=getIntermFeat,\
+                                             stride=stride)
+        self.lmark_img_D = NLayerDiscriminator(input_nc=4, ndf=ndf, n_layers=n_layers, norm_layer=norm_layer, getIntermFeat=getIntermFeat,\
+                                             stride=stride)
+        self.audio_img_D = AudioFeaDiscriminator(input_nc=4, ndf=ndf, n_layers=n_layers, norm_layer=norm_layer, getIntermFeat=getIntermFeat,\
+                                             stride=stride, nf_final=256)
+    def forward(self, img, ref_img, lmark, audio):
+        res = [None]*3
+        if ref_img is not None:
+            ref_res = self.ref_img_D(torch.cat([img, ref_img], axis=1))
+            res[0] = ref_res
+        if lmark is not None:
+            lmark_res = self.lmark_img_D(torch.cat([img, lmark], axis=1))
+            res[1] = lmark_res
+        if audio is not None:
+            audio_res = self.audio_img_D(img, audio)
+            res[2] = audio_res
+        return res
+
+class AudioFeaDiscriminator(BaseNetwork):
+    def __init__(self, input_nc, ndf, n_layers, norm_layer, getIntermFeat, stride, nf_final=256, audio_encoder=None):
+        super(AudioFeaDiscriminator, self).__init__()
+        self.audio_img_D = NLayerDiscriminator(input_nc=4, ndf=ndf, n_layers=n_layers, norm_layer=norm_layer, getIntermFeat=getIntermFeat,\
+                                             stride=stride)
+        self.audio_encoder = AudioEncoder(ndf, nf_final) if audio_encoder is None else audio_encoder
+
+    def forward(self, img, audio):
+        audio_fea = self.audio_encoder(audio)
+        audio_res = self.audio_img_D(torch.cat([img, audio_fea], axis=1))
+        
+        return audio_res
+
+    def set_audio_encoder(self, audio_encoder):
+        self.audio_encoder = audio_encoder
+    def get_audio_encoder(self):
+        return self.audio_encoder
+
+class AudioEncoder(BaseNetwork):
+    def __init__(self, ndf, nf_final, audioW=21, tot_layers=5):
+        super(AudioEncoder, self).__init__()
+        # define structure
+        audio_final_size = 1920
+        audio_encoder = [[nn.Conv1d(1, ndf, kernel_size=audioW, stride=2, padding=0),
+                        nn.BatchNorm1d(ndf),
+                        nn.LeakyReLU(0.3, False)]]
+        audio_final_size = (audio_final_size - audioW) // 2 + 1
+
+        # audio (keep down sample)
+        nf = ndf
+        for i in range(tot_layers-1):
+            nf_pref = nf
+            nf = min(2 * nf, 256)
+            audio_encoder.append([nn.Conv1d(nf_pref, nf, kernel_size=audioW, stride=2, padding=0, dilation=1),
+                        nn.BatchNorm1d(nf),
+                        nn.LeakyReLU(0.3, False)])
+            audio_final_size = (audio_final_size - audioW) // 2 + 1
+
+        audio_encoder.append([nn.Conv1d(nf, nf_final, kernel_size=audio_final_size, stride=1, padding=0), nn.Tanh()])
+
+        for i in range(len(audio_encoder)):
+            setattr(self, 'audio_encoder_'+str(i), nn.Sequential(*audio_encoder[i]))
+
+        # other parameter
+        self.audio_layers = len(audio_encoder)
+
+    def forward(self, audio):
+        audio_f = audio
+        # encode
+        for i in range(self.audio_layers):
+            audio_f = getattr(self, 'audio_encoder_'+str(i))(audio_f)
+        
+        # reshape
+        width = audio_f.shape[-2]
+        audio_f = audio_f.unsqueeze(1).repeat([1, 1, 1, width])
+
+        return audio_f

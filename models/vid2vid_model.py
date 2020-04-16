@@ -90,44 +90,46 @@ class Vid2VidModel(BaseModel):
                 data_list, for_discriminator=False)
         else:
             data_list = [fake_image, ori_warping_refs, tgt_label, audio]
-            pred_fake, losses_fake = self.lossCollector.compute_new_GAN_losses(self.netD, data_list, is_real=True)
+            # pred_fake, losses_fake = self.lossCollector.compute_new_GAN_losses(self.netD, data_list, is_real=True)
+            losses_fake = self.lossCollector.compute_GAN_losses_addition(self.netD, data_list, for_discriminator=False, is_real=True, \
+                                                                         tgt_img=tgt_image)
             data_list = [fake_raw_image, ori_warping_refs, tgt_label, audio]
-            pred_fake_raw, losses_fake_raw = self.lossCollector.compute_new_GAN_losses(self.netD, data_list, is_real=True)
+            # pred_fake_raw, losses_fake_raw = self.lossCollector.compute_new_GAN_losses(self.netD, data_list, is_real=True)
+            losses_fake_raw = self.lossCollector.compute_GAN_losses_addition(self.netD, data_list, for_discriminator=False, is_real=True, \
+                                                                         tgt_img=tgt_image)
             # combine
-            loss_G_GAN = [sum(losses_fake), sum(losses_fake_raw)]
-            loss_G_GAN = sum(loss_G_GAN) / len(loss_G_GAN)
-            # ms-ssim loss
-            # ssmi_fake = self.lossCollector.compute_msssim_loss(tgt_image, fake_image)
-            # ssmi_fake_raw = self.lossCollector.compute_msssim_loss(tgt_image, fake_raw_image)
-            # loss_ssmi = sum([ssmi_fake, ssmi_fake_raw]) / 2
-
+            # loss_G_GAN = [sum(losses_fake), sum(losses_fake_raw)]
+            # loss_G_GAN = sum(loss_G_GAN) / len(loss_G_GAN)
+            loss_G_GAN = (losses_fake[0] + losses_fake_raw[0]) / 2
+            loss_G_GAN_Feat = (losses_fake[1] + losses_fake_raw[1]) / 2
+            
         # for mouth discriminator
         loss_GM_GAN, loss_GM_GAN_Feat = self.Tensor(1).fill_(0), self.Tensor(1).fill_(0)
         loss_M_ssmi = self.Tensor(1).fill_(0)
         if self.opt.add_mouth_D:
             data_list = [self.crop_template(fake_image, tgt_template), audio]
-            pred_fake_mouth, losses_fake_mouth = self.lossCollector.compute_new_mouth_losses(self.netDm, data_list, is_real=True)
+            # pred_fake_mouth, losses_fake_mouth = self.lossCollector.compute_new_mouth_losses(self.netDm, data_list, is_real=True)
+            losses_fake_mouth = self.lossCollector.compute_mouth_losses_addition(self.netDm, data_list, for_discriminator=False, is_real=True,\
+                                                                         tgt_img = self.crop_template(tgt_image, tgt_template))
             data_list = [self.crop_template(fake_raw_image, tgt_template), audio]
-            pred_fake_raw_mouth, losses_fake_raw_mouth = self.lossCollector.compute_new_mouth_losses(self.netDm, data_list, is_real=True)
+            # pred_fake_raw_mouth, losses_fake_raw_mouth = self.lossCollector.compute_new_mouth_losses(self.netDm, data_list, is_real=True)
+            losses_fake_mouth_raw = self.lossCollector.compute_mouth_losses_addition(self.netDm, data_list, for_discriminator=False, is_real=True,\
+                                                                         tgt_img = self.crop_template(tgt_image, tgt_template))
             # combine
-            loss_GM_GAN = [losses_fake_mouth, losses_fake_raw_mouth]
-            loss_GM_GAN = sum(loss_GM_GAN) / len(loss_GM_GAN) * self.opt.lambda_mouth
-            # ms-ssim loss
-            # ssmi_fake_M = self.lossCollector.compute_msssim_loss(self.crop_template(tgt_image, tgt_template), \
-            #                                                      self.crop_template(fake_image, tgt_template))
-            # ssmi_fake_raw_M = self.lossCollector.compute_msssim_loss(self.crop_template(tgt_image, tgt_template), \
-            #                                                      self.crop_template(fake_raw_image, tgt_template))
-            # loss_M_ssmi = sum([ssmi_fake_M, ssmi_fake_raw_M]) / 2
+            # loss_GM_GAN = [losses_fake_mouth, losses_fake_raw_mouth]
+            # loss_GM_GAN = sum(loss_GM_GAN) / len(loss_GM_GAN) * self.opt.lambda_mouth
+            loss_GM_GAN = (losses_fake_mouth[0] + losses_fake_mouth_raw[0]) / 2 * self.opt.lambda_mouth
+            loss_GM_GAN_Feat = (losses_fake_mouth[0] + losses_fake_mouth_raw[1]) / 2 * self.opt.lambda_mouth
 
         # VGG loss
         loss_G_VGG = self.lossCollector.compute_VGG_losses(fake_image, fake_raw_image, img_ani, tgt_image)
         loss_GM_VGG = self.Tensor(1).fill_(0)
-        if self.opt.add_mouth_D:
-            loss_GM_VGG = self.lossCollector.compute_VGG_losses(self.crop_template(fake_image, tgt_template), \
-                                                           self.crop_template(fake_raw_image, tgt_template), \
-                                                           self.crop_template(img_ani, tgt_template) if img_ani is not None else None, \
-                                                           self.crop_template(fake_image, tgt_template))
-            loss_GM_VGG = loss_GM_VGG / self.opt.lambda_vgg * self.opt.lambda_mouth_vgg
+        # if self.opt.add_mouth_D:
+        #     loss_GM_VGG = self.lossCollector.compute_VGG_losses(self.crop_template(fake_image, tgt_template), \
+        #                                                    self.crop_template(fake_raw_image, tgt_template), \
+        #                                                    self.crop_template(img_ani, tgt_template) if img_ani is not None else None, \
+        #                                                    self.crop_template(fake_image, tgt_template))
+        #     loss_GM_VGG = loss_GM_VGG / self.opt.lambda_vgg * self.opt.lambda_mouth_vgg
 
         # L1 loss
         loss_l1 = self.lossCollector.compute_L1_loss(syn_image=fake_image, tgt_image=tgt_image)
@@ -184,32 +186,41 @@ class Vid2VidModel(BaseModel):
             loss_indv = self.lossCollector.compute_GAN_losses(nets, data_list, for_discriminator=True)
         else:
             data_list = [tgt_image, ori_warping_refs, tgt_label, audio]
-            pred_tgt, losses_tgt = self.lossCollector.compute_new_GAN_losses(self.netD, data_list, is_real=True)
+            # pred_tgt, losses_tgt = self.lossCollector.compute_new_GAN_losses(self.netD, data_list, is_real=True)
+            losses_tgt = self.lossCollector.compute_GAN_losses_addition(self.netD, data_list, for_discriminator=True, is_real=True)
             data_list = [fake_image, ori_warping_refs, tgt_label, audio]
-            pred_fake, losses_fake = self.lossCollector.compute_new_GAN_losses(self.netD, data_list, is_real=False)
+            # pred_fake, losses_fake = self.lossCollector.compute_new_GAN_losses(self.netD, data_list, is_real=False)
+            losses_fake = self.lossCollector.compute_GAN_losses_addition(self.netD, data_list, for_discriminator=True, is_real=False)
             data_list = [fake_raw_image, ori_warping_refs, tgt_label, audio]
-            pred_fake_raw, losses_fake_raw = self.lossCollector.compute_new_GAN_losses(self.netD, data_list, is_real=False)
+            # pred_fake_raw, losses_fake_raw = self.lossCollector.compute_new_GAN_losses(self.netD, data_list, is_real=False)
+            losses_fake_raw = self.lossCollector.compute_GAN_losses_addition(self.netD, data_list, for_discriminator=True, is_real=False)
             data_list = [mis_tgt_image[:, 0], mis_tgt_image[:, 1], mis_tgt_image[:, 2], ori_warping_refs, tgt_label, audio]
-            pred_fake_raw_mis, losses_fake_raw_mis = self.lossCollector.compute_mismatch_GAN_losses(self.netD, data_list)
+            # pred_fake_raw_mis, losses_fake_raw_mis = self.lossCollector.compute_mismatch_GAN_losses(self.netD, data_list)
+            losses_fake_mis = self.lossCollector.compute_mismatch_GAN_losses_addition(self.netD, data_list, for_discriminator=True, is_real=False)
             # combine
-            loss_real = sum(losses_tgt)
-            loss_fake = [sum(losses_fake), sum(losses_fake_raw), sum(losses_fake_raw_mis)]
+            loss_real = losses_tgt[0]
+            loss_fake = [losses_fake[0], losses_fake_raw[0], losses_fake_mis[0]]
             loss_fake = sum(loss_fake) / len(loss_fake)
             loss_indv = [loss_real, loss_fake]
 
         # mouth loss
+        loss_M = [self.Tensor(1).fill_(0), self.Tensor(1).fill_(0)]
         if self.opt.add_mouth_D:
             data_list = [self.crop_template(tgt_image, tgt_template), audio]
-            pred_tgt_mouth, losses_tgt_mouth = self.lossCollector.compute_new_mouth_losses(self.netDm, data_list, is_real=True)
+            # pred_tgt_mouth, losses_tgt_mouth = self.lossCollector.compute_new_mouth_losses(self.netDm, data_list, is_real=True)
+            losses_tgt_mouth = self.lossCollector.compute_mouth_losses_addition(self.netDm, data_list, for_discriminator=True, is_real=True)
             data_list = [self.crop_template(fake_image, tgt_template), audio]
-            pred_fake_mouth, losses_fake_mouth = self.lossCollector.compute_new_mouth_losses(self.netDm, data_list, is_real=False)
+            # pred_fake_mouth, losses_fake_mouth = self.lossCollector.compute_new_mouth_losses(self.netDm, data_list, is_real=False)
+            losses_fake_mouth = self.lossCollector.compute_mouth_losses_addition(self.netDm, data_list, for_discriminator=True, is_real=False)
             data_list = [self.crop_template(fake_raw_image, tgt_template), audio]
-            pred_fake_raw_mouth, losses_fake_raw_mouth = self.lossCollector.compute_new_mouth_losses(self.netDm, data_list, is_real=False)
+            # pred_fake_raw_mouth, losses_fake_raw_mouth = self.lossCollector.compute_new_mouth_losses(self.netDm, data_list, is_real=False)
+            losses_fake_raw_mouth = self.lossCollector.compute_mouth_losses_addition(self.netDm, data_list, for_discriminator=True, is_real=False)
             data_list = [self.crop_template(mis_tgt_image[:, 2:], mis_template), audio]
-            pred_tgt_mis_mouth, losses_tgt_mis_mouth = self.lossCollector.compute_new_mouth_losses(self.netDm, data_list, is_real=False)
+            # pred_tgt_mis_mouth, losses_tgt_mis_mouth = self.lossCollector.compute_new_mouth_losses(self.netDm, data_list, is_real=False)
+            losses_tgt_mis_mouth = self.lossCollector.compute_mouth_losses_addition(self.netDm, data_list, for_discriminator=True, is_real=False)
             # combine
-            loss_M_real = losses_tgt_mouth * self.opt.lambda_mouth
-            loss_M_fake = [losses_fake_mouth, losses_fake_raw_mouth, losses_tgt_mis_mouth]
+            loss_M_real = losses_tgt_mouth[0] * self.opt.lambda_mouth
+            loss_M_fake = [losses_fake_mouth[0], losses_fake_raw_mouth[0], losses_tgt_mis_mouth[0]]
             loss_M_fake = sum(loss_M_fake) / len(loss_M_fake) * self.opt.lambda_mouth
             loss_M = [loss_M_real, loss_M_fake]
 
@@ -270,19 +281,24 @@ class Vid2VidModel(BaseModel):
             prev = torch.cat([prev[:, 1:], now.unsqueeze(1)], dim=1)
         return prev.detach()
     
-    def crop_template(self, image, template):
-        b, t, ch, w, h = image.shape
-        template_array = template.view(-1, w, h).cpu().numpy()
-        image_temp = image.view(-1, ch, w, h)
-        cropped_images = []
-        for temp_id in range(template_array.shape[0]):
-            cors = np.where(template_array[temp_id] == 1)
-            left, right = np.min(cors[0]), np.max(cors[0])
-            up, bottom = np.min(cors[1]), np.max(cors[1])
-            crop_img = image_temp[temp_id:temp_id+1, :, left:right, up:bottom]
-            cropped_images.append(F.upsample(crop_img, size=[64, 64]))
+    # def crop_template(self, image, template):
+    #     b, t, ch, w, h = image.shape
+    #     template_array = template.view(-1, w, h).cpu().numpy()
+    #     image_temp = image.view(-1, ch, w, h)
+    #     cropped_images = []
+    #     for temp_id in range(template_array.shape[0]):
+    #         cors = np.where(template_array[temp_id] == 1)
+    #         left, right = np.min(cors[0]), np.max(cors[0])
+    #         up, bottom = np.min(cors[1]), np.max(cors[1])
+    #         crop_img = image_temp[temp_id:temp_id+1, :, left:right, up:bottom]
+    #         cropped_images.append(F.upsample(crop_img, size=[64, 64]))
         
-        result = torch.cat(cropped_images).view(b, t, ch, 64, 64)
+    #     result = torch.cat(cropped_images).view(b, t, ch, 64, 64)
+
+    #     return result
+
+    def crop_template(self, image, template):
+        result = image * template
 
         return result
 
@@ -464,7 +480,6 @@ class Vid2VidModel(BaseModel):
                                                                         warp_ref_lmark=warp_ref_lmark_finetune, warp_ref_img=warp_ref_img_finetune, \
                                                                         ani_lmark=ani_lmark_finetune, ani_img=ani_img_finetune)
 
-                # pdb.set_trace()
 
                 g_losses = loss_backward(self.opt, g_losses, self.optimizer_G)
 

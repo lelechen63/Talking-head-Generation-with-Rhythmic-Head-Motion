@@ -60,6 +60,11 @@ def define_D(opt, input_nc, ndf, n_layers_D, norm='spectralinstance', subarch='n
             netD = FrameDiscriminator(opt, 256, input_nc, ndf, 6)
         elif subarch == 'syncframe':
             netD = SepDiscriminator(opt, ndf, 256, 1920)
+    elif opt.which_model_netD == 'sepfea':
+        if subarch == 'mouth':
+            netD = AudioFeaDiscriminator(input_nc, ndf, n_layers_D, norm_layer, getIntermFeat, stride, nf_final=256)
+        else:
+            netD = SepFeaDiscriminator(opt, ndf, n_layers_D, norm_layer, getIntermFeat, stride)
     else:
         raise('unknown type discriminator %s!' % opt.which_model_netD)
         

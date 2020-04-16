@@ -65,7 +65,7 @@ def encode_input(opt, data_list, dummy_bs):
     # warp reference label and image
     warp_ref_lmark = encode_label(opt, warp_ref_lmark)        
     warp_ref_img = warp_ref_img.cuda()
-    ori_warping_refs = ori_warping_refs.cuda()
+    ori_warping_refs = ori_warping_refs.cuda() if ori_warping_refs is not None else None
         
     # audio
     audio = audio.cuda() if audio is not None else None

@@ -1,4 +1,4 @@
-from .generator_split import FewShotGenerator, LabelEmbedder, AudioEncoder
+from .generator_split import FewShotGenerator, LabelEmbedder, AudioEncoder, LabelAudioEmbeder
 from .warp_module import WarpModule
 from models.networks.base_network import BaseNetwork
 
@@ -74,6 +74,7 @@ class SpadeCombineModule(BaseNetwork):
         self.img_prev_embedding = None
         if opt.audio_drive:
             self.audio_embedding = LabelEmbedder(opt, 1, opt.sc_arch)
+            self.la_embedding = LabelAudioEmbeder(opt)
 
     ### if using SPADE for combination
     def SPADE_combine(self, encoded_label, ds_ref):                  
@@ -86,11 +87,16 @@ class SpadeCombineModule(BaseNetwork):
         # audio
         if self.opt.audio_drive:
             encode_audio = self.audio_embedding(ds_ref[3])
+            lmarks = [encoded_label[i][0] if type(encoded_label[i]) == list else encoded_label[i] \
+                                            for i in range(len(encoded_label))]
+            lmark_audio_fea = self.la_embedding(lmarks, encode_audio)
             for i in range(len(encoded_label)):
                 if type(encoded_label[i]) == list:
-                    encoded_label[i] += [encode_audio[i]]
+                    # encoded_label[i] += [encode_audio[i]]
+                    encoded_label[i][0] = lmark_audio_fea[i]
                 else:
-                    encoded_label[i] = [encoded_label[i]] + [encode_audio[i]]
+                    # encoded_label[i] = [encoded_label[i]] + [encode_audio[i]
+                    encoded_label[i] = lmark_audio_fea[i]
 
         return encoded_label
 

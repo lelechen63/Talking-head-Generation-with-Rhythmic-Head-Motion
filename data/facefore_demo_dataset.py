@@ -94,14 +94,15 @@ class FaceForeDemoDataset(BaseDataset):
                      [[42,43,44,45], [45,46,47,42]],                   # left eye
                      [range(48, 55), [54,55,56,57,58,59,48], range(60, 65), [64,65,66,67,60]], # mouth and tongue
                     ]
+
         if self.opt.audio_drive:
             self.tgt_part_list = copy.deepcopy(self.part_list)
             self.part_list = [[list(range(0, 17)) + ((list(range(68, 83)) + [0]) if self.add_upper_face else [])], # face
-                     [range(17, 22)],                                  # right eyebrow
-                     [range(22, 27)],                                  # left eyebrow
-                     [[28, 31], range(31, 36), [35, 28]],              # nose
-                     [[36,37,38,39], [39,40,41,36]],                   # right eye
-                     [[42,43,44,45], [45,46,47,42]],                   # left eye
+                        [range(17, 22)],                                  # right eyebrow
+                        [range(22, 27)],                                  # left eyebrow
+                        [[28, 31], range(31, 36), [35, 28]],              # nose
+                        [[36,37,38,39], [39,40,41,36]],                   # right eye
+                        [[42,43,44,45], [45,46,47,42]],                   # left eye
                     ]
        
         # load path

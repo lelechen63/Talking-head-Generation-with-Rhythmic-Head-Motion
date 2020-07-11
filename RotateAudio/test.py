@@ -41,7 +41,7 @@ if __name__ == '__main__':
 		test_set, batch_size=opt.batch_size, shuffle=False, num_workers=opt.num_workers, collate_fn=PadSequence())
 
 	rt_encode, audio_encode, decode = utils.get_model(opt)
-	checkpoint = torch.load('best trained model', map_location=torch.device('cpu'))
+	checkpoint = torch.load('./save/{}/best_model.pth.tar'.format(opt.name), map_location=torch.device('cpu'))
 	rt_encode.load_state_dict(checkpoint['encode'])
 	audio_encode.load_state_dict(checkpoint['mid_net'])
 	decode.load_state_dict(checkpoint['decode'])
@@ -52,8 +52,11 @@ if __name__ == '__main__':
 
 	loss_func = nn.MSELoss()
 
+	total_loss = []
 	with torch.no_grad():
 		for step, pack in enumerate(test_loader):
+			if step == 100:
+				break
 			rt = pack[0].float()
 			audio = pack[1].float().unsqueeze(2)
 			rt_length = pack[2]
@@ -71,5 +74,20 @@ if __name__ == '__main__':
 				rt_feat, rt_s_feat = rt_encode(rt_input, audio_prev)
 				rt_output = decode(rt_feat, audio_input, s_rt=rt_s_feat)
 
-			all_res = rt_output.cpu().numpy()[0]
-			rt_gt = rt_gt.cpu().numpy()[0]
+			loss = loss_func(rt_output, rt_gt)
+
+			all_res = rt_output.cpu().numpy()
+			rt_gt = rt_gt.cpu().numpy()
+			total_loss.append(np.sum(loss.cpu().numpy()))
+
+			fig, a =  plt.subplots(2, 3, figsize=(20, 10))
+			for i in range(2):
+				for j in range(3):
+					a[i][j].plot(range(len(all_res[0, :, i*3+j])), all_res[0, :, i*3+j], label='pred')
+					a[i][j].plot(range(len(rt_gt[0, :, i*3+j])), rt_gt[0, :, i*3+j], label='gt')
+
+			plt.legend()
+			plt.savefig('./save/{}/imgs/{}.png'.format(opt.name, step))
+			plt.close()
+
+	print('test mse loss: {}'.format(np.sum(total_loss)))

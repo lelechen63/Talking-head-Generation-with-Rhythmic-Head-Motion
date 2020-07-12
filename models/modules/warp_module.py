@@ -50,7 +50,6 @@ class WarpModule(BaseNetwork):
         flow, weight, img_warp = [None] * 3, [None] * 3, [None] * 3
         if self.warp_ref and has_ref:
             # select most similar reference image index by ref_idx
-            # ref_lmark, ref_img = self.pick_ref([ref_lmarks, ref_imgs], ref_idx)
             flow_ref, weight_ref = self.flow_network_ref(tgt_lmark, ref_lmarks, ref_imgs, for_ref=True)
             img_ref_warp = self.resample(ref_imgs, flow_ref)
             flow[0], weight[0], img_warp[0] = flow_ref, weight_ref, img_ref_warp[:,:3]

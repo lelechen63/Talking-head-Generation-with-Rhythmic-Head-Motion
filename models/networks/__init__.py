@@ -11,7 +11,7 @@ import numpy as np
 import torch.nn.functional as F
 from models.networks.loss import *
 from models.networks.discriminator import *
-from models.networks.generator import *
+from models.networks.normalization import get_nonspade_norm_layer
 from models.modules.linear_combine import LinearCombineModule
 from models.modules.spade_combine import SpadeCombineModule
 

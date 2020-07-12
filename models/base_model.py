@@ -171,19 +171,8 @@ class BaseModel(torch.nn.Module):
             netD_input_nc = input_nc + opt.output_nc
             if self.concat_ref_for_D:
                 netD_input_nc *= 2
-            if opt.use_new_D:
-                # self.netD = networks.define_D(opt, opt.input_nc, opt.ndf, opt.n_layers_D, subarch='syncframe')
-                self.netD = networks.define_D(opt, netD_input_nc, opt.ndf, opt.n_layers_D, opt.norm_D, opt.netD_subarch, 
-                                          opt.num_D, not opt.no_ganFeat_loss, gpu_ids=self.gpu_ids)    
-            else:
-                self.netD = networks.define_D(opt, netD_input_nc, opt.ndf, opt.n_layers_D, opt.norm_D, opt.netD_subarch, 
-                                          opt.num_D, not opt.no_ganFeat_loss, gpu_ids=self.gpu_ids)            
-
-            if self.opt.add_mouth_D:
-                # self.netDm = networks.define_D(opt, opt.output_nc, opt.ndf, opt.n_layers_D, subarch='sync')
-                self.netDm = networks.define_D(opt, opt.output_nc, opt.ndf, opt.n_layers_D, opt.norm_D, \
-                                               subarch='mouth', getIntermFeat=not opt.no_ganFeat_loss)
-                self.netDm.set_audio_encoder(self.netD.audio_img_D.get_audio_encoder())
+            self.netD = networks.define_D(opt, netD_input_nc, opt.ndf, opt.n_layers_D, opt.norm_D, opt.netD_subarch, 
+                                        opt.num_D, not opt.no_ganFeat_loss, gpu_ids=self.gpu_ids)            
 
         self.temporal = False
         self.netDT = None             
@@ -211,8 +200,6 @@ class BaseModel(torch.nn.Module):
         self.save_network(self.netD, 'D', which_epoch, self.gpu_ids)        
         if self.temporal:
             self.save_network(self.netDT, 'DT', which_epoch, self.gpu_ids)
-        if self.opt.add_mouth_D:
-            self.save_network(self.netDm, 'Dm', which_epoch, self.gpu_ids)
 
     def load_networks(self):
         opt = self.opt
@@ -228,8 +215,6 @@ class BaseModel(torch.nn.Module):
                 self.load_network(self.netD, 'D', opt.which_epoch, pretrained_path)  
                 if self.isTrain and self.temporal: 
                     self.load_network(self.netDT, 'DT', opt.which_epoch, pretrained_path)
-                if self.opt.add_mouth_D:
-                    self.load_network(self.netDm, 'Dm', opt.which_epoch, pretrained_path)
 
     def update_learning_rate(self, epoch):
         new_lr = self.opt.lr * (1 - (epoch - self.opt.niter) / (self.opt.niter_decay + 1))

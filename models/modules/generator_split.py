@@ -108,8 +108,6 @@ class FewShotGenerator(BaseNetwork):
         ### main branch layers
         for i in reversed(range(n_downsample_G + 1)):
             hidden_nc = ch_hidden[i]
-            # if self.opt.audio_drive:
-            #     hidden_nc = hidden_nc + [ch_hidden[i][-1]]
             if i >= self.n_sc_layers or not opt.use_new:
                 setattr(self, 'up_%d' % i, SPADEResnetBlock(ch[i+1], ch[i], norm=norm, hidden_nc=hidden_nc, 
                         conv_ks=conv_ks, spade_ks=spade_ks,
@@ -204,6 +202,16 @@ class FewShotGenerator(BaseNetwork):
             encoded_ref = None
 
         return x, encoded_ref, atten, ref_idx
+
+    ### pick the reference image that is most similar to current frame
+    def pick_ref(self, refs, ref_idx):
+        if type(refs) == list:
+            return [self.pick_ref(r, ref_idx) for r in refs]
+        if ref_idx is None:
+            return refs[:,0]
+        ref_idx = ref_idx.long().view(-1, 1, 1, 1, 1)
+        ref = refs.gather(1, ref_idx.expand_as(refs)[:,0:1])[:,0]        
+        return ref
 
     # transfer parameters from image encoder and landmark encoder to attention encoder
     def encoder_init(self):
@@ -547,70 +555,3 @@ class LabelEmbedder(BaseNetwork):
                 conv = batch_conv(output[-1], weights[i], stride=0.5)
             output.append(conv)
         return output[::-1]
-
-# embed audio
-class AudioEncoder(BaseNetwork):
-    def __init__(self, opt, numFilters=64, filterWidth=21):
-        super().__init__()
-        self.opt = opt
-        self.numFilters = numFilters
-        self.filterWidth = filterWidth
-        self.conv1 = nn.Conv1d(1, self.numFilters, self.filterWidth, stride=2, padding=0, dilation=1)
-        self.norm1 = nn.BatchNorm1d(self.numFilters)
-        self.conv2 = nn.Conv1d(self.numFilters, self.numFilters, self.filterWidth, stride=2, padding=0, dilation=1)
-        self.norm2 = nn.BatchNorm1d(self.numFilters)
-        self.conv3 = nn.Conv1d(self.numFilters, 2*self.numFilters, self.filterWidth, stride=2, padding=0, dilation=1)  
-        self.norm3 = nn.BatchNorm1d(self.numFilters*2)
-        self.conv4 = nn.Conv1d(self.numFilters * 2, 2*self.numFilters, self.filterWidth, stride=2, padding=0, dilation=1)      
-        self.norm4 = nn.BatchNorm1d(self.numFilters *2)
-        self.conv5 = nn.Conv1d(2*self.numFilters, 4*self.numFilters, self.filterWidth, stride=2, padding=0, dilation=1)
-        self.norm5 = nn.BatchNorm1d(self.numFilters*4)
-        self.conv6 = nn.Conv1d(4*self.numFilters, 8*self.numFilters, self.filterWidth, stride=2, padding=0, dilation=1)
-        self.norm6 = nn.BatchNorm1d(self.numFilters*8)
-        in_num = 5632
-        self.fc1 = nn.Linear(in_num, 256)
-       
-    def forward(self, x, reshape_size=(256, 256)):
-        # debug
-        h = F.dropout(F.leaky_relu(self.norm1(self.conv1(x)), 0.3), 0.2)
-        h = F.dropout(F.leaky_relu(self.norm2(self.conv2(h)), 0.3), 0.2)
-        h = F.dropout(F.leaky_relu(self.norm3(self.conv3(h)), 0.3), 0.2)
-        h = F.dropout(F.leaky_relu(self.norm4(self.conv4(h)), 0.3), 0.2)
-        h = F.dropout(F.leaky_relu(self.norm5(self.conv5(h)), 0.3), 0.2)
-        h = F.dropout(F.leaky_relu(self.norm6(self.conv6(h)), 0.3), 0.2)
-        h = h.view(h.size(0), -1)
-        h = F.leaky_relu(self.fc1(h), 0.3)
-        
-        # shape to 256 * 256
-        assert h.shape[-1] == reshape_size[-1]
-        features = h.unsqueeze(-2).expand(h.shape[0], reshape_size[0], reshape_size[0]).unsqueeze(1)
-
-        return features
-
-# combine audio feature with landmark feature
-class LabelAudioEmbeder(BaseNetwork):
-    def __init__(self, opt):
-        super().__init__()
-        self.opt = opt
-        activation = nn.LeakyReLU(0.2, True)
-        nf = opt.ngf
-        nf_max = 1024
-        self.n_downsample_S = opt.n_downsample_G
-        ch = [min(nf_max, nf * (2 ** i)) for i in range(self.n_downsample_S+1)]
-
-        # embeder
-        for i in range(self.n_downsample_S+1):
-            layer = [nn.Conv2d(ch[i]*2, ch[i], kernel_size=3, stride=1, padding=1), activation]
-            setattr(self, 'embeder_%d' % i, nn.Sequential(*layer))
-
-        # debug
-        self.ch = ch
-
-    def forward(self, lmarks, audios):
-        res = []
-        for i in range(self.n_downsample_S+1):
-            in_d = torch.cat([lmarks[i], audios[i]], axis=1)
-            cur_res = getattr(self, 'embeder_%d' % i)(in_d)
-            res.append(cur_res)
-
-        return res

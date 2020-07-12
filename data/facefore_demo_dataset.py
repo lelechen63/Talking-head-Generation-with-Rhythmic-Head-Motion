@@ -50,7 +50,6 @@ class FaceForeDemoDataset(BaseDataset):
         parser.add_argument('--tgt_lmarks_path', type=str)
         parser.add_argument('--tgt_rt_path', type=str, default=None)
         parser.add_argument('--tgt_ani_path', type=str, default=None)
-        parser.add_argument('--tgt_audio_path', type=str, default=None)
         parser.add_argument('--ref_video_path', type=str)
         parser.add_argument('--ref_lmarks_path', type=str)
         parser.add_argument('--ref_rt_path', type=str, default=None)
@@ -60,8 +59,8 @@ class FaceForeDemoDataset(BaseDataset):
         parser.add_argument('--find_largest_mouth', action='store_true', help='find reference image that open mouth in largest ratio')
         parser.add_argument('--crop_ref', action='store_true')
         parser.add_argument('--no_head_motion', action='store_true')
-        parser.add_argument('--origin_not_require', action='store_true')
-        parser.add_argument('--audio_append', type=int, default=1, help='number of chunck to append')
+
+        parser.add_argument('--tgt_ids', type=str, default=None)
 
         return parser
 
@@ -94,24 +93,12 @@ class FaceForeDemoDataset(BaseDataset):
                      [[42,43,44,45], [45,46,47,42]],                   # left eye
                      [range(48, 55), [54,55,56,57,58,59,48], range(60, 65), [64,65,66,67,60]], # mouth and tongue
                     ]
-
-        if self.opt.audio_drive:
-            self.tgt_part_list = copy.deepcopy(self.part_list)
-            self.part_list = [[list(range(0, 17)) + ((list(range(68, 83)) + [0]) if self.add_upper_face else [])], # face
-                        [range(17, 22)],                                  # right eyebrow
-                        [range(22, 27)],                                  # left eyebrow
-                        [[28, 31], range(31, 36), [35, 28]],              # nose
-                        [[36,37,38,39], [39,40,41,36]],                   # right eye
-                        [[42,43,44,45], [45,46,47,42]],                   # left eye
-                    ]
        
         # load path
         self.tgt_video_path = opt.tgt_video_path
         self.tgt_lmarks_path = opt.tgt_lmarks_path
         self.tgt_ani_path = opt.tgt_ani_path
         self.tgt_rt_path = opt.tgt_rt_path
-        if self.opt.audio_drive:
-            self.tgt_audio_path = opt.tgt_audio_path
 
         self.ref_video_path = opt.ref_video_path
         self.ref_lmarks_path = opt.ref_lmarks_path
@@ -121,9 +108,6 @@ class FaceForeDemoDataset(BaseDataset):
         # read in data
         self.tgt_lmarks = np.load(self.tgt_lmarks_path) #[:,:,:-1]
         self.tgt_video = self.read_videos(self.tgt_video_path)
-        if self.opt.audio_drive:
-            fs, self.tgt_audio = wavfile.read(self.tgt_audio_path)
-            self.chunck_size = int(fs/25)
 
         # get enough video associate with landmark
         if len(self.tgt_video) < self.tgt_lmarks.shape[0]:
@@ -131,7 +115,7 @@ class FaceForeDemoDataset(BaseDataset):
 
         self.ref_lmarks = np.load(self.ref_lmarks_path)
         self.ref_video = self.read_videos(self.ref_video_path)
-        # pdb.set_trace()
+
         if self.opt.warp_ani:
             self.tgt_ani_video = self.read_videos(self.tgt_ani_path)
             self.ref_front = np.load(self.ref_front_path)
@@ -148,16 +132,6 @@ class FaceForeDemoDataset(BaseDataset):
             self.tgt_ani_video = np.asarray(self.tgt_ani_video)[correct_nums]
         if self.opt.warp_ani or self.ref_search:
             self.tgt_rt = self.tgt_rt[correct_nums]
-        # audio
-        if self.opt.audio_drive:
-            if wro_nums.shape[0] != 0:
-                self.tgt_audio = self.clean_audio(self.chunck_size, self.tgt_audio, wro_nums)
-
-            # append
-            left_append = self.tgt_audio[:self.opt.audio_append*self.chunck_size]
-            right_append = self.tgt_audio[-(self.opt.audio_append+1)*self.chunck_size:]
-            self.tgt_audio = np.insert(self.tgt_audio, 0, left_append, axis=0)
-            self.tgt_audio = np.insert(self.tgt_audio, -1, right_append, axis=0)
 
         # smooth landmarks
         for i in range(self.tgt_lmarks.shape[1]):
@@ -206,18 +180,14 @@ class FaceForeDemoDataset(BaseDataset):
         self.ref_lmarks_temp = self.ref_lmarks
         self.ref_video, self.ref_lmarks, self.ref_indices = self.define_inference(self.ref_video, self.ref_lmarks)
 
-        # reference animation
-        # if self.ref_ani_path[-3:] == 'mp4':
-        #     self.ref_ani_video = 
-
-        if self.opt.dataset_name == 'lrw':
-            for img_id in range(self.ref_video.shape[0]):
-                mask = self.ref_video[img_id] == 1
-                self.ref_video[img_id] = self.ref_video[img_id] - 2*mask.type(torch.uint8)
-
+        # get id for target
+        if self.opt.tgt_ids is None:
+            self.tgt_ids = list(range(len(self.tgt_video)))
+        else:
+            self.tgt_ids = [int(t_id) for t_id in self.opt.tgt_ids.split(',')]
 
     def __len__(self):
-        return len(self.tgt_video) 
+        return len(self.tgt_ids) 
 
     def __scale_image(self, img, size, method=Image.BICUBIC):
         w, h = size    
@@ -236,16 +206,8 @@ class FaceForeDemoDataset(BaseDataset):
 
     def __getitem__(self, index):
         # get target
-        target_id = [index]
+        target_id = [self.tgt_ids[index]]
         tgt_images, tgt_lmarks = self.prepare_datas(self.tgt_video, self.tgt_lmarks, target_id)
-
-        # get audio for reference and target
-        if self.opt.audio_drive:
-            tgt_mfcc = []
-            for ind in target_id:
-                tgt_mfcc.append(\
-                    self.tgt_audio[ind*self.chunck_size:\
-                        (ind+2*self.opt.audio_append+1)*self.chunck_size])
 
         # get animation
         if self.opt.warp_ani:
@@ -275,8 +237,8 @@ class FaceForeDemoDataset(BaseDataset):
                     ani_template_inter = -ani_images[ani_lmark_id] * ani_template + (1 - ani_template)
                     ani_images[ani_lmark_id] = ani_images[ani_lmark_id] / ani_template_inter
 
-            # finetune (double check)
-            if self.opt.finetune and self.opt.origin_not_require:
+            # finetune
+            if self.opt.finetune:
                 ori_ani_image, ori_ani_lmark, ori_ani_lmarks_temp = [], [], []
                 for ref_idx in self.ref_indices:
                     ori_ani_lmark.append(self.reverse_rt(self.ref_front[int(self.ref_ani_id)], self.tgt_rt[ref_idx]))
@@ -289,19 +251,6 @@ class FaceForeDemoDataset(BaseDataset):
                 # crop by mask
                 if self.opt.crop_ref:
                     for ani_lmark_id, ani_lmark_temp in enumerate(ori_ani_lmarks_temp):
-                        ani_template = torch.Tensor(self.get_template(ani_lmark_temp, self.transform_T))
-                        ani_template_inter = -ori_ani_image[ani_lmark_id] * ani_template + (1 - ani_template)
-                        ori_ani_image[ani_lmark_id] = ori_ani_image[ani_lmark_id] / ani_template_inter
-
-            # reference animation
-            elif self.opt.finetune and not self.opt.origin_not_require:
-                ori_ani_image = [cv2.imread(self.opt.ref_ani_path)]
-                ori_ani_lmark_temp = self.ref_lmarks
-                ori_ani_image, ori_ani_lmark = self.prepare_datas(ori_ani_image, ori_ani_lmark_temp, [0])
-
-                # crop by mask
-                if self.opt.crop_ref:
-                    for ani_lmark_id, ani_lmark_temp in enumerate(self.ref_lmarks_temp):
                         ani_template = torch.Tensor(self.get_template(ani_lmark_temp, self.transform_T))
                         ani_template_inter = -ori_ani_image[ani_lmark_id] * ani_template + (1 - ani_template)
                         ori_ani_image[ani_lmark_id] = ori_ani_image[ani_lmark_id] / ani_template_inter
@@ -333,21 +282,9 @@ class FaceForeDemoDataset(BaseDataset):
 
         target_img_path = [os.path.join(self.tgt_video_path[:-4] , '%05d.png'%t_id) for t_id in target_id]
 
-        # audio
-        if self.opt.audio_drive:
-            tgt_mfcc = torch.cat([torch.Tensor(chunck).unsqueeze(0).unsqueeze(0) for chunck in tgt_mfcc])
-            # get gt landmark
-            tmp_list = self.part_list
-            self.part_list = self.tgt_part_list
-            _, tgt_gt_lmarks = self.prepare_datas(self.tgt_video, self.tgt_lmarks, target_id)
-            self.part_list = tmp_list
-            tgt_gt_lmarks = torch.cat([tgt_gt_lmark.unsqueeze(0) for tgt_gt_lmark in tgt_gt_lmarks], axis=0)
-
         tgt_images = torch.cat([tgt_img.unsqueeze(0) for tgt_img in tgt_images], axis=0)
         tgt_lmarks = torch.cat([tgt_lmark.unsqueeze(0) for tgt_lmark in tgt_lmarks], axis=0)
-        if self.opt.dataset_name == 'lrw':
-            mask = tgt_images == 1
-            tgt_images = tgt_images - 2 * mask.type(torch.uint8)
+        
         if self.opt.warp_ani:
             ani_images = torch.cat([ani_image.unsqueeze(0) for ani_image in ani_images], axis=0)
             ani_lmarks = torch.cat([ani_lmark.unsqueeze(0) for ani_lmark in ani_lmarks], axis=0)
@@ -367,8 +304,6 @@ class FaceForeDemoDataset(BaseDataset):
                 input_dic.update({'ori_ani_image': ori_ani_image, 'ori_ani_lmark': ori_ani_lmark})
         # if self.ref_search:
         input_dic.update({'warping_ref': warping_refs, 'warping_ref_lmark': warping_ref_lmarks})
-        if self.opt.audio_drive:
-            input_dic.update({'tgt_audio': tgt_mfcc, 'tgt_gt_label': tgt_gt_lmarks})
 
         return input_dic
 
@@ -406,13 +341,6 @@ class FaceForeDemoDataset(BaseDataset):
         wrong_nums = np.where(check_lmarks!=True)[0]
 
         return correct_nums, wrong_nums
-
-    # clean mfcc base on nums
-    def clean_audio(self, chunck_size, mfcc, wro_nums):
-        delete_indices = []
-        for num in wro_nums:
-            delete_indices += list(range(num*chunck_size, (num+1)*chunck_size))
-        return np.delete(mfcc, delete_indices, axis=0)
 
     # get index for target and reference
     def get_image_index(self, n_frames_total, cur_seq_len, max_t_step=4):            
@@ -492,7 +420,6 @@ class FaceForeDemoDataset(BaseDataset):
         img = mmcv.bgr2rgb(image)
         crop_size = Image.fromarray(img).size
 
-        # debug
         img = transform_I(Image.fromarray(img))
 
         return img, crop_size
@@ -513,7 +440,7 @@ class FaceForeDemoDataset(BaseDataset):
                     break
                 except:
                     choice = ((choice + 1)%images.shape[0])
-                    print("what the fuck for {}".format(self.tgt_video_path))
+                    print("wrong in {}".format(self.tgt_video_path))
                     count += 1
                     if count > 20:
                         break

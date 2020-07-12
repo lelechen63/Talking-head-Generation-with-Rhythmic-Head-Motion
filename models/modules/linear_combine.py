@@ -10,16 +10,19 @@ class LinearCombineModule(BaseNetwork):
         self.netG = FewShotGenerator(opt)
         self.warp = WarpModule(opt, opt.n_frames_G)
         self.flow_temp_is_initalized = False
+        self.opt = opt
 
-    def forward(self, tgt_lmark, ref_lmarks, ref_imgs, prev, warp_ref_img, warp_ref_lmark, ani_img, ani_lmark, audio=None, t=0, ref_idx_fix=None):
+    def forward(self, tgt_lmark, ref_lmarks, ref_imgs, prev, warp_ref_img, warp_ref_lmark, ani_img, ani_lmark, t=0, ref_idx_fix=None):
         # generate image
         fake_raw_img, atn, ref_idx = self.netG(label=tgt_lmark, label_refs=ref_lmarks, img_refs=ref_imgs, t=t)
+        if self.opt.origin_ref_select:
+            warp_ref_lmark, warp_ref_img = self.warp.pick_ref([ref_lmarks, ref_imgs], ref_idx)
 
         # warp and linear combine
         no_warp = not (self.warp.warp_ani or self.warp.warp_prev or self.warp.warp_ref)
         if not no_warp:
             prev_lmark, prev_img = prev
-            img_final, flow, weight, img_warp, img_ani = self.warp(fake_raw_img, tgt_lmark, warp_ref_lmark, warp_ref_img, ani_lmark, ani_img, prev_lmark, prev_img)
+            img_final, flow, weight, img_warp, img_ani = self.warp(fake_raw_img, tgt_lmark, warp_ref_lmark, warp_ref_img, ani_lmark, ani_img, prev_lmark, prev_img, ref_idx=ref_idx)
 
             # no warping for image
             if self.opt.no_warp:

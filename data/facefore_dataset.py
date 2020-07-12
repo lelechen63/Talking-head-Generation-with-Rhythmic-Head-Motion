@@ -72,6 +72,8 @@ class FaceForeDataset(BaseDataset):
         self.opt = opt
         self.root  = opt.dataroot
         self.fix_crop_pos = True
+        self.use_for_finetune = False  #(whether for finetune)
+        # self.fix_crop_pos = False
 
         # mapping from keypoints to face part 
         self.add_upper_face = not opt.no_upper_face
@@ -83,8 +85,6 @@ class FaceForeDataset(BaseDataset):
                      [[42,43,44,45], [45,46,47,42]],                   # left eye
                      [range(48, 55), [54,55,56,57,58,59,48], range(60, 65), [64,65,66,67,60]], # mouth and tongue
                     ]
-        if self.opt.audio_drive:
-            self.part_list = self.part_list[:-1]
         
         self.load_pickle(opt)
 
@@ -128,18 +128,7 @@ class FaceForeDataset(BaseDataset):
             ani_path = os.path.join(self.root, self.video_bag, paths[0], paths[1], paths[2]+"_aligned_ani.mp4")
             rt_path = os.path.join(self.root, self.video_bag, paths[0], paths[1], paths[2]+"_aligned_rt.npy")
             front_path = os.path.join(self.root, self.video_bag, paths[0], paths[1], paths[2]+"_aligned_front.npy")
-            if self.opt.audio_drive:
-                audio_path = os.path.join(self.root, self.audio_bag, paths[0], paths[1], paths[2]+'.wav')
-                fps = 25
             ani_id = paths[3]
-
-            if self.opt.use_new_D:
-                check_new_person = False
-                while(not check_new_person):
-                    paths_mismatch = self.data[random.randint(0, len(self.data)-1)]
-                    if paths_mismatch[0] != paths[0]:
-                        check_new_person = True
-                        mis_video_path = os.path.join(self.root, self.video_bag, paths_mismatch[0], paths_mismatch[1], paths_mismatch[2]+"_aligned.mp4")
 
         elif self.opt.dataset_name == 'grid':
             paths = self.data[index]
@@ -156,7 +145,18 @@ class FaceForeDataset(BaseDataset):
             ani_path = os.path.join(self.root, self.video_bag, paths[0], paths[1]+"_ani.mp4")
             rt_path = os.path.join(self.root, self.video_bag, paths[0], paths[1]+ '_rt.npy') 
             front_path = os.path.join(self.root, self.video_bag, paths[0], paths[1]+ '_front.npy')
-            ani_id = int(paths[2])
+            if self.opt.warp_ani:
+                ani_id = int(paths[2])
+
+        elif self.opt.dataset_name == 'lrw':
+            paths = self.data[index]
+            video_path = os.path.join(paths[0] + '_crop.mp4')
+            lmark_path = os.path.join(paths[0]+ '_original.npy') 
+            ani_path = os.path.join(paths[0]+"_ani.mp4")
+            rt_path = os.path.join(paths[0]+ '_rt.npy') 
+            front_path = os.path.join(paths[0]+ '_front.npy')
+            if self.opt.warp_ani:
+                ani_id = int(paths[1])
 
         elif self.opt.dataset_name == 'crema':
             paths = self.data[index]
@@ -175,37 +175,40 @@ class FaceForeDataset(BaseDataset):
 
             ani_id = int(paths[1])
 
+        elif self.opt.dataset_name == 'ouyang':
+            self.real_video = None
+            self.ani_video = None
+            self.use_for_finetune = True
+
+            paths = self.data[index]
+            video_path = os.path.join(self.root, self.video_bag, paths + '_crop.mp4')
+            lmark_path = os.path.join(self.root, self.video_bag, paths + '__original.npy')
+            ani_path = os.path.join(self.root, self.video_bag, paths+"__ani.mp4")
+            rt_path = os.path.join(self.root, self.video_bag, paths + '__rt.npy') 
+            front_path = os.path.join(self.root, self.video_bag, paths + '__front.npy') 
+
+            ani_id = 11174
+
+        # reseed
+        np.random.seed(int.from_bytes(os.urandom(4), byteorder='little'))
+
         # read in data
         self.video_path = video_path
         lmarks = np.load(lmark_path)#[:,:,:-1]
+
         real_video = self.read_videos(video_path)
-        if self.opt.use_new_D:
-            mis_video = self.read_videos(mis_video_path)
-        if self.opt.audio_drive:
-            fs, mfcc = wavfile.read(audio_path)
-            chunck_size = int(fs / fps)
         
         if self.opt.dataset_name == 'face':
             lmarks = lmarks[:-1]
         else:
-            front = np.load(front_path)
+            if self.opt.warp_ani:
+                front = np.load(front_path)
             rt = np.load(rt_path)
         cor_num, wro_nums = self.clean_lmarks(lmarks)
         lmarks = lmarks[cor_num]
         real_video = np.asarray(real_video)[cor_num]
         rt = rt[cor_num]
-        # audio
-        if self.opt.audio_drive:
-            # clean
-            if wro_nums.shape[0] != 0:
-                mfcc = self.clean_audio(chunck_size, mfcc, wro_nums)
-            
-            # append
-            left_append = mfcc[:self.opt.audio_append*chunck_size]
-            right_append = mfcc[-(self.opt.audio_append+1)*chunck_size:]
-            mfcc = np.insert(mfcc, 0, left_append, axis=0)
-            mfcc = np.insert(mfcc, -1, right_append, axis=0)
-        
+
         # smooth landmarks
         for i in range(lmarks.shape[1]):
             x = lmarks[:, i, 0]
@@ -216,7 +219,6 @@ class FaceForeDataset(BaseDataset):
             lmarks[: ,i, 1] = y[2:-2]
 
         if self.opt.warp_ani:
-            # animation
             ani_video = self.read_videos(ani_path)
             # clean data
             ani_video = np.asarray(ani_video)[cor_num]
@@ -246,32 +248,6 @@ class FaceForeDataset(BaseDataset):
         # get target
         tgt_images, tgt_lmarks, tgt_crop_coords = self.prepare_datas(real_video, lmarks, target_id, transform, transform_L, scale)
 
-        # mismatch image
-        if self.opt.use_new_D:
-            # mismatch for reference D
-            mis_tgt_images = [\
-                self.prepare_datas(mis_video, None, \
-                                   [random.randint(0, len(mis_video)-1)], transform, transform_L, \
-                                   scale, crop_coords=tgt_crop_coords)[0][0]]
-            # mismatch for lmark D
-            rt_sum = np.zeros_like(rt[:, 0])
-            for gg in target_id:
-                cur_rt = rt[:, :3] - rt[gg, :3]
-                rt_sum += np.mean(np.absolute(cur_rt), axis=1)
-            rt_sum[target_id] = 0
-            mis_id = np.argmax(rt_sum)
-            mis_tgt_images.append(self.prepare_datas(\
-                real_video, None, [mis_id], transform, transform_L, scale, crop_coords=tgt_crop_coords)[0][0])
-            # mismatch for audio D
-            openrates = np.asarray([openrate(lmark) for lmark in lmarks])
-            openrates_comp = np.zeros_like(openrates)
-            for gg in target_id:
-                openrates_comp += np.absolute(openrates - openrates[gg])
-            mis_id = np.argmax(openrates_comp)
-            mis_img, _, _ = self.prepare_datas(\
-                real_video, lmarks, [mis_id], transform, transform_L, scale, crop_coords=tgt_crop_coords)
-            mis_template = [self.get_template(lmarks[mis_id], transform_T, self.output_shape, tgt_crop_coords, only_mouth=True)]
-            mis_tgt_images.append(mis_img[0])
 
         # get template for target
         tgt_templates = []
@@ -329,19 +305,6 @@ class FaceForeDataset(BaseDataset):
                     ani_template_inter = -ani_images[ani_lmark_id] * ani_template + (1 - ani_template)
                     ani_images[ani_lmark_id] = ani_images[ani_lmark_id] / ani_template_inter
             
-        # get audio for reference and target
-        if self.opt.audio_drive:
-            # ref_mfcc = []
-            tgt_mfcc = []
-            # for ind in input_indexs:
-            #     ref_mfcc.append(\
-            #         mfcc[ind*chunck_size:\
-            #             (ind+2*self.opt.audio_append+1)*chunck_size])
-            for ind in target_id:
-                tgt_mfcc.append(\
-                    mfcc[ind*chunck_size:\
-                        (ind+2*self.opt.audio_append+1)*chunck_size])
-
         # preprocess
         target_img_path  = [os.path.join(video_path[:-4] , '%05d.png'%t_id) for t_id in target_id]
 
@@ -367,11 +330,6 @@ class FaceForeDataset(BaseDataset):
             cropped_images = torch.cat([cropped_image.unsqueeze(0) for cropped_image in cropped_images], 0)
             cropped_lmarks = torch.cat([cropped_lmark.unsqueeze(0) for cropped_lmark in cropped_lmarks], 0)
 
-        # mismatch
-        if self.opt.use_new_D:
-            mis_tgt_images = torch.cat([mis_tgt_img.unsqueeze(0) for mis_tgt_img in mis_tgt_images], 0)
-            mis_template = torch.cat([torch.Tensor(mis_temp).unsqueeze(0).unsqueeze(0) for mis_temp in mis_template], 0)
-
         # crop eyes and mouth from reference 
         if self.opt.crop_ref:
             if self.opt.warp_ani:
@@ -379,17 +337,6 @@ class FaceForeDataset(BaseDataset):
                 cropped_images = cropped_images / crop_template_inter
             tgt_template_inter = -tgt_images * tgt_templates + (1 - tgt_templates)
             tgt_mask_images = tgt_images / tgt_template_inter
-
-        # only eyes
-        # tgt_templates = tgt_templates_eyes
-        # corp mouth only for template
-        if self.opt.audio_drive:
-            tgt_templates = tgt_templates_mouth
-
-        # audio
-        if self.opt.audio_drive:
-            # ref_mfcc = torch.cat([chunck.unsqueeze(0) for chunck in ref_mfcc])
-            tgt_mfcc = torch.cat([torch.Tensor(chunck).unsqueeze(0).unsqueeze(0) for chunck in tgt_mfcc])
 
         input_dic = {'v_id' : target_img_path, 'tgt_label': tgt_lmarks, 'tgt_template': tgt_templates, 'ref_image':ref_images , 'ref_label': ref_lmarks, \
         'tgt_image': tgt_images,  'target_id': target_id , 'warping_ref': warping_refs , 'warping_ref_lmark': warping_ref_lmarks, \
@@ -400,10 +347,6 @@ class FaceForeDataset(BaseDataset):
             input_dic.update({'tgt_mask_images': tgt_mask_images})
         else:
             input_dic.update({'tgt_mask_images': tgt_images})
-        if self.opt.audio_drive:
-            input_dic.update({'tgt_audio': tgt_mfcc})
-        if self.opt.use_new_D:
-            input_dic.update({'mis_tgt_img': mis_tgt_images, 'mis_template':mis_template})
 
         return input_dic
 
@@ -557,7 +500,7 @@ class FaceForeDataset(BaseDataset):
     # preprocess for landmarks
     def get_keypoints(self, keypoints, transform_L, size, crop_coords, bw):
         # crop landmarks
-        if self.opt.isTrain:
+        if self.opt.isTrain and not self.use_for_finetune:
             keypoints[:, 0] -= crop_coords[2]
             keypoints[:, 1] -= crop_coords[0]
         else:
@@ -580,7 +523,7 @@ class FaceForeDataset(BaseDataset):
     def get_image(self, image, transform_I, size, crop_coords):
         # crop
         img = mmcv.bgr2rgb(image)
-        if self.opt.isTrain:
+        if self.opt.isTrain and not self.use_for_finetune:
             img = self.crop(Image.fromarray(img), crop_coords)
         else:
             img = Image.fromarray(img)
@@ -600,7 +543,7 @@ class FaceForeDataset(BaseDataset):
             template = get_abso_mouth(lmark)
         else:
             template = get_roi(lmark, mask_eyes, mask_mouth)
-        if self.opt.isTrain:
+        if self.opt.isTrain and not self.use_for_finetune:
             template = self.crop(Image.fromarray(template[:, :, 0], 'L'), crop_coords)
         else:
             template = Image.fromarray(template[:, :, 0], 'L')
@@ -810,11 +753,11 @@ class FaceForeDataset(BaseDataset):
         
         elif self.opt.dataset_name == 'lrs':
             if opt.isTrain:
-                _file = open(os.path.join(self.root, 'pickle','test3_lmark2img.pkl'), "rb")
+                _file = open(os.path.join(self.root, 'pickle','new_finetune_lmark2img.pkl'), "rb")
                 self.data = pkl.load(_file)
                 _file.close()
             else :
-                _file = open(os.path.join(self.root, 'pickle','test3_lmark2img.pkl'), "rb")
+                _file = open(os.path.join(self.root, 'pickle','new_test_lmark2img.pkl'), "rb")
                 self.data = pkl.load(_file)
                 _file.close()
 
@@ -822,6 +765,18 @@ class FaceForeDataset(BaseDataset):
                 self.video_bag = 'test'
             else:
                 self.video_bag = 'test'
+
+        elif self.opt.dataset_name == 'lrw':
+            if opt.isTrain:
+                _file = open(os.path.join(self.root, 'new_pickle','new_finetune_lmark2img.pkl'), "rb")
+                self.data = pkl.load(_file)
+                _file.close()
+            else :
+                _file = open(os.path.join(self.root, 'pickle','test3_lmark2img.pkl'), "rb")
+                self.data = pkl.load(_file)
+                _file.close()
+
+            self.video_bag = ''
 
         elif self.opt.dataset_name == 'crema':
             if opt.isTrain:
@@ -851,3 +806,7 @@ class FaceForeDataset(BaseDataset):
 
             self.data = [d for d in self.data if ('1_1' not in d[0] and '1_2' not in d[0] and '1_3' not in d[0]) or '11_' in d[0]]
             self.video_bag = 'video'
+
+        elif self.opt.dataset_name == 'ouyang':
+            self.data = ['ouyang'] * 6
+            self.video_bag = ''

@@ -1,4 +1,4 @@
-from .generator_split import FewShotGenerator, LabelEmbedder, AudioEncoder, LabelAudioEmbeder
+from .generator_split import FewShotGenerator, LabelEmbedder
 from .warp_module import WarpModule
 from models.networks.base_network import BaseNetwork
 
@@ -15,10 +15,8 @@ class SpadeCombineModule(BaseNetwork):
         self.opt = opt
         self.add_raw_loss = self.opt.add_raw_loss
         self.flow_temp_is_initalized = False
-        if self.opt.audio_drive:
-            self.audio_encoder = AudioEncoder(opt)
 
-    def forward(self, tgt_lmark, ref_lmarks, ref_imgs, prev, warp_ref_img, warp_ref_lmark, ani_img, ani_lmark, audio=None, t=0, ref_idx_fix=None):
+    def forward(self, tgt_lmark, ref_lmarks, ref_imgs, prev, warp_ref_img, warp_ref_lmark, ani_img, ani_lmark, t=0, ref_idx_fix=None):
         # SPADE weight generation
         x, encoded_label, norm_weights, atn, ref_idx \
             = self.netG.weight_generation(ref_imgs, ref_lmarks, tgt_lmark, t=t)
@@ -45,20 +43,12 @@ class SpadeCombineModule(BaseNetwork):
             ds_ref[1] = torch.cat([warp_prev, weight_prev], dim=1)
         if self.warp.warp_ani and has_ani: 
             ds_ref[2] = torch.cat([warp_ani, weight_ani], dim=1)
-        if self.opt.audio_drive:
-            assert audio is not None
-            audio_features = self.audio_encoder(audio)
-            ds_ref.append(audio_features)
 
         encoded_label = self.SPADE_combine(encoded_label, ds_ref)
 
-        # add audio to raw
-        if self.add_raw_loss: 
-            if self.opt.audio_drive:
-                encoded_label_raw = \
-                    [[encoded_label[i][0], None, None, None, encoded_label[i][-1]] for i in range(self.netG.n_sc_layers)]
-            else:
-                encoded_label_raw = [encoded_label[i][0] for i in range(self.netG.n_sc_layers)]
+        # add raw
+        if self.add_raw_loss:
+            encoded_label_raw = [encoded_label[i][0] for i in range(self.netG.n_sc_layers)]
         else: 
             encoded_label_raw = None
 
@@ -72,9 +62,6 @@ class SpadeCombineModule(BaseNetwork):
         self.img_ref_embedding = LabelEmbedder(opt, opt.output_nc + 1, opt.sc_arch)
         self.img_ani_embedding = LabelEmbedder(opt, opt.output_nc + 1, opt.sc_arch)
         self.img_prev_embedding = None
-        if opt.audio_drive:
-            self.audio_embedding = LabelEmbedder(opt, 1, opt.sc_arch)
-            self.la_embedding = LabelAudioEmbeder(opt)
 
     ### if using SPADE for combination
     def SPADE_combine(self, encoded_label, ds_ref):                  
@@ -84,19 +71,6 @@ class SpadeCombineModule(BaseNetwork):
                              ]
         for i in range(self.netG.n_sc_layers):
             encoded_label[i] = [encoded_label[i]] + [w[i] if w is not None else None for w in encoded_image_warp]
-        # audio
-        if self.opt.audio_drive:
-            encode_audio = self.audio_embedding(ds_ref[3])
-            lmarks = [encoded_label[i][0] if type(encoded_label[i]) == list else encoded_label[i] \
-                                            for i in range(len(encoded_label))]
-            lmark_audio_fea = self.la_embedding(lmarks, encode_audio)
-            for i in range(len(encoded_label)):
-                if type(encoded_label[i]) == list:
-                    # encoded_label[i] += [encode_audio[i]]
-                    encoded_label[i][0] = lmark_audio_fea[i]
-                else:
-                    # encoded_label[i] = [encoded_label[i]] + [encode_audio[i]
-                    encoded_label[i] = lmark_audio_fea[i]
 
         return encoded_label
 

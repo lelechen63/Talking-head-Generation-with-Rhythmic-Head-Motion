@@ -103,103 +103,6 @@ class LossCollector(BaseModel):
    
         return losses
 
-    def compute_mouth_losses(self, nets, data_list, for_discriminator):
-        tgt_image, fake_image = data_list
-        netDm = nets
-        if isinstance(fake_image, list):
-            fake_image = [x for x in fake_image if x is not None]
-            losses = [self.compute_mouth_losses(nets, [real_i, fake_i], for_discriminator) \
-                for fake_i, real_i in zip(fake_image, tgt_image)]
-            return [sum([item[i] for item in losses]) for i in range(len(losses[0]))]
-
-        tgt_image, fake_image = self.reshape([tgt_image, fake_image])
-
-        # discriminator loss
-        losses = self.discriminate(netDm, None, fake_image, tgt_image, None, for_discriminator)
-
-        return losses
-
-    def compute_new_GAN_losses(self, netD, data_list, is_real):
-        tgt_img, ref_img, lmark = self.reshape(data_list[:-1], for_temporal=False)
-        audio = data_list[-1].reshape(-1, 1, data_list[-1].shape[-1])
-        preds, losses = netD(tgt_img, ref_img, lmark, audio, is_real)
-        return preds, losses
-
-    def compute_mismatch_GAN_losses(self, netD, data_list):
-        tgt_ref_mis_img, tgt_lmark_mis_img, tgt_audio_mis_img, ref_img, lmark = self.reshape(data_list[:-1], for_temporal=False)
-        audio = data_list[-1].reshape(-1, 1, data_list[-1].shape[-1])
-        ref_mis_preds, ref_mis_losses = netD(tgt_ref_mis_img, ref_img, None, None, is_real=False)
-        lmark_mis_preds, lmark_mis_losses = netD(tgt_lmark_mis_img, None, lmark, None, is_real=False)
-        audio_mis_preds, audio_mis_losses = netD(tgt_audio_mis_img, None, None, audio, is_real=False)
-
-        preds = [ref_mis_preds[0], lmark_mis_preds[1], audio_mis_preds[2]]
-        losses = [ref_mis_losses[0], lmark_mis_losses[1], audio_mis_losses[2]]
-
-        return preds, losses
-
-    def compute_mismatch_GAN_losses_addition(self, netD, data_list, for_discriminator, is_real, tgt_img=None):
-        tgt_ref_mis_img, tgt_lmark_mis_img, tgt_audio_mis_img, ref_img, lmark = self.reshape(data_list[:-1], for_temporal=False)
-        audio = data_list[-1].reshape(-1, 1, data_list[-1].shape[-1])
-        ref_mis_res = netD(tgt_ref_mis_img, ref_img, None, None)
-        lmark_mis_res = netD(tgt_lmark_mis_img, None, lmark, None)
-        audio_mis_res = netD(tgt_audio_mis_img, None, None, audio)
-
-        ref_loss = self.criterionGAN(ref_mis_res[0], is_real)
-        lmark_loss = self.criterionGAN(lmark_mis_res[1], is_real)
-        audio_loss = self.criterionGAN(audio_mis_res[2], is_real)
-        loss = [ref_loss + lmark_loss + audio_loss]
-        if not for_discriminator:
-            assert tgt_img is not None
-            tgt_img = self.reshape(tgt_img, for_temporal=False)
-            tgt_ref_res, tgt_lmark_res, tgt_audio_res = netD(tgt_img, ref_img, lmark, audio)
-            fea_losses = [self.GAN_matching_loss(ref_mis_res[0], tgt_ref_res, for_discriminator), \
-                          self.GAN_matching_loss(lmark_mis_res[1], tgt_lmark_res, for_discriminator),\
-                          self.GAN_matching_loss(audio_mis_res[2], tgt_audio_res, for_discriminator)]
-            loss.append(sum(fea_losses))
-
-        return loss
-
-    def compute_GAN_losses_addition(self, netD, data_list, for_discriminator, is_real, tgt_img=None):
-        img, ref_img, lmark = self.reshape(data_list[:-1], for_temporal=False)
-        audio = data_list[-1].reshape(-1, 1, data_list[-1].shape[-1])
-        ref_res, lmark_res, audio_res = netD(img, ref_img, lmark, audio)
-
-        ref_loss = self.criterionGAN(ref_res, is_real)
-        lmark_loss = self.criterionGAN(lmark_res, is_real)
-        audio_loss = self.criterionGAN(audio_res, is_real)
-        loss = [ref_loss + lmark_loss + audio_loss]
-        if not for_discriminator:
-            assert tgt_img is not None
-            tgt_img = self.reshape(tgt_img, for_temporal=False)
-            tgt_ref_res, tgt_lmark_res, tgt_audio_res = netD(tgt_img, ref_img, lmark, audio)
-            fea_losses = [self.GAN_matching_loss(ref_res, tgt_ref_res, for_discriminator), \
-                          self.GAN_matching_loss(lmark_res, tgt_lmark_res, for_discriminator),\
-                          self.GAN_matching_loss(audio_res, tgt_audio_res, for_discriminator)]
-            loss.append(sum(fea_losses))
-
-        return loss
-
-    def compute_mouth_losses_addition(self, netD, data_list, for_discriminator, is_real, tgt_img=None):
-        img = self.reshape(data_list[:-1], for_temporal=False)[0]
-        audio = data_list[-1].reshape(-1, 1, data_list[-1].shape[-1])
-
-        audio_res = netD(img, audio)
-        loss = [self.criterionGAN(audio_res, is_real)]
-        if not for_discriminator:
-            assert tgt_img is not None
-            tgt_img = self.reshape(tgt_img, for_temporal=False)
-            tgt_audio_res = netD(tgt_img, audio)
-            fea_loss = self.GAN_matching_loss(audio_res, tgt_audio_res, for_discriminator)
-            loss.append(fea_loss)
-
-        return loss
-
-    def compute_new_mouth_losses(self, netDm, data_list, is_real):
-        tgt_img = self.reshape(data_list[:-1], for_temporal=False)[0]
-        audio = data_list[-1].reshape(-1, 1, data_list[-1].shape[-1])
-        preds, losses = netDm(tgt_img, audio, is_real)
-        return preds, losses
-
     def compute_VGG_losses(self, fake_image, fake_raw_image, img_ani, tgt_image):
         loss_G_VGG = self.Tensor(1).fill_(0)
         opt = self.opt
@@ -261,7 +164,6 @@ class LossCollector(BaseModel):
                     unweighted_loss = self.criterionFeat(pred_fake[i][j], pred_real[i][j].detach())
                     loss_G_GAN_Feat += D_weights * feat_weights * unweighted_loss * self.opt.lambda_feat            
         return loss_G_GAN_Feat
-
 
     def compute_L1_loss(self, syn_image, tgt_image):
         loss_l1 = self.criterionGen(syn_image, tgt_image) * self.opt.face_l1

@@ -52,7 +52,6 @@ class Trainer():
         epoch, epoch_iter, print_freq, total_steps = self.epoch, self.epoch_iter, self.print_freq, self.total_steps
         ############## Display results and errors ##########
         ### print out errors
-        # pdb.set_trace()
         if is_master() and total_steps % print_freq == 0:
             t = (time.time() - self.iter_start_time) / print_freq            
             errors = {k: v.data.item() if not isinstance(v, int) else v for k, v in loss_dicts.items()}
@@ -60,11 +59,11 @@ class Trainer():
             self.visualizer.plot_current_errors(errors, total_steps)
 
         # debug
-        # t = (time.time() - self.iter_start_time) / print_freq            
-        # errors = {k: v.data.item() if not isinstance(v, int) else v for k, v in loss_dicts.items()}
-        # self.visualizer.print_current_errors(epoch, epoch_iter, errors, t)
-        # visuals = save_all_tensors(opt, output_list, model)
-        # self.visualizer.display_current_results(visuals, epoch, total_steps)
+        t = (time.time() - self.iter_start_time) / print_freq            
+        errors = {k: v.data.item() if not isinstance(v, int) else v for k, v in loss_dicts.items()}
+        self.visualizer.print_current_errors(epoch, epoch_iter, errors, t)
+        visuals = save_all_tensors(opt, output_list, model)
+        self.visualizer.display_current_results(visuals, epoch, total_steps)
 
         ### display output images
         if is_master() and self.save:
@@ -99,13 +98,8 @@ class Trainer():
         self.epoch_iter = 0        
     
 def save_all_tensors(opt, output_list, model):
-    # fake_image, fake_raw_image, img_ani, warped_image, flow, weight, atn_score, \
-    #     target_label, target_image, cropped_images, flow_gt, conf_gt, \
-    #     ref_label, ref_image, \
-    #     warping_ref_lmark, warping_ref, ani_lmark, ani_image, cropped_lmarks = output_list
     prevs, ref_images, warping_ref_lmark, warping_ref, ori_warping_refs, ani_lmark, ani_image,\
-        target_label, target_image, tgt_template, cropped_images, flow_gt, conf_gt, tgt_mask_image, \
-        mismatch_image, mismatch_template = output_list
+        target_label, target_image, tgt_template, cropped_images, flow_gt, conf_gt, tgt_mask_image = output_list
 
     # in prevs
     fake_image = torch.cat(prevs['synthesized_images'], axis=0)
@@ -121,21 +115,18 @@ def save_all_tensors(opt, output_list, model):
     prev_flow = handle_cat(prevs['prev_flows'])
     img_ani = torch.cat(prevs['ani_syn'], axis=0) if prevs['ani_syn'][0] is not None else None
     try:
-        atten_img = model.module.crop_template(target_image, tgt_template)
-        atten_fake_img = model.module.crop_template(fake_image.unsqueeze(1), tgt_template[-1:])
-        atten_raw_img = model.module.crop_template(fake_raw_image.unsqueeze(1), tgt_template[-1:])
-        mis_atten_img = model.module.crop_template(mismatch_image[-1:, 2:], mismatch_template[-1:])
+        atten_img = model.module.crop_template(target_image, tgt_template) if tgt_template is not None else None
+        atten_fake_img = model.module.crop_template(fake_image.unsqueeze(1), tgt_template[-1:]) if tgt_template is not None else None
+        atten_raw_img = model.module.crop_template(fake_raw_image.unsqueeze(1), tgt_template[-1:]) if tgt_template is not None else None
     except:
         try:
-            atten_img = model.crop_template(target_image, tgt_template)
-            atten_fake_img = model.crop_template(fake_image.unsqueeze(1), tgt_template[-1:])
-            atten_raw_img = model.crop_template(fake_raw_image.unsqueeze(1), tgt_template[-1:])
-            mis_atten_img = model.crop_template(mismatch_image[-1:, 2:], mismatch_template[-1:])
+            atten_img = model.crop_template(target_image, tgt_template) if tgt_template is not None else None
+            atten_fake_img = model.crop_template(fake_image.unsqueeze(1), tgt_template[-1:]) if tgt_template is not None else None
+            atten_raw_img = model.crop_template(fake_raw_image.unsqueeze(1), tgt_template[-1:]) if tgt_template is not None else None
         except:
-            atten_img = model.model.module.crop_template(target_image, tgt_template)
-            atten_fake_img = model.model.module.crop_template(fake_image.unsqueeze(1), tgt_template[-1:])
-            atten_raw_img = model.model.module.crop_template(fake_raw_image.unsqueeze(1), tgt_template[-1:])
-            mis_atten_img = model.model.module.crop_template(mismatch_image[-1:, 2:], mismatch_template[-1:])
+            atten_img = model.model.module.crop_template(target_image, tgt_template) if tgt_template is not None else None
+            atten_fake_img = model.model.module.crop_template(fake_image.unsqueeze(1), tgt_template[-1:]) if tgt_template is not None else None
+            atten_raw_img = model.model.module.crop_template(fake_raw_image.unsqueeze(1), tgt_template[-1:]) if tgt_template is not None else None
 
     visual_list = []
     for i in range(opt.n_shot):
@@ -146,11 +137,7 @@ def save_all_tensors(opt, output_list, model):
                     ('warping_target_img', util.tensor2im(tgt_mask_image, tile=True)),
                     ('target_label', util.tensor2im(target_label, tile=True)),
                     ('target_image', util.tensor2im(target_image, tile=True)),
-                    ('target_atten_image', util.tensor2im(atten_img, tile=True)),
-                    ('mismatch_ref_image', util.tensor2im(mismatch_image[-1, 0], tile=True)),
-                    ('mismatch_lmark_image', util.tensor2im(mismatch_image[-1, 1], tile=True)),
-                    ('mismatch_audio_image', util.tensor2im(mismatch_image[-1, 2], tile=True)),
-                    ('mismatch_atten_image', util.tensor2im(mis_atten_img, tile=True)),
+                    ('target_atten_image', util.tensor2im(atten_img, tile=True) if atten_img is not None else None),
                     ('synthesized_image', util.tensor2im(fake_image, tile=True)),
                     ('synthesized_atten_image', util.tensor2im(atten_fake_img, tile=True)),
                     ('ani_syn_image', util.tensor2im(img_ani, tile=True)),

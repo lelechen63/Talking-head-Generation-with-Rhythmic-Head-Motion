@@ -38,34 +38,32 @@ class Vid2VidModel(BaseModel):
     def forward(self, data_list, save_images=False, mode='inference', dummy_bs=0, ref_idx_fix=None, epoch=0):            
         tgt_label, tgt_image, tgt_template, tgt_crop_image, flow_gt, conf_gt, ref_labels, ref_images, \
             warp_ref_lmark, warp_ref_img, ori_warping_refs, ani_lmark, ani_img, prev_label, prev_real_image, prev_image, \
-            audio, mis_tgt_image, mis_template \
         = encode_input(self.opt, data_list, dummy_bs)
         
         if mode == 'generator':            
             g_loss, generated, prev, ref_idx = self.forward_generator(tgt_label, tgt_image, tgt_template, tgt_crop_image, flow_gt, conf_gt, ref_labels, ref_images,
                 warp_ref_lmark, warp_ref_img, ori_warping_refs, ani_lmark, ani_img,
-                prev_label, prev_real_image, prev_image, ref_idx_fix, epoch, audio)
+                prev_label, prev_real_image, prev_image, ref_idx_fix, epoch)
             # return g_loss, generated if save_images else [], prev, ref_idx
             return g_loss, generated, prev, ref_idx
 
         elif mode == 'discriminator':            
             d_loss, ref_idx = self.forward_discriminator(tgt_label, tgt_image, tgt_template, ref_labels, ref_images, 
                 warp_ref_lmark, warp_ref_img, ori_warping_refs, ani_lmark, ani_img, 
-                prev_label, prev_real_image, prev_image, ref_idx_fix, audio, mis_tgt_image, mis_template)
+                prev_label, prev_real_image, prev_image, ref_idx_fix)
             return d_loss, ref_idx
 
         else:
-            return self.inference(tgt_label, ref_labels, ref_images, warp_ref_lmark, warp_ref_img, ani_lmark, ani_img, ref_idx_fix, audio)
+            return self.inference(tgt_label, ref_labels, ref_images, warp_ref_lmark, warp_ref_img, ani_lmark, ani_img, ref_idx_fix)
    
     def forward_generator(self, tgt_label, tgt_image, tgt_template, tgt_crop_image, flow_gt, conf_gt, ref_labels, ref_images, 
                           warp_ref_lmark=None, warp_ref_img=None, ori_warping_refs=None, ani_lmark=None, ani_img=None, 
-                          prev_label=None, prev_real_image=None, prev_image=None, ref_idx_fix=None, epoch=0, 
-                          audio=None):
+                          prev_label=None, prev_real_image=None, prev_image=None, ref_idx_fix=None, epoch=0):
 
         ### fake generation
         [fake_image, fake_raw_image, img_ani, warped_image, flow, weight], \
             [ref_label, ref_image], [prev_label, prev_real_image, prev_image], atn_score, ref_idx = \
-            self.generate_images(tgt_label, tgt_image, ref_labels, ref_images, warp_ref_lmark, warp_ref_img, ani_lmark, ani_img, [prev_label, prev_real_image, prev_image], ref_idx_fix, audio)
+            self.generate_images(tgt_label, tgt_image, ref_labels, ref_images, warp_ref_lmark, warp_ref_img, ani_lmark, ani_img, [prev_label, prev_real_image, prev_image], ref_idx_fix)
 
         ### temporal losses
         nets = self.netD, self.netDT
@@ -81,55 +79,20 @@ class Vid2VidModel(BaseModel):
         # GAN loss
         loss_G_GAN, loss_G_GAN_Feat = self.Tensor(1).fill_(0), self.Tensor(1).fill_(0)
         loss_ssmi = self.Tensor(1).fill_(0)
-        if not self.opt.use_new_D:
-            if img_ani is not None:
-                data_list = [tgt_label, [tgt_image, tgt_image, tgt_image], [fake_image, fake_raw_image, img_ani], ref_label, ref_image]
-            else:
-                data_list = [tgt_label, [tgt_image, tgt_image], [fake_image, fake_raw_image], ref_label, ref_image]
-            loss_G_GAN, loss_G_GAN_Feat = self.lossCollector.compute_GAN_losses(nets,
-                data_list, for_discriminator=False)
+        if img_ani is not None:
+            data_list = [tgt_label, [tgt_image, tgt_image, tgt_image], [fake_image, fake_raw_image, img_ani], ref_label, ref_image]
         else:
-            data_list = [fake_image, ori_warping_refs, tgt_label, audio]
-            # pred_fake, losses_fake = self.lossCollector.compute_new_GAN_losses(self.netD, data_list, is_real=True)
-            losses_fake = self.lossCollector.compute_GAN_losses_addition(self.netD, data_list, for_discriminator=False, is_real=True, \
-                                                                         tgt_img=tgt_image)
-            data_list = [fake_raw_image, ori_warping_refs, tgt_label, audio]
-            # pred_fake_raw, losses_fake_raw = self.lossCollector.compute_new_GAN_losses(self.netD, data_list, is_real=True)
-            losses_fake_raw = self.lossCollector.compute_GAN_losses_addition(self.netD, data_list, for_discriminator=False, is_real=True, \
-                                                                         tgt_img=tgt_image)
-            # combine
-            # loss_G_GAN = [sum(losses_fake), sum(losses_fake_raw)]
-            # loss_G_GAN = sum(loss_G_GAN) / len(loss_G_GAN)
-            loss_G_GAN = (losses_fake[0] + losses_fake_raw[0]) / 2
-            loss_G_GAN_Feat = (losses_fake[1] + losses_fake_raw[1]) / 2
+            data_list = [tgt_label, [tgt_image, tgt_image], [fake_image, fake_raw_image], ref_label, ref_image]
+        loss_G_GAN, loss_G_GAN_Feat = self.lossCollector.compute_GAN_losses(nets,
+            data_list, for_discriminator=False)
             
         # for mouth discriminator
         loss_GM_GAN, loss_GM_GAN_Feat = self.Tensor(1).fill_(0), self.Tensor(1).fill_(0)
         loss_M_ssmi = self.Tensor(1).fill_(0)
-        if self.opt.add_mouth_D:
-            data_list = [self.crop_template(fake_image, tgt_template), audio]
-            # pred_fake_mouth, losses_fake_mouth = self.lossCollector.compute_new_mouth_losses(self.netDm, data_list, is_real=True)
-            losses_fake_mouth = self.lossCollector.compute_mouth_losses_addition(self.netDm, data_list, for_discriminator=False, is_real=True,\
-                                                                         tgt_img = self.crop_template(tgt_image, tgt_template))
-            data_list = [self.crop_template(fake_raw_image, tgt_template), audio]
-            # pred_fake_raw_mouth, losses_fake_raw_mouth = self.lossCollector.compute_new_mouth_losses(self.netDm, data_list, is_real=True)
-            losses_fake_mouth_raw = self.lossCollector.compute_mouth_losses_addition(self.netDm, data_list, for_discriminator=False, is_real=True,\
-                                                                         tgt_img = self.crop_template(tgt_image, tgt_template))
-            # combine
-            # loss_GM_GAN = [losses_fake_mouth, losses_fake_raw_mouth]
-            # loss_GM_GAN = sum(loss_GM_GAN) / len(loss_GM_GAN) * self.opt.lambda_mouth
-            loss_GM_GAN = (losses_fake_mouth[0] + losses_fake_mouth_raw[0]) / 2 * self.opt.lambda_mouth
-            loss_GM_GAN_Feat = (losses_fake_mouth[0] + losses_fake_mouth_raw[1]) / 2 * self.opt.lambda_mouth
 
         # VGG loss
         loss_G_VGG = self.lossCollector.compute_VGG_losses(fake_image, fake_raw_image, img_ani, tgt_image)
         loss_GM_VGG = self.Tensor(1).fill_(0)
-        # if self.opt.add_mouth_D:
-        #     loss_GM_VGG = self.lossCollector.compute_VGG_losses(self.crop_template(fake_image, tgt_template), \
-        #                                                    self.crop_template(fake_raw_image, tgt_template), \
-        #                                                    self.crop_template(img_ani, tgt_template) if img_ani is not None else None, \
-        #                                                    self.crop_template(fake_image, tgt_template))
-        #     loss_GM_VGG = loss_GM_VGG / self.opt.lambda_vgg * self.opt.lambda_mouth_vgg
 
         # L1 loss
         loss_l1 = self.lossCollector.compute_L1_loss(syn_image=fake_image, tgt_image=tgt_image)
@@ -159,18 +122,17 @@ class Vid2VidModel(BaseModel):
     
     def forward_discriminator(self, tgt_label, tgt_image, tgt_template, ref_labels, ref_images, 
                               warp_ref_lmark=None, warp_ref_img=None, ori_warping_refs=None, ani_lmark=None, ani_img=None, 
-                              prev_label=None, prev_real_image=None, prev_image=None, ref_idx_fix=None, 
-                              audio=None, mis_tgt_image=None, mis_template=None):
+                              prev_label=None, prev_real_image=None, prev_image=None, ref_idx_fix=None):
         ### Fake Generation
         with torch.no_grad():
             [fake_image, fake_raw_image, img_ani, _, _, _], [ref_label, ref_image], _, _, ref_idx = \
                 self.generate_images(tgt_label, tgt_image, ref_labels, ref_images, warp_ref_lmark, \
-                    warp_ref_img, ani_lmark, ani_img, [prev_label, prev_real_image, prev_image], ref_idx_fix, audio)
+                    warp_ref_img, ani_lmark, ani_img, [prev_label, prev_real_image, prev_image], ref_idx_fix)
 
         ### temporal losses
         nets = self.netD, self.netDT
         loss_temp = []
-        if self.isTrain and not self.opt.use_new_D:
+        if self.isTrain:
             if prev_image is None: prev_image = tgt_image.repeat(1, self.opt.n_frames_G-1, 1, 1, 1)
             tgt_image_all = torch.cat([prev_image, tgt_image], dim=1)
             fake_image_all = torch.cat([prev_image, fake_image], dim=1)            
@@ -178,51 +140,14 @@ class Vid2VidModel(BaseModel):
             loss_temp = self.lossCollector.compute_GAN_losses(nets, data_list, for_discriminator=True, for_temporal=True)
 
         ### individual frame losses
-        if not self.opt.use_new_D:
-            if img_ani is not None:
-                data_list = [tgt_label, [tgt_image, tgt_image, tgt_image], [fake_image, fake_raw_image, img_ani], ref_label, ref_image]
-            else:
-                data_list = [tgt_label, [tgt_image, tgt_image], [fake_image, fake_raw_image], ref_label, ref_image]
-            loss_indv = self.lossCollector.compute_GAN_losses(nets, data_list, for_discriminator=True)
+        if img_ani is not None:
+            data_list = [tgt_label, [tgt_image, tgt_image, tgt_image], [fake_image, fake_raw_image, img_ani], ref_label, ref_image]
         else:
-            data_list = [tgt_image, ori_warping_refs, tgt_label, audio]
-            # pred_tgt, losses_tgt = self.lossCollector.compute_new_GAN_losses(self.netD, data_list, is_real=True)
-            losses_tgt = self.lossCollector.compute_GAN_losses_addition(self.netD, data_list, for_discriminator=True, is_real=True)
-            data_list = [fake_image, ori_warping_refs, tgt_label, audio]
-            # pred_fake, losses_fake = self.lossCollector.compute_new_GAN_losses(self.netD, data_list, is_real=False)
-            losses_fake = self.lossCollector.compute_GAN_losses_addition(self.netD, data_list, for_discriminator=True, is_real=False)
-            data_list = [fake_raw_image, ori_warping_refs, tgt_label, audio]
-            # pred_fake_raw, losses_fake_raw = self.lossCollector.compute_new_GAN_losses(self.netD, data_list, is_real=False)
-            losses_fake_raw = self.lossCollector.compute_GAN_losses_addition(self.netD, data_list, for_discriminator=True, is_real=False)
-            data_list = [mis_tgt_image[:, 0], mis_tgt_image[:, 1], mis_tgt_image[:, 2], ori_warping_refs, tgt_label, audio]
-            # pred_fake_raw_mis, losses_fake_raw_mis = self.lossCollector.compute_mismatch_GAN_losses(self.netD, data_list)
-            losses_fake_mis = self.lossCollector.compute_mismatch_GAN_losses_addition(self.netD, data_list, for_discriminator=True, is_real=False)
-            # combine
-            loss_real = losses_tgt[0]
-            loss_fake = [losses_fake[0], losses_fake_raw[0], losses_fake_mis[0]]
-            loss_fake = sum(loss_fake) / len(loss_fake)
-            loss_indv = [loss_real, loss_fake]
+            data_list = [tgt_label, [tgt_image, tgt_image], [fake_image, fake_raw_image], ref_label, ref_image]
+        loss_indv = self.lossCollector.compute_GAN_losses(nets, data_list, for_discriminator=True)
 
         # mouth loss
         loss_M = [self.Tensor(1).fill_(0), self.Tensor(1).fill_(0)]
-        if self.opt.add_mouth_D:
-            data_list = [self.crop_template(tgt_image, tgt_template), audio]
-            # pred_tgt_mouth, losses_tgt_mouth = self.lossCollector.compute_new_mouth_losses(self.netDm, data_list, is_real=True)
-            losses_tgt_mouth = self.lossCollector.compute_mouth_losses_addition(self.netDm, data_list, for_discriminator=True, is_real=True)
-            data_list = [self.crop_template(fake_image, tgt_template), audio]
-            # pred_fake_mouth, losses_fake_mouth = self.lossCollector.compute_new_mouth_losses(self.netDm, data_list, is_real=False)
-            losses_fake_mouth = self.lossCollector.compute_mouth_losses_addition(self.netDm, data_list, for_discriminator=True, is_real=False)
-            data_list = [self.crop_template(fake_raw_image, tgt_template), audio]
-            # pred_fake_raw_mouth, losses_fake_raw_mouth = self.lossCollector.compute_new_mouth_losses(self.netDm, data_list, is_real=False)
-            losses_fake_raw_mouth = self.lossCollector.compute_mouth_losses_addition(self.netDm, data_list, for_discriminator=True, is_real=False)
-            data_list = [self.crop_template(mis_tgt_image[:, 2:], mis_template), audio]
-            # pred_tgt_mis_mouth, losses_tgt_mis_mouth = self.lossCollector.compute_new_mouth_losses(self.netDm, data_list, is_real=False)
-            losses_tgt_mis_mouth = self.lossCollector.compute_mouth_losses_addition(self.netDm, data_list, for_discriminator=True, is_real=False)
-            # combine
-            loss_M_real = losses_tgt_mouth[0] * self.opt.lambda_mouth
-            loss_M_fake = [losses_fake_mouth[0], losses_fake_raw_mouth[0], losses_tgt_mis_mouth[0]]
-            loss_M_fake = sum(loss_M_fake) / len(loss_M_fake) * self.opt.lambda_mouth
-            loss_M = [loss_M_real, loss_M_fake]
 
         loss_list = list(loss_indv) + list(loss_temp) + list(loss_M)
         loss_list = [loss.view(1, 1) for loss in loss_list]
@@ -230,7 +155,7 @@ class Vid2VidModel(BaseModel):
 
     def generate_images(self, tgt_labels, tgt_images, ref_labels, ref_images, 
                         warp_ref_lmark=None, warp_ref_img=None, ani_lmark=None, ani_img=None,
-                        prevs=[None, None, None], ref_idx_fix=None, audio=None):
+                        prevs=[None, None, None], ref_idx_fix=None):
         opt = self.opt      
         generated_images, atn_score = [None] * 6, None 
         ref_labels_valid = ref_labels
@@ -238,15 +163,15 @@ class Vid2VidModel(BaseModel):
         for t in range(opt.n_frames_per_gpu):
             # get inputs for time t
             tgt_label_t, tgt_label_valid, tgt_images, warp_ref_img_t, warp_ref_lmark_t, \
-                    ani_img_t, ani_lmark_t, prev_t, audio_t = self.get_input_t(tgt_labels, tgt_images, warp_ref_img, 
+                    ani_img_t, ani_lmark_t, prev_t = self.get_input_t(tgt_labels, tgt_images, warp_ref_img, 
                                                                     warp_ref_lmark, ani_img, 
-                                                                    ani_lmark, prevs, audio, t)
+                                                                    ani_lmark, prevs, t)
 
             # actual network forward
             fake_image, flow, weight, fake_raw_image, warped_image, atn_score, ref_idx, img_ani \
                 = self.netG(tgt_label_valid, ref_labels_valid, ref_images, prev_t, \
                             warp_ref_img_t, warp_ref_lmark_t, ani_img_t, ani_lmark_t, \
-                            audio = audio_t, ref_idx_fix=ref_idx_fix)
+                            ref_idx_fix=ref_idx_fix)
             
             # ref_label_valid, ref_label_t, ref_image_t = self.netG.pick_ref([ref_labels_valid, ref_labels, ref_images], ref_idx)
             ref_label_valid, ref_image_t = warp_ref_lmark_t, warp_ref_img_t
@@ -257,7 +182,7 @@ class Vid2VidModel(BaseModel):
 
         return generated_images, [ref_label_valid, ref_image_t], prevs, atn_score, ref_idx
 
-    def get_input_t(self, tgt_labels, tgt_images, warp_ref_img, warp_ref_lmark, ani_img, ani_lmark, prevs, audio, t):
+    def get_input_t(self, tgt_labels, tgt_images, warp_ref_img, warp_ref_lmark, ani_img, ani_lmark, prevs, t):
         b, _, _, h, w = tgt_labels.shape        
         tgt_label = tgt_labels[:,t]
         tgt_image = tgt_images[:,t]
@@ -268,9 +193,8 @@ class Vid2VidModel(BaseModel):
         prevs = [prev.contiguous().view(b, -1, h, w) if prev is not None else None for prev in prevs]
         ani_img_t = ani_img[:, t] if self.opt.warp_ani and ani_img is not None else None
         ani_lmark_t = ani_lmark[:, t] if self.opt.warp_ani and ani_lmark is not None else None
-        audio_t = audio[:, t] if audio is not None else None
 
-        return tgt_label, tgt_label_valid, tgt_image, warp_ref_img_t, warp_ref_lmark_t, ani_img_t, ani_lmark_t, prevs, audio_t
+        return tgt_label, tgt_label_valid, tgt_image, warp_ref_img_t, warp_ref_lmark_t, ani_img_t, ani_lmark_t, prevs
 
     def concat_prev(self, prev, now):
         if type(prev) == list:
@@ -303,7 +227,7 @@ class Vid2VidModel(BaseModel):
         return result
 
     ########################################### inference ###########################################
-    def inference(self, tgt_label, ref_labels, ref_images, warp_ref_lmark, warp_ref_img, ani_lmark, ani_img, ref_idx_fix, audio=None):
+    def inference(self, tgt_label, ref_labels, ref_images, warp_ref_lmark, warp_ref_img, ani_lmark, ani_img, ref_idx_fix):
         opt = self.opt
         if not self.temporal:
             self.prevs = prevs = [None, None]
@@ -317,18 +241,13 @@ class Vid2VidModel(BaseModel):
             self.t += 1        
                         
         tgt_label_valid, ref_labels_valid = tgt_label[:,-1], ref_labels
-        # if opt.finetune and self.t == 0:
-        #     self.finetune(ref_labels, ref_images, warp_ref_lmark, warp_ref_img)
-        #     opt.finetune = False
 
         with torch.no_grad():
             assert self.t == 0
-            if self.opt.audio_drive:
-                audio = audio[:, 0]
             fake_image, flow, weight, fake_raw_image, warped_image, atn_score, ref_idx, img_ani = self.netG(tgt_label_valid, 
                 ref_labels_valid, ref_images, prevs, 
                 warp_ref_img, warp_ref_lmark, ani_img, ani_lmark,
-                t=self.t, ref_idx_fix=ref_idx_fix, audio=audio)
+                t=self.t, ref_idx_fix=ref_idx_fix)
 
             ref_label_valid, ref_label, ref_image = self.netG.pick_ref([ref_labels_valid, ref_labels, ref_images], ref_idx)        
             
@@ -336,101 +255,6 @@ class Vid2VidModel(BaseModel):
                 self.prevs = self.concat_prev(self.prevs, [tgt_label_valid, fake_image])            
             
         return fake_image, fake_raw_image, warped_image, flow, weight, atn_score, ref_idx, ref_label, ref_image, img_ani
-
-    def finetune(self, ref_labels, ref_images, warp_ref_lmark, warp_ref_img, ani_img, ani_lmark):
-        train_names = ['fc', 'conv_img', 'up']        
-        params, _ = self.get_train_params(self.netG, train_names)         
-        self.optimizer_G = self.get_optimizer(params, for_discriminator=False)        
-        
-        update_D = True
-        if update_D:
-            params = list(self.netD.parameters())       
-            self.optimizer_D = self.get_optimizer(params, for_discriminator=True)
-
-        iterations = 70
-        for it in range(1, iterations + 1):            
-            idx = np.random.randint(ref_labels.size(1))
-            tgt_label, tgt_image = ref_labels[:,idx].unsqueeze(1), ref_images[:,idx].unsqueeze(1)            
-
-            g_losses, generated, prev, _ = self.forward_generator(tgt_label=tgt_label, tgt_image=tgt_image, \
-                                                                  tgt_template=1, tgt_crop_image=None, \
-                                                                  flow_gt=[None]*3, conf_gt=[None]*3, \
-                                                                  ref_labels=ref_labels, ref_images=ref_images, \
-                                                                  warp_ref_lmark=warp_ref_lmark.unsqueeze(1), warp_ref_img=warp_ref_img.unsqueeze(1))
-
-            g_losses = loss_backward(self.opt, g_losses, self.optimizer_G)
-
-            d_losses = []
-            if update_D:
-                d_losses, _ = self.forward_discriminator(tgt_label, tgt_image, ref_labels, ref_images, warp_ref_lmark=warp_ref_lmark.unsqueeze(1), warp_ref_img=warp_ref_img.unsqueeze(1))
-                d_losses = loss_backward(self.opt, d_losses, self.optimizer_D)
-
-            if (it % 10) == 0: 
-                message = '(iters: %d) ' % it
-                loss_dict = dict(zip(self.lossCollector.loss_names, g_losses + d_losses))
-                for k, v in loss_dict.items():
-                    if v != 0: message += '%s: %.3f ' % (k, v)
-                print(message)
-
-    def finetune_call(self, tgt_labels, tgt_images, ref_labels, ref_images, warp_ref_lmark, warp_ref_img, ani_lmark=None, ani_img=None):
-        tgt_labels, tgt_images, ref_labels, ref_images, warp_ref_lmark, warp_ref_img, ani_lmark, ani_img = \
-            encode_input_finetune(self.opt, data_list=[tgt_labels, tgt_images, ref_labels, ref_images, warp_ref_lmark, warp_ref_img, ani_lmark, ani_img], dummy_bs=0)
-
-        train_names = ['fc', 'conv_img', 'up']
-        params, _ = self.get_train_params(self.netG, train_names)
-        self.optimizer_G = self.get_optimizer(params, for_discriminator=False)
-        
-        update_D = True
-        if update_D:
-            params = list(self.netD.parameters())       
-            self.optimizer_D = self.get_optimizer(params, for_discriminator=True)
-
-        iterations = max(10, self.opt.finetune_shot * 10)
-        # iterations = 0
-        for it in range(1, iterations + 1):
-            idx = np.random.randint(tgt_labels.size(1))
-            tgt_label, tgt_image = tgt_labels[:,idx].unsqueeze(1), tgt_images[:,idx].unsqueeze(1)
-            
-            ref_labels_finetune, ref_images_finetune = ref_labels, ref_images
-            warp_ref_lmark_finetune, warp_ref_img_finetune = warp_ref_lmark, warp_ref_img
-            ani_lmark_finetune, ani_img_finetune = ani_lmark, ani_img
-
-            if ani_img is not None:
-                assert ani_img.shape[1] == ani_lmark.shape[1] == tgt_labels.shape[1]
-                ani_img_finetune = ani_img[:, idx].unsqueeze(1)
-                ani_lmark_finetune = ani_lmark[:, idx].unsqueeze(1)
-            if self.opt.n_shot < ref_labels.shape[1]:
-                idxs = np.random.choice(ref_labels.shape[1], self.opt.n_shot)
-                ref_labels_finetune = ref_labels[:, idxs]
-                ref_images_finetune = ref_images[:, idxs]
-            if warp_ref_lmark.shape[1] > 1:
-                if self.opt.n_shot >= ref_labels.shape[1]:
-                    idxs = np.random.choice(ref_labels.shape[1], self.opt.n_shot)
-                warp_ref_lmark_finetune = warp_ref_lmark[:, idxs[0]].unsqueeze(1)
-                warp_ref_img_finetune = warp_ref_img[:, idxs[0]].unsqueeze(1)
-
-            g_losses, generated, prev, _ = self.forward_generator(tgt_label=tgt_label, tgt_image=tgt_image, \
-                                                                  tgt_template=1, tgt_crop_image=None, \
-                                                                  flow_gt=[None]*3, conf_gt=[None]*3, \
-                                                                  ref_labels=ref_labels_finetune, ref_images=ref_images_finetune, \
-                                                                  warp_ref_lmark=warp_ref_lmark_finetune, warp_ref_img=warp_ref_img_finetune, \
-                                                                  ani_lmark=ani_lmark_finetune, ani_img=ani_img_finetune)
-
-            g_losses = loss_backward(self.opt, g_losses, self.optimizer_G)
-
-            d_losses = []
-            if update_D:
-                d_losses, _ = self.forward_discriminator(tgt_label, tgt_image, ref_labels_finetune, ref_images_finetune, warp_ref_lmark=warp_ref_lmark_finetune, warp_ref_img=warp_ref_img_finetune)
-                d_losses = loss_backward(self.opt, d_losses, self.optimizer_D)
-
-            if (it % 10) == 0: 
-                message = '(iters: %d) ' % it
-                loss_dict = dict(zip(self.lossCollector.loss_names, g_losses + d_losses))
-                for k, v in loss_dict.items():
-                    if v != 0: message += '%s: %.3f ' % (k, v)
-                print(message)
-
-        self.opt.finetune = False
 
     def finetune_call_multi(self, tgt_label_list, tgt_image_list, ref_label_list, ref_image_list, warp_ref_lmark_list, warp_ref_img_list, ani_lmark_list=None, ani_img_list=None, iterations=0):
         train_names = ['fc', 'conv_img', 'up']
@@ -485,7 +309,7 @@ class Vid2VidModel(BaseModel):
 
                 d_losses = []
                 if update_D:
-                    d_losses, _ = self.forward_discriminator(tgt_label, tgt_image, ref_labels_finetune, ref_images_finetune, warp_ref_lmark=warp_ref_lmark_finetune, warp_ref_img=warp_ref_img_finetune)
+                    d_losses, _ = self.forward_discriminator(tgt_label, tgt_image, 1, ref_labels_finetune, ref_images_finetune, warp_ref_lmark=warp_ref_lmark_finetune, warp_ref_img=warp_ref_img_finetune)
                     d_losses = loss_backward(self.opt, d_losses, self.optimizer_D)
 
             if (iteration % 10) == 0: 

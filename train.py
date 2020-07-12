@@ -43,7 +43,7 @@ def train():
     for epoch in tqdm(range(trainer.start_epoch, opt.niter + opt.niter_decay + 1)):
         trainer.start_of_epoch(epoch, model, data_loader)
         n_frames_total, n_frames_load = data_loader.dataset.n_frames_total, opt.n_frames_per_gpu
-        for idx, data in enumerate(tqdm(dataset), start=trainer.epoch_iter):
+        for idx, data in enumerate(dataset, start=trainer.epoch_iter):
             trainer.start_of_iter()            
 
             if not opt.warp_ani:
@@ -56,14 +56,6 @@ def train():
             data_ref_list = [data['ref_label'], data['ref_image']]
             data_prev = [None, None, None]
             data_ani = [data['warping_ref_lmark'], data['warping_ref'], data['ori_warping_refs'], data['ani_lmark'], data['ani_image']]
-            if opt.audio_drive:
-                data_audio = [data['tgt_audio']]
-            else:
-                data_audio = [None]
-            if opt.use_new_D:
-                data_mismatch = [data['mis_tgt_img'], data['mis_template']]
-            else:
-                data_mismatch = [None, None]
 
             ############## Forward Pass ######################
             prevs = {"raw_images":[], "synthesized_images":[], \
@@ -75,14 +67,7 @@ def train():
             for t in range(0, n_frames_total, n_frames_load):
                 
                 data_list_t = get_data_t(data_list, n_frames_load, t) + data_ref_list + \
-                              get_data_t(data_ani, n_frames_load, t) + data_prev + data_audio + data_mismatch
-
-                # get new previous flow loss
-                # if t != 0:
-                #     with torch.no_grad():
-                #         flow_prev_gt, conf_prev_gt = flowNet.module.flowNet_forward(data_prev[2].cuda(), data_list_t[1].cuda())
-                #         data_list_t[4][1] = flow_prev_gt
-                #         data_list_t[5][1] = conf_prev_gt
+                              get_data_t(data_ani, n_frames_load, t) + data_prev
 
                 g_losses, generated, data_prev, ref_idx = model(data_list_t, save_images=trainer.save, mode='generator', ref_idx_fix=ref_idx_fix)
                 g_losses = loss_backward(opt, g_losses, model.module.optimizer_G)
@@ -95,13 +80,12 @@ def train():
                         
             loss_dict = dict(zip(model.module.lossCollector.loss_names, g_losses + d_losses))     
 
-            # output_data_list = generated + data_list + [data['ref_label'], data['ref_image']] + data_ani + [data['cropped_lmarks']]
-            output_data_list = [prevs] + [data['ref_image']] + data_ani + data_list + [data['tgt_mask_images']] + data_mismatch
+            output_data_list = [prevs] + [data['ref_image']] + data_ani + data_list + [data['tgt_mask_images']]
 
             if trainer.end_of_iter(loss_dict, output_data_list, model):
                 break        
 
-            # pdb.set_trace()
+            pdb.set_trace()
 
         trainer.end_of_epoch(model)
 

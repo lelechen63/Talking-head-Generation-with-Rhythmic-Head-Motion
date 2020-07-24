@@ -1,4 +1,4 @@
-# Tilt Your Head When “You” are Talking
+# Talking-head Generation with Rhythmic Head Motion (ECCV 2020)
 
 Pytorch implementation for audio driven talking-head video synthesize. Given an inputed sampled video frames and a driving audio, our model makes use of 3D facial generation process to generate a head speaking the audio. Moreover, our model achieves controllable head motion as well as facial emotion, which results in more realistic talking-head video. We implement the model based on coding framework of [few-shot-vid2vid](https://github.com/NVlabs/few-shot-vid2vid).
 

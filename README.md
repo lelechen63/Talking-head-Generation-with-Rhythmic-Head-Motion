@@ -123,6 +123,15 @@ CUDA_VISIBLE_DEVICES=$1 python test_demo_example.py --name face8_vox_ani_nonline
 
 `--dataset_name`, `--tgt_video_path` and `--dataroot` refers to directory of target video, while `--ref_dataset`, `--ref_video_path` and `--ref_dataroot` refers to directory of reference video. You can use `--ref_img_id` to select specific frames from reference video as sample images. More related path can be seen in code of "test_demo_example.py", and we encourage user to read that.
 
+## Citation
+
+    @article{chen2020talking,
+      title={Talking-head Generation with Rhythmic Head Motion},
+      author={Chen, Lele and Cui, Guofeng and Liu, Celong and Li, Zhong and Kou, Ziyi and Xu, Yi and Xu, Chenliang},
+      journal={arXiv preprint arXiv:2007.08547},
+      year={2020}
+    }
+
 ## Future
 
 Demo test method and more detail will be update in following days.

@@ -50,6 +50,7 @@ class FaceForeDemoDataset(BaseDataset):
         parser.add_argument('--tgt_lmarks_path', type=str)
         parser.add_argument('--tgt_rt_path', type=str, default=None)
         parser.add_argument('--tgt_ani_path', type=str, default=None)
+        parser.add_argument('--tgt_audio_path', type=str, default=None)
         parser.add_argument('--ref_video_path', type=str)
         parser.add_argument('--ref_lmarks_path', type=str)
         parser.add_argument('--ref_rt_path', type=str, default=None)
@@ -59,6 +60,8 @@ class FaceForeDemoDataset(BaseDataset):
         parser.add_argument('--find_largest_mouth', action='store_true', help='find reference image that open mouth in largest ratio')
         parser.add_argument('--crop_ref', action='store_true')
         parser.add_argument('--no_head_motion', action='store_true')
+        parser.add_argument('--origin_not_require', action='store_true')
+        parser.add_argument('--audio_append', type=int, default=1, help='number of chunck to append')
 
         parser.add_argument('--tgt_ids', type=str, default=None)
 
@@ -93,12 +96,24 @@ class FaceForeDemoDataset(BaseDataset):
                      [[42,43,44,45], [45,46,47,42]],                   # left eye
                      [range(48, 55), [54,55,56,57,58,59,48], range(60, 65), [64,65,66,67,60]], # mouth and tongue
                     ]
+
+        if self.opt.audio_drive:
+            self.tgt_part_list = copy.deepcopy(self.part_list)
+            self.part_list = [[list(range(0, 17)) + ((list(range(68, 83)) + [0]) if self.add_upper_face else [])], # face
+                        [range(17, 22)],                                  # right eyebrow
+                        [range(22, 27)],                                  # left eyebrow
+                        [[28, 31], range(31, 36), [35, 28]],              # nose
+                        [[36,37,38,39], [39,40,41,36]],                   # right eye
+                        [[42,43,44,45], [45,46,47,42]],                   # left eye
+                    ]
        
         # load path
         self.tgt_video_path = opt.tgt_video_path
         self.tgt_lmarks_path = opt.tgt_lmarks_path
         self.tgt_ani_path = opt.tgt_ani_path
         self.tgt_rt_path = opt.tgt_rt_path
+        if self.opt.audio_drive:
+            self.tgt_audio_path = opt.tgt_audio_path
 
         self.ref_video_path = opt.ref_video_path
         self.ref_lmarks_path = opt.ref_lmarks_path
@@ -108,6 +123,9 @@ class FaceForeDemoDataset(BaseDataset):
         # read in data
         self.tgt_lmarks = np.load(self.tgt_lmarks_path) #[:,:,:-1]
         self.tgt_video = self.read_videos(self.tgt_video_path)
+        if self.opt.audio_drive:
+            fs, self.tgt_audio = wavfile.read(self.tgt_audio_path)
+            self.chunck_size = int(fs/25)
 
         # get enough video associate with landmark
         if len(self.tgt_video) < self.tgt_lmarks.shape[0]:
@@ -115,7 +133,7 @@ class FaceForeDemoDataset(BaseDataset):
 
         self.ref_lmarks = np.load(self.ref_lmarks_path)
         self.ref_video = self.read_videos(self.ref_video_path)
-
+        # pdb.set_trace()
         if self.opt.warp_ani:
             self.tgt_ani_video = self.read_videos(self.tgt_ani_path)
             self.ref_front = np.load(self.ref_front_path)
@@ -132,6 +150,16 @@ class FaceForeDemoDataset(BaseDataset):
             self.tgt_ani_video = np.asarray(self.tgt_ani_video)[correct_nums]
         if self.opt.warp_ani or self.ref_search:
             self.tgt_rt = self.tgt_rt[correct_nums]
+        # audio
+        if self.opt.audio_drive:
+            if wro_nums.shape[0] != 0:
+                self.tgt_audio = self.clean_audio(self.chunck_size, self.tgt_audio, wro_nums)
+
+            # append
+            left_append = self.tgt_audio[:self.opt.audio_append*self.chunck_size]
+            right_append = self.tgt_audio[-(self.opt.audio_append+1)*self.chunck_size:]
+            self.tgt_audio = np.insert(self.tgt_audio, 0, left_append, axis=0)
+            self.tgt_audio = np.insert(self.tgt_audio, -1, right_append, axis=0)
 
         # smooth landmarks
         for i in range(self.tgt_lmarks.shape[1]):
@@ -178,13 +206,25 @@ class FaceForeDemoDataset(BaseDataset):
 
         # define parameters for inference
         self.ref_lmarks_temp = self.ref_lmarks
-        self.ref_video, self.ref_lmarks, self.ref_indices = self.define_inference(self.ref_video, self.ref_lmarks)
+        self.ref_video, self.ref_lmarks, self.ref_indices, self.ref_coords = self.define_inference(self.ref_video, self.ref_lmarks)
 
         # get id for target
         if self.opt.tgt_ids is None:
             self.tgt_ids = list(range(len(self.tgt_video)))
         else:
             self.tgt_ids = [int(t_id) for t_id in self.opt.tgt_ids.split(',')]
+
+        # reference animation
+        # if self.ref_ani_path[-3:] == 'mp4':
+        #     self.ref_ani_video = 
+
+        # if self.opt.dataset_name == 'lrw':
+        #     for img_id in range(self.ref_video.shape[0]):
+        #         # mask = torch.sum(self.ref_video[img_id], axis=0) == 3
+        #         mask = self.ref_video[img_id] == 1
+        #         mask = (torch.sum(mask, axis=0) >= 1).unsqueeze(0)
+        #         mask = mask.repeat(3,1,1)
+        #         self.ref_video[img_id][mask] = -1
 
     def __len__(self):
         return len(self.tgt_ids) 
@@ -207,7 +247,16 @@ class FaceForeDemoDataset(BaseDataset):
     def __getitem__(self, index):
         # get target
         target_id = [self.tgt_ids[index]]
-        tgt_images, tgt_lmarks = self.prepare_datas(self.tgt_video, self.tgt_lmarks, target_id)
+        # (debug)
+        tgt_images, tgt_lmarks, tgt_crop_coords = self.prepare_datas(self.tgt_video, self.tgt_lmarks, target_id)
+
+        # get audio for reference and target
+        if self.opt.audio_drive:
+            tgt_mfcc = []
+            for ind in target_id:
+                tgt_mfcc.append(\
+                    self.tgt_audio[ind*self.chunck_size:\
+                        (ind+2*self.opt.audio_append+1)*self.chunck_size])
 
         # get animation
         if self.opt.warp_ani:
@@ -228,17 +277,18 @@ class FaceForeDemoDataset(BaseDataset):
                 else:
                     ani_images.append(self.tgt_ani_video[gg])
 
-            ani_images, ani_lmarks = self.prepare_datas(ani_images, ani_lmarks, list(range(len(target_id))))
+            # (debug)
+            ani_images, ani_lmarks, ani_crop_coords = self.prepare_datas(ani_images, ani_lmarks, list(range(len(target_id))))
 
             # crop by mask
             if self.opt.crop_ref:
                 for ani_lmark_id, ani_lmark_temp in enumerate(ani_lmarks_temp):
-                    ani_template = torch.Tensor(self.get_template(ani_lmark_temp, self.transform_T))
+                    ani_template = torch.Tensor(self.get_template(ani_lmark_temp, self.transform_T, ani_crop_coords))
                     ani_template_inter = -ani_images[ani_lmark_id] * ani_template + (1 - ani_template)
                     ani_images[ani_lmark_id] = ani_images[ani_lmark_id] / ani_template_inter
 
-            # finetune
-            if self.opt.finetune:
+            # finetune (double check)
+            if self.opt.finetune and self.opt.origin_not_require:
                 ori_ani_image, ori_ani_lmark, ori_ani_lmarks_temp = [], [], []
                 for ref_idx in self.ref_indices:
                     ori_ani_lmark.append(self.reverse_rt(self.ref_front[int(self.ref_ani_id)], self.tgt_rt[ref_idx]))
@@ -246,11 +296,24 @@ class FaceForeDemoDataset(BaseDataset):
                     ori_ani_lmarks_temp.append(ori_ani_lmark[-1])
                     ori_ani_image.append(self.tgt_ani_video[ref_idx])
 
-                ori_ani_image, ori_ani_lmark = self.prepare_datas(ori_ani_image, ori_ani_lmark, list(range(len(self.ref_indices))))
+                ori_ani_image, ori_ani_lmark, _ = self.prepare_datas(ori_ani_image, ori_ani_lmark, list(range(len(self.ref_indices))))
 
                 # crop by mask
                 if self.opt.crop_ref:
                     for ani_lmark_id, ani_lmark_temp in enumerate(ori_ani_lmarks_temp):
+                        ani_template = torch.Tensor(self.get_template(ani_lmark_temp, self.transform_T))
+                        ani_template_inter = -ori_ani_image[ani_lmark_id] * ani_template + (1 - ani_template)
+                        ori_ani_image[ani_lmark_id] = ori_ani_image[ani_lmark_id] / ani_template_inter
+
+            # reference animation
+            elif self.opt.finetune and not self.opt.origin_not_require:
+                ori_ani_image = [cv2.imread(self.opt.ref_ani_path)]
+                ori_ani_lmark_temp = self.ref_lmarks
+                ori_ani_image, ori_ani_lmark, _ = self.prepare_datas(ori_ani_image, ori_ani_lmark_temp, [0])
+
+                # crop by mask
+                if self.opt.crop_ref:
+                    for ani_lmark_id, ani_lmark_temp in enumerate(self.ref_lmarks_temp):
                         ani_template = torch.Tensor(self.get_template(ani_lmark_temp, self.transform_T))
                         ani_template_inter = -ori_ani_image[ani_lmark_id] * ani_template + (1 - ani_template)
                         ori_ani_image[ani_lmark_id] = ori_ani_image[ani_lmark_id] / ani_template_inter
@@ -275,15 +338,33 @@ class FaceForeDemoDataset(BaseDataset):
         if self.opt.crop_ref:
             for warp_id, warp_ref in enumerate(warping_refs):
                 lmark_id = self.ref_indices[warping_ref_ids[warp_id]]
-                warp_ref_lmark = self.ref_lmarks_temp[lmark_id]
-                warp_ref_template = torch.Tensor(self.get_template(warp_ref_lmark, self.transform_T))
+                # warp_ref_lmark = self.ref_lmarks_temp[lmark_id]
+                # debug
+                warp_ref_lmark = np.array(self.ref_lmarks_temp[lmark_id])
+                warp_ref_template = torch.Tensor(self.get_template(warp_ref_lmark, self.transform_T, self.ref_coords))
                 warp_ref_template_inter = -warp_ref * warp_ref_template + (1 - warp_ref_template)
                 warping_refs[warp_id] = warp_ref / warp_ref_template_inter
 
         target_img_path = [os.path.join(self.tgt_video_path[:-4] , '%05d.png'%t_id) for t_id in target_id]
 
+        # audio
+        if self.opt.audio_drive:
+            tgt_mfcc = torch.cat([torch.Tensor(chunck).unsqueeze(0).unsqueeze(0) for chunck in tgt_mfcc])
+            # get gt landmark
+            tmp_list = self.part_list
+            self.part_list = self.tgt_part_list
+            _, tgt_gt_lmarks, _ = self.prepare_datas(self.tgt_video, self.tgt_lmarks, target_id)
+            self.part_list = tmp_list
+            tgt_gt_lmarks = torch.cat([tgt_gt_lmark.unsqueeze(0) for tgt_gt_lmark in tgt_gt_lmarks], axis=0)
+
         tgt_images = torch.cat([tgt_img.unsqueeze(0) for tgt_img in tgt_images], axis=0)
         tgt_lmarks = torch.cat([tgt_lmark.unsqueeze(0) for tgt_lmark in tgt_lmarks], axis=0)
+
+        # if self.opt.dataset_name == 'lrw':
+        #     mask = tgt_images == 1
+        #     mask = (torch.sum(mask, axis=1) >= 0.98).unsqueeze(1)
+        #     mask = mask.repeat(1,3,1,1,)
+        #     tgt_images[mask] = -1
         
         if self.opt.warp_ani:
             ani_images = torch.cat([ani_image.unsqueeze(0) for ani_image in ani_images], axis=0)
@@ -304,6 +385,8 @@ class FaceForeDemoDataset(BaseDataset):
                 input_dic.update({'ori_ani_image': ori_ani_image, 'ori_ani_lmark': ori_ani_lmark})
         # if self.ref_search:
         input_dic.update({'warping_ref': warping_refs, 'warping_ref_lmark': warping_ref_lmarks})
+        if self.opt.audio_drive:
+            input_dic.update({'tgt_audio': tgt_mfcc, 'tgt_gt_label': tgt_gt_lmarks})
 
         return input_dic
 
@@ -322,13 +405,13 @@ class FaceForeDemoDataset(BaseDataset):
         ref_indices = [int(i) for i in ref_indices]
 
         # get face image
-        ref_images, ref_lmarks = self.prepare_datas(real_video, lmarks, ref_indices)
+        ref_images, ref_lmarks, ref_coords = self.prepare_datas(real_video, lmarks, ref_indices)
 
         # concatenate
         ref_images = torch.cat([ref_img.unsqueeze(0) for ref_img in ref_images], axis=0)
         ref_lmarks = torch.cat([ref_lmark.unsqueeze(0) for ref_lmark in ref_lmarks], axis=0)
 
-        return ref_images, ref_lmarks, ref_indices
+        return ref_images, ref_lmarks, ref_indices, ref_coords
 
     # clean landmarks and images
     def clean_lmarks(self, lmarks):
@@ -341,6 +424,13 @@ class FaceForeDemoDataset(BaseDataset):
         wrong_nums = np.where(check_lmarks!=True)[0]
 
         return correct_nums, wrong_nums
+
+    # clean mfcc base on nums
+    def clean_audio(self, chunck_size, mfcc, wro_nums):
+        delete_indices = []
+        for num in wro_nums:
+            delete_indices += list(range(num*chunck_size, (num+1)*chunck_size))
+        return np.delete(mfcc, delete_indices, axis=0)
 
     # get index for target and reference
     def get_image_index(self, n_frames_total, cur_seq_len, max_t_step=4):            
@@ -400,7 +490,12 @@ class FaceForeDemoDataset(BaseDataset):
         return input_tensor
 
     # preprocess for landmarks
-    def get_keypoints(self, keypoints, transform_L, size, bw=1):
+    # debug
+    def get_keypoints(self, keypoints, transform_L, size, crop_coords, bw=1):
+        # crop landmarks (debug)
+        keypoints[:, 0] -= crop_coords[2]
+        keypoints[:, 1] -= crop_coords[0]
+
         # add upper half face by symmetry
         if self.add_upper_face:
             pts = keypoints[:17, :].astype(np.int32)
@@ -415,12 +510,17 @@ class FaceForeDemoDataset(BaseDataset):
         return lmark_image
 
     # preprocess for image
-    def get_image(self, image, transform_I):
+    def get_image(self, image, transform_I, crop_coords):
         # transform
         img = mmcv.bgr2rgb(image)
-        crop_size = Image.fromarray(img).size
+        img = self.crop(Image.fromarray(img), crop_coords) # debug
+        crop_size = img.size
 
-        img = transform_I(Image.fromarray(img))
+        # crop_size = Image.fromarray(img).size
+
+        # debug
+        # img = transform_I(Image.fromarray(img))
+        img = transform_I(img)
 
         return img, crop_size
 
@@ -430,17 +530,20 @@ class FaceForeDemoDataset(BaseDataset):
         result_lmarks = []
         result_images = []
         for choice in choice_ids:
-            image, crop_size = self.get_image(images[choice], self.transform)
-            # lmark = self.get_keypoints(lmarks[choice].copy(), self.transform_L, crop_size)
+            # debug
+            crop_coords = self.get_crop_coords(lmarks[choice])
+
+            image, crop_size = self.get_image(images[choice], self.transform, crop_coords)
+            # lmark = self.get_keypoints(lmarks[choice].copy(), self.transform_L, crop_size, crop_coords)
             # get landmark
             count = 0
             while True:
                 try:
-                    lmark = self.get_keypoints(lmarks[choice].copy(), self.transform_L, crop_size)
+                    lmark = self.get_keypoints(lmarks[choice].copy(), self.transform_L, crop_size, crop_coords)
                     break
                 except:
                     choice = ((choice + 1)%images.shape[0])
-                    print("wrong in {}".format(self.tgt_video_path))
+                    print("what the fuck for {}".format(self.tgt_video_path))
                     count += 1
                     if count > 20:
                         break
@@ -448,7 +551,23 @@ class FaceForeDemoDataset(BaseDataset):
             result_lmarks.append(lmark)
             result_images.append(image)
 
-        return result_images, result_lmarks
+        return result_images, result_lmarks, crop_coords
+
+    # get crop standard from one landmark (debug)
+    def get_crop_coords(self, keypoints, crop_size=None):           
+        min_y, max_y = int(keypoints[:,1].min()), int(keypoints[:,1].max())
+        min_x, max_x = int(keypoints[:,0].min()), int(keypoints[:,0].max())
+        x_cen, y_cen = (min_x + max_x) // 2, (min_y + max_y) // 2                
+        w = h = (max_x - min_x)
+        if crop_size is not None:
+            h, w = crop_size[0] / 2, crop_size[1] / 2
+                        
+        min_x = x_cen - w
+        min_y = y_cen - h*1.25
+        max_x = min_x + w*2        
+        max_y = min_y + h*2
+
+        return int(min_y), int(max_y), int(min_x), int(max_x)
 
     def reverse_rt(self, source, RT):
         #source (68,3) , RT (6,)
@@ -487,14 +606,18 @@ class FaceForeDemoDataset(BaseDataset):
 
         return warp_ref_ids
 
-    # preprocess for template
-    def get_template(self, lmark, transform_T):
+    # preprocess for template (debug)
+    def get_template(self, lmark, transform_T, crop_coords=None):
         # crop
         if self.opt.dataset_name == 'grid':
             template = get_roi_backup(lmark)
         else:
             template = get_roi(lmark)
-        template = Image.fromarray(template[:, :, 0], 'L')
+        
+        if crop_coords is None:
+            template = Image.fromarray(template[:, :, 0], 'L')
+        else:
+            template = self.crop(Image.fromarray(template[:, :, 0], 'L'), crop_coords)
         template = np.asarray(transform_T(template))
         
         return template

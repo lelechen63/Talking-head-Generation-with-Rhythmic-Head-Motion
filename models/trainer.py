@@ -59,11 +59,11 @@ class Trainer():
             self.visualizer.plot_current_errors(errors, total_steps)
 
         # debug
-        t = (time.time() - self.iter_start_time) / print_freq            
-        errors = {k: v.data.item() if not isinstance(v, int) else v for k, v in loss_dicts.items()}
-        self.visualizer.print_current_errors(epoch, epoch_iter, errors, t)
-        visuals = save_all_tensors(opt, output_list, model)
-        self.visualizer.display_current_results(visuals, epoch, total_steps)
+        # t = (time.time() - self.iter_start_time) / print_freq            
+        # errors = {k: v.data.item() if not isinstance(v, int) else v for k, v in loss_dicts.items()}
+        # self.visualizer.print_current_errors(epoch, epoch_iter, errors, t)
+        # visuals = save_all_tensors(opt, output_list, model)
+        # self.visualizer.display_current_results(visuals, epoch, total_steps)
 
         ### display output images
         if is_master() and self.save:

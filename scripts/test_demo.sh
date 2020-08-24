@@ -10,13 +10,14 @@ test_model_vox_ani(){
     --n_frames_G 1 \
     --which_epoch $3 \
     --how_many $4 \
-    --nThreads 4 \
+    --nThreads 0 \
     --dataroot 'demo' \
     --ref_img_id "0" \
-    --n_shot 1 \
+    --n_shot 8 \
     --serial_batches \
     --dataset_name vox \
-    --crop_ref
+    --crop_ref \
+    --use_new
 }
 
 test_model_vox_ani_finetune(){
@@ -42,5 +43,5 @@ test_model_vox_ani_finetune(){
     --finetune_shot 1
 }
 
-# test_model_vox_ani 3 face8_vox_ani_nonlinear_continue 21 10
-test_model_vox_ani_finetune 3 face8_vox_ani_nonlinear_continue 21 10
+test_model_vox_ani 3 face8_vox_new latest 10
+# test_model_vox_ani_finetune 3 face8_vox_ani_nonlinear_continue 21 10

@@ -43,7 +43,7 @@ def train():
     for epoch in tqdm(range(trainer.start_epoch, opt.niter + opt.niter_decay + 1)):
         trainer.start_of_epoch(epoch, model, data_loader)
         n_frames_total, n_frames_load = data_loader.dataset.n_frames_total, opt.n_frames_per_gpu
-        for idx, data in enumerate(dataset, start=trainer.epoch_iter):
+        for idx, data in enumerate(tqdm(dataset), start=trainer.epoch_iter):
             trainer.start_of_iter()            
 
             if not opt.warp_ani:
@@ -85,7 +85,7 @@ def train():
             if trainer.end_of_iter(loss_dict, output_data_list, model):
                 break        
 
-            pdb.set_trace()
+            # pdb.set_trace()
 
         trainer.end_of_epoch(model)
 

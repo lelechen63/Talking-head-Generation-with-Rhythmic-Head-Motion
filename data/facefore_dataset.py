@@ -71,7 +71,7 @@ class FaceForeDataset(BaseDataset):
         self.n_frames_total = 1
         self.opt = opt
         self.root  = opt.dataroot
-        self.fix_crop_pos = True
+        self.fix_crop_pos = False
         self.use_for_finetune = False  #(whether for finetune)
         # self.fix_crop_pos = False
 

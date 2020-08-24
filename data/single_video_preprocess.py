@@ -34,6 +34,10 @@ def parse_args():
     parser.add_argument( "--video_path",
                      type=str,
                      default='video_path')
+    
+    parser.add_argument( "--get_front",
+                     type=bool,
+                     default=False)
 
 
     
@@ -481,6 +485,11 @@ def __main__():
             RT_compute(path = config.video_path)
 
         print ('The RT_compute will output two files: the __rt.npy and the __front.npy in the same folder. The rt.npy saves the [R,T] between target video and standard face. The front.npy saves the frontalized facial landmrk')
+
+    if config.get_front:
+        get_front_video(video_path = config.video_path)
+        
+        print ('This will output one files: __\%05d.png%min_index in the same folder. The number indicates the index of the frame. This head in this frame is the most frontalized face.')
 
 
 

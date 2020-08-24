@@ -18,12 +18,26 @@ import torch
 def parse_args():
     parser = argparse.ArgumentParser()
 
+    parser.add_argument( "--extract_landmark",
+                     type=bool,
+                     default=False)
+    
+    parser.add_argument( "--compute_rt",
+                     type=bool,
+                     default=False)
+
+
     parser.add_argument('-b', "--batch_id",
                      type=int,
                      default=1)
+
+    parser.add_argument( "--video_path",
+                     type=str,
+                     default='video_path')
+
+
     
     return parser.parse_args()
-config = parse_args()
 
 
 def read_videos( video_path):
@@ -40,10 +54,7 @@ def read_videos( video_path):
 
 def landmark_extractor( video_path = None, path = None):
 	fa = face_alignment.FaceAlignment(face_alignment.LandmarksType._3D, device='cuda:0')
-
-
 	if video_path != None:
-		print ('------++++++++++-')
 
 		tmp = video_path.split('/')
 		path = os.path.join( '/',  *tmp[:-1] )
@@ -52,22 +63,16 @@ def landmark_extractor( video_path = None, path = None):
 		lmark_path = os.path.join(path,   p_id[:-4] + '__original.npy')            
 		print (original_video_path)
 		cropped_video_path = os.path.join(path,   p_id[:-4] + '_crop.mp4')
-
-		# try:
-			# try:
-			# 	_crop_video(original_video_path, config.batch_id,  1)
-			# except:
-
-			# 	print('some error when crop images.')
+		try:
+			try:
+				_crop_video(original_video_path, config.batch_id,  1)
+			except:
+				print('some error when crop images.')
 		command = 'ffmpeg -framerate 25  -i ./temp%05d'%config.batch_id + '/%05d.png  -vcodec libx264  -vf format=yuv420p -y ' +  cropped_video_path
 		os.system(command)
 		cap = cv2.VideoCapture(cropped_video_path)
 		lmark = []
-		print ('-------')
 		while(cap.isOpened()):
-			# counter += 1 
-			# if counter == 5:
-			#     break
 			ret, frame = cap.read()
 			if ret == True:
 				frame = cv2.cvtColor(frame,cv2.COLOR_BGR2RGB )
@@ -79,8 +84,7 @@ def landmark_extractor( video_path = None, path = None):
 		np.save(lmark_path, lmark)
 
 		print 
-		# except:
-		# 	print (cropped_video_path)
+		
 	else:
 		train_list = sorted(os.listdir(path))
 		batch_length =   len(train_list)
@@ -94,11 +98,10 @@ def landmark_extractor( video_path = None, path = None):
 		    print (original_video_path)
 		    cropped_video_path = os.path.join(path,   p_id[:-4] + '_crop.mp4')
 		    
-		    # if os.path.exists(lmark_path):
-		        # continue
+
 		        
 		    try:
-		        # _crop_video(original_video_path, config.batch_id,  1)
+		        _crop_video(original_video_path, config.batch_id,  1)
 		        
 		        command = 'ffmpeg -framerate 25  -i ./temp%05d'%config.batch_id + '/%05d.png  -vcodec libx264  -vf format=yuv420p -y ' +  cropped_video_path
 		        os.system(command)
@@ -459,6 +462,28 @@ def diff():
 
     with open(os.path.join(root_path, 'pickle','train_lmark2img.pkl'), 'wb') as handle:
         pkl.dump(datalist, handle, protocol=pkl.HIGHEST_PROTOCOL)
+
+
+def __main__():
+    config = parse_args()
+
+    if config.landmark_extractor:
+        if os.path.isfile(config.video_path):
+            landmark_extractor(video_path = config.video_path)
+        else:
+            landmark_extractor(path = config.video_path)
+
+        print ('The extracted landmark will save in the same folder with name of __original.npy. Meanwhile, we will crop your video to a new video named as _crop.mp4')
+    if config.compute_rt:
+        if os.path.isfile(config.video_path):
+            RT_compute(video_path = config.video_path)
+        else:
+            RT_compute(path = config.video_path)
+
+        print ('The RT_compute will output two files: the __rt.npy and the __front.npy in the same folder. The rt.npy saves the [R,T] between target video and standard face. The front.npy saves the frontalized facial landmrk')
+
+
+
 # swith_identity('turing1')
 # swith_identity_obama()
 # get_front()

@@ -34,24 +34,41 @@ python scripts/download_flownet2.py
 Taken Voxceleb as example, our model can be trained by running example code 
 
 ```
-bash train_g8.sh
+bash script/train_g8.sh
 ```
 
-By this way, the model creates landmarks as intermediate generation based on audio input. And then generate synthesized image by hybrid embedding module as well as nonlinear composition module, which takes both synthesized landmarks, generated 3D projection facial image, and sampled video frames as input.
+By this way, the model creates landmarks as intermediate generation based on audio input. And then it generates synthesized image by hybrid embedding module as well as nonlinear composition module, which takes both synthesized landmarks, generated 3D projection facial image, and sampled video frames as input.
 
 We also apply multiple choices to train your own model. The entire example bash code is shown as below:
 
 ```
-CUDA_VISIBLE_DEVICES=[Cuda Ids] python train.py --name face8_vox_ani_nonlinear_continue --dataset_mode facefore \
---adaptive_spade --warp_ref --warp_ani --spade_combine --add_raw_loss \
---gpu_ids [Cuda Indexs] --batchSize 56 --nThreads 64 --niter 100 --niter_single 100 \
---n_shot 8 --n_frames_G 1 \
---dataroot '/mnt/Data/lchen63/voxceleb2' --dataset_name vox --save_epoch_freq 1 --display_freq 1000 \
---continue_train --crop_ref --use_new
+CUDA_VISIBLE_DEVICES=[CUDA Ids] python train.py \
+--name face8_vox_new \
+--dataset_mode facefore \
+--adaptive_spade \
+--warp_ref \
+--warp_ani \
+--spade_combine \
+--add_raw_loss \
+--gpu_ids [Gpu Ids] \
+--batchSize 4 \
+--nThreads 8 \
+--niter 1000 \
+--niter_single 1001 \
+--n_shot 8 \
+--n_frames_G 1 \
+--dataroot 'voxceleb2' \
+--dataset_name vox \
+--save_epoch_freq 1 \
+--display_freq 5000 \
+--continue_train \
+--use_new \
+--crop_ref
 ```
 
-- In order to control general training process, please use `--batchSize` to number of training example for each epoch, `--niter` to set total number of epoches of training. Note that our model has the capacity to support temporal training in the future, `--n_frames_G` refers to number of images to be used for each time slice, and `--niter_single` indicates in which epoch the model starts to trained temporally. (Currently, we only support non-temporal training).
-- For purpose of ablation study, you can modify the model with `--warp_ref`, `--warp_ani`, which refers to whether compose synthesized image with warpped sampled image or 3D facial image specifically. If specific `--spade_combine`, the model will be train with nonlinear composed module. Otherwise, linear composed module will be applied. If specific `--use_new`, hybrid embedding module and a noval composition method will be contained in the model, otherwise, method similar to few-shot-vid2vid will be exploited. Furthermore, please use `--no_warp` for composition method with non-warpping (original) images, `--no_atten` for mean-embeding rather than hybrid embedding.
+- To indicate directory of model, please sepecify its name in `--name` which will be created in `checkpoints`. Moreover, if `--continue_train` is provided, model will load pretrained weight from directory described by `--name`. User can also use `--dataset_mode` to define dataloader to be applied. For example `--dataset_mode facefore` indicates `data/facefore_dataset.py` will be exploited.
+- In order to control general training process, please use `--batchSize` for number of training example for each epoch, `--niter` to set total number of epoches of training. Note that our model has the capacity to support temporal training in the future, `--n_frames_G` refers to number of images to be used for each time slice, and `--niter_single` indicates in which epoch the model starts to trained temporally. (Currently, we only support non-temporal training).
+- For purpose of ablation study, you can modify the model with `--warp_ref`, `--warp_ani`, which refers to whether compose synthesized image with warpped sampled image or 3D facial image specifically. If specific `--spade_combine`, the model will be train with nonlinear composed module. Otherwise, linear composed module will be applied. If specific `--use_new`, hybrid embedding module and a noval composition method will be contained in the model, otherwise, method similar to [few-shot-vid2vid](https://github.com/NVlabs/few-shot-vid2vid) will be exploited. Furthermore, please use `--no_warp` for composition method with non-warpping (original) images, `--no_atten` for mean-embeding rather than hybrid embedding.
 
 ### Testing
 
@@ -61,42 +78,13 @@ After training, you can test results on datasets (e.g. voxceleb) by using follow
 bash test_demo.sh
 ```
 
-The script will randomly select several videos from voxceleb and synthesized videos by take several sampled frames from it.
+The script will load videos in `demo` directory and synthesized videos by take several sampled frames as reference from related one. Required file for each video will be disucss later.
 
 In order to test self-decide model, the detail script is shown as below:
 
 ```
-CUDA_VISIBLE_DEVICES=[cuda Ids] python test_demo.py --name face8_vox_ani \
---dataset_mode facefore_demo \
---adaptive_spade \
---warp_ref \
---warp_ani \
---example \
---n_frames_G 1 \
---which_epoch latest \
---how_many [number of test videos] \
---nThreads 0 \
---dataroot '/home/cxu-serve/p1/common/voxceleb2' \
---ref_img_id "0" \
---n_shot 1 \
---serial_batches \
---dataset_name vox \
---crop_ref \
---use_new
-```
-
-Except similar flags as training, you can use `--ref_img_id` to indicates index of sample frames, and `--n_shot` to specific number of sample frames.
-
-For demo testing, you can run the following example script:
-
-```
-bash test_demo_example.sh
-```
-
-The detail is shown below:
-
-```
-CUDA_VISIBLE_DEVICES=$1 python test_demo_example.py --name face8_vox_ani_nonlinear \
+CUDA_VISIBLE_DEVICES=[CUDA Ids] python test_demo_ani.py \
+--name face8_vox_new \
 --dataset_mode facefore_demo \
 --adaptive_spade \
 --warp_ref \
@@ -105,23 +93,33 @@ CUDA_VISIBLE_DEVICES=$1 python test_demo_example.py --name face8_vox_ani_nonline
 --spade_combine \
 --example \
 --n_frames_G 1 \
---which_epoch $2 \
---how_many $3 \
+--which_epoch latest \
+--how_many 10 \
 --nThreads 0 \
---dataroot '/home/cxu-serve/p1/common/voxceleb2' \
---ref_dataroot '/home/cxu-serve/p1/common/voxceleb2' \
+--dataroot 'demo' \
 --ref_img_id "0" \
---n_shot 1 \
+--n_shot 8 \
 --serial_batches \
 --dataset_name vox \
---tgt_video_path "/home/cxu-serve/p1/common/voxceleb2/unzip/test_video/id00017/01dfn2spqyE/00001_aligned.mp4" \
---ref_dataset vox \
---ref_video_path "/home/cxu-serve/p1/common/voxceleb2/unzip/test_video/id00017/01dfn2spqyE/00001_aligned.mp4" \
---ref_ani_id 10 \
---finetune
+--crop_ref \
+--use_new
 ```
 
-`--dataset_name`, `--tgt_video_path` and `--dataroot` refers to directory of target video, while `--ref_dataset`, `--ref_video_path` and `--ref_dataroot` refers to directory of reference video. You can use `--ref_img_id` to select specific frames from reference video as sample images. More related path can be seen in code of "test_demo_example.py", and we encourage user to read that.
+Except same flags as training, you can use `--ref_img_id` to indicates index of sample frames, and `--n_shot` for number of reference images used during training.
+
+For demo testing, several files about video need to be provided in `demo` directory.
+
+- Reference video and landmarks. For example, `00181_aligned.mp4` and `00181_aligned.npy`. 
+- Animation video. 3D animation video generated by 3D generator needed to be pre-provided. If `--warp_ani` is not specified, animation video is not necessary. (e.g. `00181_aligned_ani.mp4`)
+- Rotation of face in the video. Rotation of face in each frame of video. In our demo, it refers to file `00181_aligned_rt.npy`.
+- Front face image and relate landmark. Frame id of front face (rotation closest to 0) in video is needed to be provided. Related landmarkd will be applied to create landmarks of animation video during data loading. For example, in `00181_aligned.mp4`, front face id is 234, and landmark refers to `00181_aligned_front.py`. 
+- Audio. If video needed to be synthesized from audio, related voice need to be provided. Otherwise, landmarks of target image should be provided.
+
+Moreover, pretrained weight should be placed in directory sepecified by `--name`. For example, `checkpoints/face8_vox_demo` in our demo.
+
+### Pretrained weight
+
+Our pretrained weight can be downloaded from 
 
 ## Citation
 
@@ -134,4 +132,4 @@ CUDA_VISIBLE_DEVICES=$1 python test_demo_example.py --name face8_vox_ani_nonline
 
 ## Future
 
-Demo test method and more detail will be update in following days.
+More detail will be update in following days.

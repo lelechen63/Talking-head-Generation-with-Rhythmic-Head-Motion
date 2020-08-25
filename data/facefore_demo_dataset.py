@@ -133,7 +133,7 @@ class FaceForeDemoDataset(BaseDataset):
 
         self.ref_lmarks = np.load(self.ref_lmarks_path)
         self.ref_video = self.read_videos(self.ref_video_path)
-        # pdb.set_trace()
+
         if self.opt.warp_ani:
             self.tgt_ani_video = self.read_videos(self.tgt_ani_path)
             self.ref_front = np.load(self.ref_front_path)
@@ -296,12 +296,12 @@ class FaceForeDemoDataset(BaseDataset):
                     ori_ani_lmarks_temp.append(ori_ani_lmark[-1])
                     ori_ani_image.append(self.tgt_ani_video[ref_idx])
 
-                ori_ani_image, ori_ani_lmark, _ = self.prepare_datas(ori_ani_image, ori_ani_lmark, list(range(len(self.ref_indices))))
+                ori_ani_image, ori_ani_lmark, ori_ani_crop_coords = self.prepare_datas(ori_ani_image, ori_ani_lmark, list(range(len(self.ref_indices))))
 
                 # crop by mask
                 if self.opt.crop_ref:
                     for ani_lmark_id, ani_lmark_temp in enumerate(ori_ani_lmarks_temp):
-                        ani_template = torch.Tensor(self.get_template(ani_lmark_temp, self.transform_T))
+                        ani_template = torch.Tensor(self.get_template(ani_lmark_temp, self.transform_T, ori_ani_crop_coords))
                         ani_template_inter = -ori_ani_image[ani_lmark_id] * ani_template + (1 - ani_template)
                         ori_ani_image[ani_lmark_id] = ori_ani_image[ani_lmark_id] / ani_template_inter
 
@@ -309,6 +309,7 @@ class FaceForeDemoDataset(BaseDataset):
             elif self.opt.finetune and not self.opt.origin_not_require:
                 ori_ani_image = [cv2.imread(self.opt.ref_ani_path)]
                 ori_ani_lmark_temp = self.ref_lmarks
+
                 ori_ani_image, ori_ani_lmark, _ = self.prepare_datas(ori_ani_image, ori_ani_lmark_temp, [0])
 
                 # crop by mask

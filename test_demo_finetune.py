@@ -90,7 +90,7 @@ opt = TestOptions().parse()
 
 # preprocess
 save_name = opt.name
-save_root = os.path.join('demo', save_name, 'finetune_front_{}'.format(opt.finetune_shot), '{}_shot_epoch_{}'.format(opt.n_shot, opt.which_epoch))
+save_root = os.path.join('extra_degree_result_ani', save_name, 'finetune_front_{}'.format(opt.finetune_shot), '{}_shot_epoch_{}'.format(opt.n_shot, opt.which_epoch))
 
 ### setup models
 model = create_model(opt)
@@ -117,12 +117,12 @@ finetune_data, finetune_ids, pickle_data, pick_ids = sel_data(pickle_data, opt)
 test_ref_id = opt.ref_img_id
 test_shot = opt.n_shot
 # finetune 
-opt.ref_img_id = ""
-opt.n_shot = opt.finetune_shot
-step = 2048 // opt.finetune_shot
-for i in range(0, opt.finetune_shot):
-    opt.ref_img_id += '{},'.format(i * step)
-opt.ref_img_id = opt.ref_img_id[:-1]
+# opt.ref_img_id = ""
+# opt.n_shot = opt.finetune_shot
+# step = 2048 // opt.finetune_shot
+# for i in range(0, opt.finetune_shot):
+#     opt.ref_img_id += '{},'.format(i * step)
+# opt.ref_img_id = opt.ref_img_id[:-1]
 
 refs, warps, anis = [], [], []
 for f_id in finetune_ids: 
@@ -169,7 +169,7 @@ img_path = data['path']
 img_dir = os.path.join(save_root, 'finetune')
 
 if not os.path.exists(img_dir):
-        os.makedirs(img_dir)
+    os.makedirs(img_dir)
 for ref_id in range(len(refs)):
     ref_labels, ref_images = refs[ref_id]
     for ref_img_id in range(ref_images.shape[1]):
@@ -185,8 +185,6 @@ for ref_id in range(len(refs)):
         save_img = np.hstack(save_list)
         save_img = Image.fromarray(save_img)
         save_img.save(os.path.join(img_dir, '{}_ref_{}.png').format(ref_id, ref_img_id))
-
-model.save_networks('finetune_ouyang')
 
 # test
 opt.ref_img_id = test_ref_id

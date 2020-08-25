@@ -101,7 +101,7 @@ pick_ids = range(0, end)
 print('after {}'.format(len(pick_ids)))
 pick_ids = pick_ids[:opt.how_many]
 
-for pick_id in tqdm(pick_ids):
+for pick_id in pick_ids:
     paths = pickle_data[pick_id]
 
     print('process {} ...'.format(pick_id))

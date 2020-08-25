@@ -119,7 +119,7 @@ Moreover, pretrained weight should be placed in directory sepecified by `--name`
 
 ### Pretrained weight
 
-Our pretrained weight can be downloaded from 
+Our pretrained weight can be downloaded from [Google Drive](https://drive.google.com/drive/folders/1JbQhnNyHBbYtikg5S_B5oS_vk81j3oPT?usp=sharing/).
 
 ## Citation
 

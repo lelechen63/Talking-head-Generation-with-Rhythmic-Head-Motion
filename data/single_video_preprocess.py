@@ -68,11 +68,11 @@ def landmark_extractor( video_path = None, path = None):
 		print (original_video_path)
 		cropped_video_path = os.path.join(path,   p_id[:-4] + '_crop.mp4')
 		try:
-			try:
-				_crop_video(original_video_path, config.batch_id,  1)
-			except:
-				print('some error when crop images.')
-		command = 'ffmpeg -framerate 25  -i ./temp%05d'%config.batch_id + '/%05d.png  -vcodec libx264  -vf format=yuv420p -y ' +  cropped_video_path
+			_crop_video(original_video_path, config.batch_id,  1)
+		except:
+			print('some error when crop images.')
+       
+        command = 'ffmpeg -framerate 25  -i ./temp' + '/%05d.png  -vcodec libx264  -vf format=yuv420p -y ' +  cropped_video_path
 		os.system(command)
 		cap = cv2.VideoCapture(cropped_video_path)
 		lmark = []
@@ -87,7 +87,6 @@ def landmark_extractor( video_path = None, path = None):
 		lmark = np.asarray(lmark)
 		np.save(lmark_path, lmark)
 
-		print 
 		
 	else:
 		train_list = sorted(os.listdir(path))
@@ -512,11 +511,11 @@ def __main__():
 # landmark_extractor(path = '/home/cxu-serve/p1/common/demo/oppo_demo')
 # landmark_extractor(video_path = '/home/cxu-serve/p1/common/demo/oppo_demo/ouyang.mp4')
 # RT_compute(video_path = '/home/cxu-serve/p1/common/demo/oppo_demo/ouyang.mp4')
-get_front_video(video_path =  '/home/cxu-serve/p1/common/demo/oppo_demo/957_crop.mp4')
-get_front_video(video_path =  '/home/cxu-serve/p1/common/demo/oppo_demo/958_crop.mp4')
+# get_front_video(video_path =  '/home/cxu-serve/p1/common/demo/oppo_demo/957_crop.mp4')
+# get_front_video(video_path =  '/home/cxu-serve/p1/common/demo/oppo_demo/958_crop.mp4')
 
-get_front_video(video_path =  '/home/cxu-serve/p1/common/demo/oppo_demo/959_crop.mp4')
-get_front_video(video_path =  '/home/cxu-serve/p1/common/demo/oppo_demo/ouyang_crop.mp4')
+# get_front_video(video_path =  '/home/cxu-serve/p1/common/demo/oppo_demo/959_crop.mp4')
+# get_front_video(video_path =  '/home/cxu-serve/p1/common/demo/oppo_demo/ouyang_crop.mp4')
 
 
 # diff()

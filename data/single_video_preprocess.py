@@ -466,9 +466,9 @@ def diff():
         pkl.dump(datalist, handle, protocol=pkl.HIGHEST_PROTOCOL)
 
 
-def __main__():
+def main():
     config = parse_args()
-
+    print (config.video_path)
     if config.landmark_extractor:
         if os.path.isfile(config.video_path):
             landmark_extractor(video_path = config.video_path)
@@ -489,7 +489,7 @@ def __main__():
         
         print ('This will output one files: __\%05d.png%min_index in the same folder. The number indicates the index of the frame. This head in this frame is the most frontalized face.')
 
-
+main()
 
 # swith_identity('turing1')
 # swith_identity_obama()

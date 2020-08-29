@@ -1,4 +1,5 @@
 debug*
+test_data/
 checkpoints/
 datasets/
 models/debug*

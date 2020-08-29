@@ -19,12 +19,10 @@ def parse_args():
     parser = argparse.ArgumentParser()
 
     parser.add_argument( "--extract_landmark",
-                     type=bool,
-                     default=False)
+                     type=store_true)
     
     parser.add_argument( "--compute_rt",
-                     type=bool,
-                     default=False)
+                     type=store_true)
 
 
     parser.add_argument('-b', "--batch_id",
@@ -36,8 +34,7 @@ def parse_args():
                      default='video_path')
     
     parser.add_argument( "--get_front",
-                     type=bool,
-                     default=False)
+                     type=store_true)
 
 
     

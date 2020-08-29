@@ -43,7 +43,7 @@ def parse_args():
     
     return parser.parse_args()
 
-
+config = parse_args()
 def read_videos( video_path):
     cap = cv2.VideoCapture(video_path)
     real_video = []
@@ -67,11 +67,11 @@ def landmark_extractor( video_path = None, path = None):
 		lmark_path = os.path.join(path,   p_id[:-4] + '__original.npy')            
 		print (original_video_path)
 		cropped_video_path = os.path.join(path,   p_id[:-4] + '_crop.mp4')
-		try:
-			_crop_video(original_video_path, config.batch_id,  1)
-		except:
-			print('some error when crop images.')
-		command = 'ffmpeg -framerate 25  -i ./temp' + '/%05d.png  -vcodec libx264  -vf format=yuv420p -y ' +  cropped_video_path
+		# try:
+        _crop_video(original_video_path, config.batch_id,  1)
+		# except:
+        print('some error when crop images.')
+		command = 'ffmpeg -framerate 25  -i ./temp%05d'% config.batch_id + '/%05d.png  -vcodec libx264  -vf format=yuv420p -y ' +  cropped_video_path
 		os.system(command)
 		cap = cv2.VideoCapture(cropped_video_path)
 		lmark = []

@@ -54,9 +54,9 @@ def read_videos( video_path):
     return real_video
 
 def landmark_extractor( video_path = None, path = None):
-    print (video_path)
-    print (path)
-    print ('====')
+	print (video_path)
+	print (path)
+	print ('====')
 	fa = face_alignment.FaceAlignment(face_alignment.LandmarksType._3D, device='cuda:0')
 	if video_path != None:
 

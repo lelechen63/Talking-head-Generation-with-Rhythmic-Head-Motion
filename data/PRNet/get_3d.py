@@ -561,6 +561,7 @@ def parse_args():
 
 def main():
     config = parse_args()
+    print ('NOTE, you need to enter the image path that obtained in get_front function!!!! We compute the 3D model based on that frame')
     get_3d_single_video(img_path = config.img_path)
 
 main()

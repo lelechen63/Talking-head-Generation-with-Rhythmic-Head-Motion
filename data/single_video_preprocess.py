@@ -469,7 +469,7 @@ def diff():
 def main():
     config = parse_args()
     print (config.video_path)
-    if config.landmark_extractor:
+    if config.extract_landmark:
         if os.path.isfile(config.video_path):
             landmark_extractor(video_path = config.video_path)
         else:

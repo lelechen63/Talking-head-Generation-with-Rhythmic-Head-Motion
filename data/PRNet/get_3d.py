@@ -358,7 +358,7 @@ def get_3d_pkl_obama(pkl , root ,bbb = 0): # the first cell is video path the la
 
 
 
-def get_3d_single_video(   img_path, bbb = 0): # you need the image path of the most visible frame.
+def get_3d_single_video( img_path): # you need the image path of the most visible frame.
     # root = 
     # ---- init PRN
     # os.environ['CUDA_VISIBLE_DEVICES'] = '0' # GPU number, -1 for CPU
@@ -543,7 +543,7 @@ def parse_args():
                         type=str,
                         default=None)
     return parser.parse_args()
-config = parse_args()
+
 
 # get_3d(config.b)    
 
@@ -551,16 +551,17 @@ config = parse_args()
 
 # get_3d_single( video_path= config.v_path, target_id=config.target_id)    
 # root = '/home/cxu-serve/p1/common/lrs3/lrs3_v0.4'
-root = '/home/cxu-serve/p1/common/Obama'
-bbb = config.b
+# root = '/home/cxu-serve/p1/common/Obama'
+# bbb = config.b
 # get_3d_pkl_lrs(os.path.join( root, 'pickle','test2_lmark2img.pkl'), root ,bbb)
 
 # os.environ['CUDA_VISIBLE_DEVICES'] = str(config.b)
 # get_3d_pkl_obama(os.path.join( root,  'pickle', 'train_lmark2img.pkl'),root,bbb)
 # get_3d_pkl_lrw(os.path.join( root,  'pickle', 'test2_lmark2img.pkl'),root,bbb)
-get_3d_single_video(img_path = '/home/cxu-serve/p1/common/demo/oppo_demo/957__00063.png')
-get_3d_single_video(img_path = '/home/cxu-serve/p1/common/demo/oppo_demo/958__00326.png')
 
-get_3d_single_video(img_path = '/home/cxu-serve/p1/common/demo/oppo_demo/959__00168.png')
+def main():
+    config = parse_args()
+    get_3d_single_video(img_path = config.img_path)
 
+main()
 # get_3d_single(img_path= '/home/cxu-serve/p1/common/demo/self2_crop.png')

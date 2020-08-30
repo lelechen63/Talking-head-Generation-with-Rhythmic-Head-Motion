@@ -828,7 +828,7 @@ def main():
     config = parse_args()
     front_img_path = config.front_img_path
     front_lmark_path = front_img_path[:-11] + '__front.npy'
-    front_frame_id =  int(front_img_path[:-9:-4])
+    front_frame_id =  int(front_img_path[-9:-4])
     demo_single_video(front_lmark_path = front_lmark_path , key_id =front_frame_id)
 
 

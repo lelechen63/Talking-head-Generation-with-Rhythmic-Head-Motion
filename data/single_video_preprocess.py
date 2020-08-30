@@ -305,7 +305,7 @@ def get_front_video(video_path): # video path should be the original video.
     
     img_path = video_path[:-4] + '__%05d.png'%min_index 
 
-    print (img_path)
+    print ('save it to ' +  img_path)
     cv2.imwrite(img_path, v_frames[min_index])
     
 
@@ -490,33 +490,5 @@ def main():
 
 main()
 
-# swith_identity('turing1')
-# swith_identity_obama()
-# get_front()
-# pca_lmark_grid()
-# deepspeech_grid()
-# pca_3dlmark_grid()
-# data = np.load('/home/cxu-serve/p1/common/grid/align/s1/lwae8n_front.npy')[:,:,:2]
-# data = data.reshape(data.shape[0], 136)
-# print (data.shape)
-# mean = np.load('../basics/mean_grid_front.npy')
-# component = np.load('../basics/U_grid_front.npy')
-# data_reduced = np.dot(data - mean, component.T)
-
-# data_original = np.dot(data_reduced,component) + mean
-# np.save( 'gg.npy', data_original )
-# print (data - data_original)
-# landmark_extractor(path = '/home/cxu-serve/p1/common/demo/oppo_demo')
-# landmark_extractor(video_path = '/home/cxu-serve/p1/common/demo/oppo_demo/ouyang.mp4')
-# RT_compute(video_path = '/home/cxu-serve/p1/common/demo/oppo_demo/ouyang.mp4')
-# get_front_video(video_path =  '/home/cxu-serve/p1/common/demo/oppo_demo/957_crop.mp4')
-# get_front_video(video_path =  '/home/cxu-serve/p1/common/demo/oppo_demo/958_crop.mp4')
-
-# get_front_video(video_path =  '/home/cxu-serve/p1/common/demo/oppo_demo/959_crop.mp4')
-# get_front_video(video_path =  '/home/cxu-serve/p1/common/demo/oppo_demo/ouyang_crop.mp4')
-
-
-# diff()
-# landmark_extractor()
 
 

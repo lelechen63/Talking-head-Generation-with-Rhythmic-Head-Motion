@@ -520,9 +520,12 @@ def get_3d_single(video_path = None, target_id =None,img_path =None):
     # cv2.imwrite('./mask.png', colors * 255)
     if video_path != None:
         write_obj_with_colors(video_path[:-4] + '_original.obj', save_vertices, prn.triangles, colors) #save 3d face(can open with meshlab)
+        print ('The generated 3d mesh model is stored in ' + video_path[:-4] + '_original.obj')
     else:
         write_obj_with_colors(img_path[:-4] + '_original.obj', save_vertices, prn.triangles, colors) #save 3d face(can open with meshlab)
+        print ('The generated 3d mesh model is stored in ' + img_path[:-4] + '_original.obj')
 
+    
 
 import argparse
 def parse_args():

@@ -66,7 +66,7 @@ def landmark_extractor( video_path = None, path = None):
 		original_video_path =video_path
 		lmark_path = os.path.join(path,   p_id[:-4] + '__original.npy')            
 		print (original_video_path)
-		cropped_video_path = os.path.join(path,   p_id[:-4] + '_crop.mp4')
+		cropped_video_path = os.path.join(path,   p_id[:-4] + '__crop.mp4')
 		# try:
 		_crop_video(original_video_path, config.batch_id,  1)
 		# except:
@@ -98,7 +98,7 @@ def landmark_extractor( video_path = None, path = None):
 		    original_video_path = os.path.join( path,  p_id)
 		    lmark_path = os.path.join(path,   p_id[:-4] + '__original.npy')            
 		    print (original_video_path)
-		    cropped_video_path = os.path.join(path,   p_id[:-4] + '_crop.mp4')
+		    cropped_video_path = os.path.join(path,   p_id[:-4] + '__crop.mp4')
 		    
 
 		        
@@ -475,7 +475,7 @@ def main():
         else:
             landmark_extractor(path = config.video_path)
 
-        print ('The extracted landmark will save in the same folder with name of __original.npy. Meanwhile, we will crop your video to a new video named as _crop.mp4')
+        print ('The extracted landmark will save in the same folder with name of __original.npy. Meanwhile, we will crop your video to a new video named as __crop.mp4')
     if config.compute_rt:
         if os.path.isfile(config.video_path):
             RT_compute(video_path = config.video_path)

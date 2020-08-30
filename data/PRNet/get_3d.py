@@ -505,19 +505,12 @@ def get_3d_single(video_path = None, target_id =None,img_path =None):
         np.save(img_path[:-4] + '_prnet.npy', kpt)
     # 3D vertices
     vertices = prn.get_vertices(pos)
-    # save_vertices, p = frontalize(vertices)
-    # np.save(video_path[:-4] + '_p.npy', p) 
-    # if os.path.exists(video_path[:-4] + '.obj'):
-    #     continue
+    #
     save_vertices = vertices.copy()
     save_vertices[:,1] = h - 1 - save_vertices[:,1]
-
     # corresponding colors
     colors = prn.get_colors(image, vertices)
     
-    # print (colors.shape)
-    # print ('=========')
-    # cv2.imwrite('./mask.png', colors * 255)
     if video_path != None:
         write_obj_with_colors(video_path[:-4] + '_original.obj', save_vertices, prn.triangles, colors) #save 3d face(can open with meshlab)
         print ('The generated 3d mesh model is stored in ' + video_path[:-4] + '_original.obj')

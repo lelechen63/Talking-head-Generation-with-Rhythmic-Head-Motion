@@ -40,3 +40,8 @@ NOTE: The video path need to be absolute path
     
     python get_3d.py --img_path /a/b/c__00068.png   # the image path should be the one generated in setp3.
 
+- > Step5: Generate 3D rendering video
+
+    cd face_tool
+    
+    python find_camera.py --front_img_path /a/b/c__00068.png

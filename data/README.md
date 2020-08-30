@@ -35,4 +35,6 @@ NOTE: The video path need to be absolute path
 
     python single_video_preprocess.py --get_front  --video_path=/a/b/c.mp4
 - > Step 4: Then we need to render the 3D image using the RT and the most fronalized image frame
-   I will post this later...
+    cd PRNet
+     python get_3d.py --img_path /a/b/c__00068.png   # the image path should be the one generated in setp3.
+

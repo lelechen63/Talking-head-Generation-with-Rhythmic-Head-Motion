@@ -29,6 +29,15 @@ def parse_args():
     parser.add_argument("--root",
                         type=str,
                         default='/home/cxu-serve/p1/lchen63/voxceleb/oppo/')
+
+    parser.add_argument("--front_img_path",
+                        type=str,
+                        default='')
+    # parser.add_argument("--front_frame_id",
+    #                     type=int,
+    #                     default=1)
+
+
     return parser.parse_args()
 config = parse_args()
 root = config.root
@@ -813,8 +822,24 @@ def gg():
         #     break
 # demo('vincent2')
 
-demo_single_video(front_lmark_path = '/u/lchen63/github/Talking-head-Generation-with-Rhythmic-Head-Motion/test_data/ouyang__front.npy' , key_id =68)
 
+
+def main():
+    config = parse_args()
+    front_img_path = config.front_img_path
+    front_lmark_path = front_img_path[:-11] + '__front.npy'
+    front_frame_id =  int(front_img_path[:-9:-4])
+    demo_single_video(front_lmark_path = front_lmark_path , key_id =front_frame_id)
+
+
+main()
+
+# parser.add_argument("--front_lmark_path", '/u/lchen63/github/Talking-head-Generation-with-Rhythmic-Head-Motion/test_data/ouyang__front.npy'
+#                         type=str,
+#                         default='')
+#     parser.add_argument("--front_frame_id",
+#                         type=int,
+#                         default=1)
 
 
 # demo_single_video_switch(target_obj_path = '/home/cxu-serve/p1/common/demo/oppo_demo/ouyang__original.obj', 

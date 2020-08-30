@@ -813,14 +813,17 @@ def gg():
         #     break
 # demo('vincent2')
 
-# demo_single_video(front_lmark_path = '/home/cxu-serve/p1/common/demo/oppo_demo/ouyang__front.npy' , key_id =11174)
-demo_single_video_switch(target_obj_path = '/home/cxu-serve/p1/common/demo/oppo_demo/ouyang__original.obj', 
-                        target_front_lmark_path = '/home/cxu-serve/p1/common/demo/oppo_demo/957__front.npy',  
-                        target_rt_path = '/home/cxu-serve/p1/common/demo/oppo_demo/957__rt.npy',  
-                        original_front_lmark_path = '/home/cxu-serve/p1/common/demo/oppo_demo/ouyang__front.npy', 
-                        original_key_id = 11174, 
-                        pr_path = "/home/cxu-serve/p1/common/demo/oppo_demo/ouyang__prnet.npy", 
-                        ani_save_path = '/home/cxu-serve/p1/common/demo/oppo_demo/ouyang__957.mp4')
+demo_single_video(front_lmark_path = '/u/lchen63/github/Talking-head-Generation-with-Rhythmic-Head-Motion/test_data/ouyang__front.npy' , key_id =68)
+
+
+
+# demo_single_video_switch(target_obj_path = '/home/cxu-serve/p1/common/demo/oppo_demo/ouyang__original.obj', 
+#                         target_front_lmark_path = '/home/cxu-serve/p1/common/demo/oppo_demo/957__front.npy',  
+#                         target_rt_path = '/home/cxu-serve/p1/common/demo/oppo_demo/957__rt.npy',  
+#                         original_front_lmark_path = '/home/cxu-serve/p1/common/demo/oppo_demo/ouyang__front.npy', 
+#                         original_key_id = 11174, 
+#                         pr_path = "/home/cxu-serve/p1/common/demo/oppo_demo/ouyang__prnet.npy", 
+#                         ani_save_path = '/home/cxu-serve/p1/common/demo/oppo_demo/ouyang__957.mp4')
 # demo_obama()
 # gg()
 # demo('vincent2')

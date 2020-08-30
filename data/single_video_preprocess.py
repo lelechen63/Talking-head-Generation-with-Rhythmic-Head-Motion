@@ -54,9 +54,8 @@ def read_videos( video_path):
     return real_video
 
 def landmark_extractor( video_path = None, path = None):
-	print (video_path)
-	print (path)
-	print ('====')
+	print ('NOTE: the video_path need to be absolute path')
+	print ('=========================================')
 	fa = face_alignment.FaceAlignment(face_alignment.LandmarksType._3D, device='cuda:0')
 	if video_path != None:
 
@@ -67,10 +66,10 @@ def landmark_extractor( video_path = None, path = None):
 		lmark_path = os.path.join(path,   p_id[:-4] + '__original.npy')            
 		print (original_video_path)
 		cropped_video_path = os.path.join(path,   p_id[:-4] + '__crop.mp4')
-		# try:
-		_crop_video(original_video_path, config.batch_id,  1)
-		# except:
-		print('some error when crop images.')
+		try:
+            _crop_video(original_video_path, config.batch_id,  1)
+		except:
+            print('some error when crop images.')
 		command = 'ffmpeg -framerate 25  -i ./temp%05d'% config.batch_id + '/%05d.png  -vcodec libx264  -vf format=yuv420p -y ' +  cropped_video_path
 		os.system(command)
 		cap = cv2.VideoCapture(cropped_video_path)
@@ -289,12 +288,12 @@ def pca_lmark_grid():
 
 
 
-def get_front_video(video_path): # video path should be the video path of cropped video.
+def get_front_video(video_path): # video path should be the original video.
    		
 
     v_frames = read_videos(video_path)
     # tmp = video_path.split('/')
-    rt_path = video_path[:-9] + '__rt.npy'
+    rt_path = video_path[:-4] + '__rt.npy'
     rt = np.load(rt_path)
     lmark_length = rt.shape[0]
     find_rt = []

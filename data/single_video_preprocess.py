@@ -303,7 +303,7 @@ def get_front_video(video_path): # video path should be the original video.
 
     min_index = np.argmin(find_rt)
     
-    img_path = video_path[:-9] + '__%05d.png'%min_index 
+    img_path = video_path[:-4] + '__%05d.png'%min_index 
 
     print (img_path)
     cv2.imwrite(img_path, v_frames[min_index])

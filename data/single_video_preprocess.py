@@ -143,11 +143,8 @@ def img_landmark_extractor( img_path = None, path = None):
 	path = os.path.join( '/',  *tmp[:-1] )
 	p_id = tmp[-1]
 	original_img_path =img_path
-	lmark_path = os.path.join(path,   p_id[:-4] + '__original.npy')            
-	print (original_video_path)
-	cropped_video_path = os.path.join(path,   p_id[:-4] + '__crop.mp4')
 	try:
-		frame = _crop_img(original_video_path, 0,  1)
+		frame = _crop_img(original_img_path, 0,  1)
 		lmark = fa.get_landmarks(frame)[0]
 	except:
 		print('some error when crop images.')

@@ -6,7 +6,7 @@ import glob, os
 import face_alignment
 import numpy as np
 import cv2
-from face_tracker import _crop_video
+from face_tracker import _crop_video, _crop_img
 from utils import face_utils, util
 from scipy.spatial.transform import Rotation 
 from scipy.io import wavfile
@@ -20,6 +20,8 @@ def parse_args():
 
     parser.add_argument( "--extract_landmark",
                      action='store_true')
+    parser.add_argument( "--img_extract_landmark",
+                     action='store_true')
     
     parser.add_argument( "--compute_rt",
                      action='store_true')
@@ -32,6 +34,9 @@ def parse_args():
     parser.add_argument( "--video_path",
                      type=str,
                      default='video_path')
+    parser.add_argument( "--img_path",
+                     type=str,
+                     default='img_path')
     
     parser.add_argument( "--get_front",
                      action='store_true')
@@ -128,6 +133,30 @@ def landmark_extractor( video_path = None, path = None):
 
 		        continue
 
+
+def img_landmark_extractor( img_path = None, path = None):
+	print ('NOTE: the img_path need to be absolute path')
+	print ('=========================================')
+	fa = face_alignment.FaceAlignment(face_alignment.LandmarksType._3D, device='cuda:0')
+
+	tmp = img_path.split('/')
+	path = os.path.join( '/',  *tmp[:-1] )
+	p_id = tmp[-1]
+	original_img_path =img_path
+	lmark_path = os.path.join(path,   p_id[:-4] + '__original.npy')            
+	print (original_video_path)
+	cropped_video_path = os.path.join(path,   p_id[:-4] + '__crop.mp4')
+	try:
+		frame = _crop_img(original_video_path, 0,  1)
+		lmark = fa.get_landmarks(frame)[0]
+	except:
+		print('some error when crop images.')
+	lmark = np.asarray(lmark)
+	np.save(img_path[:-4] +'_crop.npy', lmark)
+
+		
+	
+			
 def RT_compute(video_path = None, path  = None):  #video  path should be the original video path
 	consider_key = [1,2,3,4,5,11,12,13,14,15,27,28,29,30,31,32,33,34,35,39,42,36,45,17,21,22,26]  
 	source = np.zeros((len(consider_key),3))
@@ -475,6 +504,10 @@ def main():
             landmark_extractor(path = config.video_path)
 
         print ('The extracted landmark will save in the same folder with name of __original.npy. Meanwhile, we will crop your video to a new video named as __crop.mp4')
+    if config.img_extract_landmark:
+        if os.path.isfile(config.img_path):
+            img_landmark_extractor(video_path = config.img_path)
+	
     if config.compute_rt:
         if os.path.isfile(config.video_path):
             RT_compute(video_path = config.video_path)

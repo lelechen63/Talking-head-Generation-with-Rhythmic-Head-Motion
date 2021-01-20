@@ -168,11 +168,11 @@ def _crop_img(img_path, pid = 0, mode = 0):
 		top_left_y[i] = top_left_y[i] + tempolate_middle[1]  -middle[1]
 		roi = tempolate[int(top_left_x[i]):int(top_left_x[i]) + side_length ,int(top_left_y[i]):int(top_left_y[i]) + side_length]
 		roi =cv2.resize(roi,(256,256))
-		cv2.imwrite(img_path[:-4] +'_croped.png', roi)
+		cv2.imwrite(img_path[:-4] +'_crop.png', roi)
 	else:
 		roi = videos[i][int(top_left_x[i]):int(top_left_x[i]) + side_length ,int(top_left_y[i]):int(top_left_y[i]) + side_length]
 		roi =cv2.resize(roi,(256,256))
-		cv2.imwrite(img_path[:-4] +'_croped.png', roi)
+		cv2.imwrite(img_path[:-4] +'_crop.png', roi)
 
 
 def _crop_video(video, pid = 0, mode = 0):

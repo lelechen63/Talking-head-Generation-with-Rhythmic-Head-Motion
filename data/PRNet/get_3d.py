@@ -359,7 +359,7 @@ def get_3d_pkl_obama(pkl , root ,bbb = 0): # the first cell is video path the la
 
 
 
-def get_3d_single_video( img_path): # you need the image path of the most visible frame.
+def get_3d_single_video( img_path, with_frame_num): # you need the image path of the most visible frame.
     # root = 
     # ---- init PRN
     # os.environ['CUDA_VISIBLE_DEVICES'] = '0' # GPU number, -1 for CPU
@@ -391,8 +391,10 @@ def get_3d_single_video( img_path): # you need the image path of the most visibl
     # landmark
     kpt = prn.get_landmarks(pos)
     kpt[:,1] = h - kpt[:,1]
-
-    np.save(img_path[:-11] + '__prnet.npy', kpt)
+    if with_frame_num:
+       np.save(img_path[:-11] + '__prnet.npy', kpt)
+    else:
+      np.save(img_path[:-4] + '__prnet.npy', kpt)
     # 3D vertices
     vertices = prn.get_vertices(pos)
 
@@ -406,8 +408,10 @@ def get_3d_single_video( img_path): # you need the image path of the most visibl
     # print (colors.shape)
     # print ('=========')
     # cv2.imwrite('./mask.png', colors * 255)
-    write_obj_with_colors(img_path[:-11]  + '__original.obj', save_vertices, prn.triangles, colors) #save 3d face(can open with meshlab)
-
+    if with_frame_num:
+       write_obj_with_colors(img_path[:-11]  + '__original.obj', save_vertices, prn.triangles, colors) #save 3d face(can open with meshlab)
+    else:
+       write_obj_with_colors(img_path[:-4]  + '__original.obj', save_vertices, prn.triangles, colors) #save 3d face(can open with meshlab)
         
         # print (video_path)
         # break

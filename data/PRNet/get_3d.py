@@ -148,6 +148,7 @@ def get_3d_folder(pkl): # the first cell is video path the last cell is the key 
         
         image = image/255.
         if pos is None:
+            print ('there is no pos!!! WRONG!')
             continue
         
 

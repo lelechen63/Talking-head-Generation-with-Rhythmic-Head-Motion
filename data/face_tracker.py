@@ -174,7 +174,7 @@ def _crop_img(img_path, pid = 0, mode = 0):
 		roi =cv2.resize(roi,(256,256))
 		cv2.imwrite(img_path[:-4] +'_crop.png', roi)
 
-
+	return roi
 def _crop_video(video, pid = 0, mode = 0):
 	count = 0
 	x_list =  np.array([])

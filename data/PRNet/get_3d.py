@@ -544,7 +544,7 @@ def parse_args():
                         type=str,
                         default=None)
     parser.add_argument("--with_frame_num",
-                        type=store_true)
+                        action='store_true')
       
     return parser.parse_args()
 

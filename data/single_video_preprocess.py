@@ -506,7 +506,7 @@ def main():
         print ('The extracted landmark will save in the same folder with name of __original.npy. Meanwhile, we will crop your video to a new video named as __crop.mp4')
     if config.img_extract_landmark:
         if os.path.isfile(config.img_path):
-            img_landmark_extractor(video_path = config.img_path)
+            img_landmark_extractor(img_path = config.img_path)
 	
     if config.compute_rt:
         if os.path.isfile(config.video_path):

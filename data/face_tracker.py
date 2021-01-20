@@ -134,6 +134,47 @@ def _crop_face_region_video(video):
 
 # _crop_face_region_video('/home/cxu-serve/p1/common/faceforensics/original_sequences/youtube/cropped/videos/000.mp4')
 
+
+def _crop_img(img_path, pid = 0, mode = 0):
+	frame = cv2.imread(img_path)
+		
+	x_list, y_list, dis_list, videos, multi_face_times = crop_image(frame, 0, [], [], [], [], 0)
+
+	dis = np.mean(dis_list)
+	print (dis)
+	side_length = int((205 * dis / 90))
+	print (side_length)
+	
+	top_left_x = x_list - (80 * dis / 90)
+	top_left_y = y_list - (100* dis / 90)
+	top_left_x_mean = np.mean(top_left_x)
+
+	top_left_y_mean = np.mean(top_left_y)
+	print (top_left_x_mean, top_left_y_mean)
+	for g in range(len(top_left_x)):
+		top_left_x[g] = top_left_x_mean
+
+		top_left_y[g] = top_left_y_mean
+
+
+	i = 0
+	if top_left_x[i] < 0 or top_left_y[i] < 0:
+		img_size = videos[i].shape
+		tempolate = np.zeros((img_size[0] * 2, img_size[1]* 2 , 3), np.uint8)
+		tempolate_middle  = [int(tempolate.shape[0]/2), int(tempolate.shape[1]/2)]
+		middle = [int(img_size[0]/2), int(img_size[1]/2)]
+		tempolate[tempolate_middle[0]  -middle[0]:tempolate_middle[0]+middle[0], tempolate_middle[1]-middle[1]:tempolate_middle[1]+middle[1], :] = videos[i]
+		top_left_x[i] = top_left_x[i] + tempolate_middle[0]  -middle[0]
+		top_left_y[i] = top_left_y[i] + tempolate_middle[1]  -middle[1]
+		roi = tempolate[int(top_left_x[i]):int(top_left_x[i]) + side_length ,int(top_left_y[i]):int(top_left_y[i]) + side_length]
+		roi =cv2.resize(roi,(256,256))
+		cv2.imwrite(img_path[:-4] +'_croped.png', roi)
+	else:
+		roi = videos[i][int(top_left_x[i]):int(top_left_x[i]) + side_length ,int(top_left_y[i]):int(top_left_y[i]) + side_length]
+		roi =cv2.resize(roi,(256,256))
+		cv2.imwrite(img_path[:-4] +'_croped.png', roi)
+
+
 def _crop_video(video, pid = 0, mode = 0):
 	count = 0
 	x_list =  np.array([])

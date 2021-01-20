@@ -359,7 +359,7 @@ def get_3d_pkl_obama(pkl , root ,bbb = 0): # the first cell is video path the la
 
 
 
-def get_3d_single_video( img_path, with_frame_num): # you need the image path of the most visible frame.
+def get_3d_single_video( img_path, with_frame_num=False): # you need the image path of the most visible frame.
     # root = 
     # ---- init PRN
     # os.environ['CUDA_VISIBLE_DEVICES'] = '0' # GPU number, -1 for CPU
@@ -543,6 +543,9 @@ def parse_args():
     parser.add_argument("--img_path",
                         type=str,
                         default=None)
+    parser.add_argument("--with_frame_num",
+                        type=store_true)
+      
     return parser.parse_args()
 
 
@@ -563,7 +566,8 @@ def parse_args():
 def main():
     config = parse_args()
     print ('NOTE, you need to enter the image path that obtained in get_front function!!!! We compute the 3D model based on that frame')
-    get_3d_single_video(img_path = config.img_path)
+    with_frame_num = config.with_frame_num
+    get_3d_single_video(img_path = config.img_path, with_frame_num=with_frame_num)
 
 main()
 # get_3d_single(img_path= '/home/cxu-serve/p1/common/demo/self2_crop.png')

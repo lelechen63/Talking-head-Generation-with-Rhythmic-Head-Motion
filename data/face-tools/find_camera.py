@@ -117,6 +117,7 @@ def demo_single_video(front_lmark_path = None ,  key_id = None, front_img_path=N
         lmk3d_target = np.load(ref_lmark_path)
     
         print(ref_lmark_path)
+        print(lmk3d_target.shape)
     # load the 3D facial landmarks on the PRNet 3D reconstructed face
     lmk3d_origin = np.load(prnet_lmark_path)
      

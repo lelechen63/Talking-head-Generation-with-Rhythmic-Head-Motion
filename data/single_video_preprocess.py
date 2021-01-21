@@ -27,7 +27,8 @@ def parse_args():
                      action='store_true')
     parser.add_argument( "--img_compute_rt",
                      action='store_true')
-
+    parser.add_argument( "--swith_identity",
+                     action='store_true')
     parser.add_argument('-b', "--batch_id",
                      type=int,
                      default=1)
@@ -41,8 +42,10 @@ def parse_args():
     
     parser.add_argument( "--get_front",
                      action='store_true')
-
-
+    parser.add_argument( "--front_lmark",
+                     action='store_true')
+    parser.add_argument( "--rt",
+                     action='store_true')
     
     return parser.parse_args()
 
@@ -501,6 +504,18 @@ def swith_identity(id = 'lisa2'):
     # with open(os.path.join( root, 'pickle','train_lmark2img.pkl'), 'wb') as handle:
     #     pkl.dump(data, handle, protocol=pkl.HIGHEST_PROTOCOL)
 
+
+def swith_identity(front_lmark = None, rt = None):
+	denormed_lamrk = np.load(denormed_lamrk)
+	rt = np.load(rt)
+
+        rotated = np.zeros((lmark_length, 68 , 3))
+        for i in range(denormed_lamrk.shape[0]):
+            rotated[i] = util.reverse_rt(denormed_lamrk[i], rt[i])
+
+
+        np.save(front_lmark[:-4] + '__composed.npy', rotated)
+
 def diff():
     root_path  = '/home/cxu-serve/p1/common/CREMA'
     _file = open(os.path.join(root_path, 'pickle','train_lmark2img.pkl'), "rb")
@@ -543,6 +558,8 @@ def main():
     if config.img_extract_landmark:
         if os.path.isfile(config.img_path):
             img_landmark_extractor(img_path = config.img_path)
+    if config.swith_identity:
+            swith_identity(img_path = config.front_lmark, config.rt)
     if config.img_compute_rt:
             img_RT_compute(img_path = config.img_path)
        

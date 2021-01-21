@@ -116,6 +116,7 @@ def demo_single_video(front_lmark_path = None ,  key_id = None, front_img_path=N
     print(ref_lmark_path)
     print('=========')
     if key_id == None:
+        print('fdjfkdjklfj===')
         lmk3d_target = lmk3d_all[key_id]
     else:
         lmk3d_target = np.load(ref_lmark_path)

@@ -322,8 +322,8 @@ def img_RT_compute(img_path = None):  #video  path should be the original video 
 		source[m] = ff[consider_key[m]]  
 	source = np.mat(source)
 	lmark_path = img_path[:-4] + '.npy'
-	rt_path = video_path[:-4] +'__rt.npy'
-	front_path = video_path[:-4]+'__front.npy'
+	rt_path = img_path[:-4] +'__rt.npy'
+	front_path = img_path[:-4]+'__front.npy'
 
 	lmark = np.zeros(1,68,3) 
 	lmark[0] = np.load(lmark_path)

@@ -25,7 +25,8 @@ def parse_args():
     
     parser.add_argument( "--compute_rt",
                      action='store_true')
-
+    parser.add_argument( "--img_compute_rt",
+                     action='store_true')
 
     parser.add_argument('-b', "--batch_id",
                      type=int,
@@ -538,10 +539,13 @@ def main():
             landmark_extractor(path = config.video_path)
 
         print ('The extracted landmark will save in the same folder with name of __original.npy. Meanwhile, we will crop your video to a new video named as __crop.mp4')
+    
     if config.img_extract_landmark:
         if os.path.isfile(config.img_path):
             img_landmark_extractor(img_path = config.img_path)
-	
+    if config.img_compute_rt:
+            img_RT_compute(img_path = config.img_path)
+       
     if config.compute_rt:
         if os.path.isfile(config.video_path):
             RT_compute(video_path = config.video_path)

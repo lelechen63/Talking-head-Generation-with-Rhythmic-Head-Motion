@@ -453,7 +453,7 @@ def swith_identity_obama(obamaid = '00025_aligned'):
 
 
 
-def swith_identity(id = 'lisa2'):
+def swith_identity2(id = 'lisa2'):
         src_lmark_path = '/home/cxu-serve/p1/common/demo/00025_aligned_front.npy' 
 
         tar_lmark_path =  '/home/cxu-serve/p1/common/demo/'  +  id + '_original_front.npy'
@@ -506,9 +506,9 @@ def swith_identity(id = 'lisa2'):
 
 
 def swith_identity(front_lmark = None, rt = None):
-	denormed_lamrk = np.load(denormed_lamrk)
+	denormed_lamrk = np.load(front_lmark)
 	rt = np.load(rt)
-
+	lmark_length = denormed_lamrk.shape[0]
         rotated = np.zeros((lmark_length, 68 , 3))
         for i in range(denormed_lamrk.shape[0]):
             rotated[i] = util.reverse_rt(denormed_lamrk[i], rt[i])
@@ -559,7 +559,7 @@ def main():
         if os.path.isfile(config.img_path):
             img_landmark_extractor(img_path = config.img_path)
     if config.swith_identity:
-            swith_identity(img_path = config.front_lmark, config.rt)
+            swith_identity(config.front_lmark, config.rt)
     if config.img_compute_rt:
             img_RT_compute(img_path = config.img_path)
        

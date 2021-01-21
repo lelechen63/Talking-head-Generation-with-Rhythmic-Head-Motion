@@ -510,11 +510,11 @@ def swith_identity(front_lmark = None, rt = None):
 	rt = np.load(rt)
 	lmark_length = denormed_lamrk.shape[0]
 	rotated = np.zeros((lmark_length, 68 , 3))
-        for i in range(denormed_lamrk.shape[0]):
-            rotated[i] = util.reverse_rt(denormed_lamrk[i], rt[i])
+	for i in range(denormed_lamrk.shape[0]):
+	    rotated[i] = util.reverse_rt(denormed_lamrk[i], rt[i])
 
 
-        np.save(front_lmark[:-4] + '__composed.npy', rotated)
+	np.save(front_lmark[:-4] + '__composed.npy', rotated)
 
 def diff():
     root_path  = '/home/cxu-serve/p1/common/CREMA'

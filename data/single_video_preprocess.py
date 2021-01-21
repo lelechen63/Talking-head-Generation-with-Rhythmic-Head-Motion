@@ -325,7 +325,7 @@ def img_RT_compute(img_path = None):  #video  path should be the original video 
 	rt_path = img_path[:-4] +'__rt.npy'
 	front_path = img_path[:-4]+'__front.npy'
 
-	lmark = np.zeros(1,68,3) 
+	lmark = np.zeros((1,68,3)) 
 	lmark[0] = np.load(lmark_path)
 
 	############################################## smooth the landmark

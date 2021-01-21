@@ -112,6 +112,9 @@ def demo_single_video(front_lmark_path = None ,  key_id = None, front_img_path=N
     # extract the frontal facial landmarks for key frame'
 
     lmk3d_all = np.load(front_lmark_path)
+    print (key_id)
+    print(ref_lmark_path)
+    print('=========')
     if key_id == None:
         lmk3d_target = lmk3d_all[key_id]
     else:

@@ -509,7 +509,7 @@ def swith_identity(front_lmark = None, rt = None):
 	denormed_lamrk = np.load(front_lmark)
 	rt = np.load(rt)
 	lmark_length = denormed_lamrk.shape[0]
-        rotated = np.zeros((lmark_length, 68 , 3))
+	rotated = np.zeros((lmark_length, 68 , 3))
         for i in range(denormed_lamrk.shape[0]):
             rotated[i] = util.reverse_rt(denormed_lamrk[i], rt[i])
 

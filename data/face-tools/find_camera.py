@@ -43,7 +43,8 @@ def parse_args():
     parser.add_argument("--ref_lmark_path",
                         type=str,
                         default='')
-
+    parser.add_argument( "--same",
+                     action='store_true')
     return parser.parse_args()
 config = parse_args()
 root = config.root
@@ -854,7 +855,8 @@ def main():
     front_img_path = config.front_img_path
     front_lmark_path = config.front_lmark_path
     prnet_lmark_path = config.prnet_lmark_path
-    if prnet_lmark_path =='':
+    same = config.same
+    if same =='':
         front_frame_id =  int(front_img_path[-9 : -4])
     else:
         front_frame_id = None

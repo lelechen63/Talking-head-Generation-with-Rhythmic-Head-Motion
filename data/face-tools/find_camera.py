@@ -40,6 +40,9 @@ def parse_args():
     parser.add_argument("--prnet_lmark_path",
                         type=str,
                         default='')
+    parser.add_argument("--ref_lmark_path",
+                        type=str,
+                        default='')
 
     return parser.parse_args()
 config = parse_args()

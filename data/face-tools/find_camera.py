@@ -851,7 +851,7 @@ def main():
     if prnet_lmark_path =='':
         front_frame_id =  int(front_img_path[-9 : -4])
     else:
-        key_id = None
+        front_frame_id = None
     demo_single_video(front_lmark_path = front_lmark_path , key_id =front_frame_id , front_img_path = front_img_path, prnet_lmark_path = prnet_lmark_path)
  
 

@@ -105,17 +105,14 @@ def get_np_uint8_image(mesh, renderer):
 
 
 
-def demo_single_video(front_lmark_path = None ,  key_id = None, front_img_path=None, prnet_lmark_path=None, ref_lmark_path = None ):
+def demo_single_video(config, front_lmark_path = None ,  key_id = None, front_img_path=None, prnet_lmark_path=None, ref_lmark_path = None ):
     itvl = 1000.0/25.0 # 25fps
     overlay = False
     
     # extract the frontal facial landmarks for key frame'
 
     lmk3d_all = np.load(front_lmark_path)
-    print (key_id)
-    print(ref_lmark_path)
-    print('=========')
-    if key_id == None:
+    if config.same:
         print('fdjfkdjklfj===')
         lmk3d_target = lmk3d_all[key_id]
     else:
@@ -864,12 +861,12 @@ def main():
     same = config.same
     if same :
         front_frame_id =  int(front_img_path[-9 : -4])
-        demo_single_video(front_lmark_path = front_lmark_path , key_id =front_frame_id , prnet_lmark_path = prnet_lmark_path)
+        demo_single_video(config, front_lmark_path = front_lmark_path , key_id =front_frame_id , prnet_lmark_path = prnet_lmark_path)
 
     else:
         front_frame_id = None
         ref_lmark_path = config.ref_lmark_path 
-        demo_single_video(front_lmark_path = front_lmark_path  , front_img_path = front_img_path, prnet_lmark_path = prnet_lmark_path, ref_lmark_path = ref_lmark_path)
+        demo_single_video(config, front_lmark_path = front_lmark_path  , front_img_path = front_img_path, prnet_lmark_path = prnet_lmark_path, ref_lmark_path = ref_lmark_path)
 
  
 

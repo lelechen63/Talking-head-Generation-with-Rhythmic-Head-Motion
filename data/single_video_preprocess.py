@@ -312,8 +312,45 @@ def pca_lmark_grid():
         pkl.dump(datalist, handle, protocol=pkl.HIGHEST_PROTOCOL)
 
 
+	
+def img_RT_compute(img_path = None):  #video  path should be the original video path
+	consider_key = [1,2,3,4,5,11,12,13,14,15,27,28,29,30,31,32,33,34,35,39,42,36,45,17,21,22,26]  
+	source = np.zeros((len(consider_key),3))
+	ff = np.load('../basics/standard.npy')
+	for m in range(len(consider_key)):
+		source[m] = ff[consider_key[m]]  
+	source = np.mat(source)
+	lmark_path = img_path[:-4] + '.npy'
+	rt_path = video_path[:-4] +'__rt.npy'
+	front_path = video_path[:-4]+'__front.npy'
 
+	lmark = np.zeros(1,68,3) 
+	lmark[0] = np.load(lmark_path)
 
+	############################################## smooth the landmark
+	length = 1 
+	lmark_part = np.zeros((length,len(consider_key),3))
+	RTs =  np.zeros((length,6))
+	frontlized =  np.zeros((length,68,3))
+	for j in range(length ):
+		for m in range(len(consider_key)):
+			lmark_part[:,m] = lmark[:,consider_key[m]] 
+
+		target = np.mat(lmark_part[j])
+		ret_R, ret_t = face_utils.rigid_transform_3D( target, source)
+		source_lmark  = np.mat(lmark[j])
+		A2 = ret_R*source_lmark.T
+		A2+= np.tile(ret_t, (1, 68))
+		A2 = A2.T
+		frontlized[j] = A2
+		r = Rotation.from_dcm(ret_R)
+		vec = r.as_rotvec()             
+		RTs[j,:3] = vec
+		RTs[j,3:] =  np.squeeze(np.asarray(ret_t))            
+	np.save(rt_path, RTs[0])
+	np.save(front_path, frontlized[0])
+
+	
 def get_front_video(video_path): # video path should be the original video.
    		
 

@@ -98,10 +98,9 @@ def get_np_uint8_image(mesh, renderer):
     return image
 
 
-    demo_single_video(front_lmark_path = front_lmark_path , key_id =front_frame_id , front_img_path = front_img_path, prnet_lmark_path = prnet_lmark_path)
 
 
-def demo_single_video(front_lmark_path = None ,  key_id = None, front_img_path=None, prnet_lmark_path=None ):
+def demo_single_video(front_lmark_path = None ,  key_id = None, front_img_path=None, prnet_lmark_path=None, ref_lmark_path = None ):
     itvl = 1000.0/25.0 # 25fps
     overlay = False
     
@@ -111,9 +110,9 @@ def demo_single_video(front_lmark_path = None ,  key_id = None, front_img_path=N
     if key_id == None:
         lmk3d_target = lmk3d_all[key_id]
     else:
-        lmk3d_target = np.load(prnet_lmark_path)
+        lmk3d_target = np.load(ref_lmark_path)
     # load the 3D facial landmarks on the PRNet 3D reconstructed face
-    lmk3d_origin = np.load(front_lmark_path[:-9] +'prnet.npy')
+    lmk3d_origin = np.load(prnet_lmark_path)
 
     # load RTs for all frame
     rots, trans = recover(np.load( front_lmark_path[:-9] + "rt.npy"))
@@ -852,7 +851,8 @@ def main():
         front_frame_id =  int(front_img_path[-9 : -4])
     else:
         front_frame_id = None
-    demo_single_video(front_lmark_path = front_lmark_path , key_id =front_frame_id , front_img_path = front_img_path, prnet_lmark_path = prnet_lmark_path)
+        ref_lmark_path = config.ref_lmark_path 
+    demo_single_video(front_lmark_path = front_lmark_path , key_id =front_frame_id , front_img_path = front_img_path, prnet_lmark_path = prnet_lmark_path, ref_lmark_path = ref_lmark_path)
  
 
 main()

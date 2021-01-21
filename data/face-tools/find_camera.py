@@ -859,11 +859,13 @@ def main():
     same = config.same
     if same :
         front_frame_id =  int(front_img_path[-9 : -4])
+        demo_single_video(front_lmark_path = front_lmark_path , key_id =front_frame_id , prnet_lmark_path = prnet_lmark_path)
+
     else:
         front_frame_id = None
         ref_lmark_path = config.ref_lmark_path 
-       
-    demo_single_video(front_lmark_path = front_lmark_path , key_id =front_frame_id , front_img_path = front_img_path, prnet_lmark_path = prnet_lmark_path, ref_lmark_path = ref_lmark_path)
+        demo_single_video(front_lmark_path = front_lmark_path  , front_img_path = front_img_path, prnet_lmark_path = prnet_lmark_path, ref_lmark_path = ref_lmark_path)
+
  
 
 main()

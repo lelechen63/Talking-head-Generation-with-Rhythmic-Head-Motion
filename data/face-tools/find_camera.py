@@ -45,7 +45,7 @@ def parse_args():
                         default='')
     parser.add_argument( "--same",
                         type = bool,
-                     action=False)
+                     default=False)
     return parser.parse_args()
 config = parse_args()
 root = config.root

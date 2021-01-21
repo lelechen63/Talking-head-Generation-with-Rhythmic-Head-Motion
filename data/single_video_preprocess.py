@@ -43,9 +43,11 @@ def parse_args():
     parser.add_argument( "--get_front",
                      action='store_true')
     parser.add_argument( "--front_lmark",
-                     action='store_true')
+                     type=str,
+                     default=1)
     parser.add_argument( "--rt",
-                     action='store_true')
+                     type=str,
+                     default=1)
     
     return parser.parse_args()
 

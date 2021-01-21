@@ -856,7 +856,7 @@ def main():
     front_lmark_path = config.front_lmark_path
     prnet_lmark_path = config.prnet_lmark_path
     same = config.same
-    if same =='':
+    if same :
         front_frame_id =  int(front_img_path[-9 : -4])
     else:
         front_frame_id = None

@@ -45,3 +45,5 @@ NOTE: The video path need to be absolute path
     cd face_tool
     
     python find_camera.py --front_img_path /a/b/c__00068.png
+    
+    python find_camera.py --front_img_path /u/lchen63/github/Talking-head-Generation-with-Rhythmic-Head-Motion/test_data/sample3/ref_id_crop.png --prnet_lmark_path /u/lchen63/github/Talking-head-Generation-with-Rhythmic-Head-Motion/test_data/sample3/ref_id_crop__prnet.npy --front_lmark_path  /u/lchen63/github/Talking-head-Generation-with-Rhythmic-Head-Motion/test_data/sample3/Pose__front.npy --ref_lmark_path /u/lchen63/github/Talking-head-Generation-with-Rhythmic-Head-Motion/test_data/sample3/ref_id_crop__front.npy
